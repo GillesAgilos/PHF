@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | PHF System{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="p-5 mb-4 bg-white border rounded-3 shadow-sm">
+            <div class="container-fluid py-2">
+                <h1 class="display-5 fw-bold text-primary">PHF System</h1>
+                <p class="col-md-8 fs-4 text-muted">Process History File database for Eurogentec.</p>
+                <hr class="my-4">
+                <p>Welcome, <strong>{{ user.username }}</strong>. Use the navigation bar to manage your data.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

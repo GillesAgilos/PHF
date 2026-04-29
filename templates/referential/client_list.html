@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Clients Referential{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="text-secondary">Clients Referential</h2>
+    <a href="{% url 'referential:client_add' %}" class="btn btn-primary shadow-sm">
+        <i class="bi bi-plus-lg"></i> Add New Client
+    </a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 80px;">Status</th>
+                    <th style="width: 120px;">Code</th>
+                    <th>Name</th>
+                    <th>Audit Trail</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for client in clients %}
+                <tr {% if not client.is_active %}class="table-light text-muted" style="font-style: italic;"{% endif %}>
+                    <td>
+                        {% if client.is_active %}
+                            <span class="badge bg-success">Active</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">Archived</span>
+                        {% endif %}
+                    </td>
+                    <td class="fw-bold">{{ client.code }}</td>
+                    <td>{{ client.name }}</td>
+                    <td>
+                        <div style="font-size: 0.85rem;">
+                            <span class="text-muted">Created:</span> {{ client.created_at|date:"d/m/y H:i" }} ({{ client.created_by.username|default:"sys" }})<br>
+                            <span class="text-muted">Updated:</span> {{ client.updated_at|date:"d/m/y H:i" }} ({{ client.updated_by.username|default:"sys" }})
+                        </div>
+                    </td>
+                    <td class="text-end">
+                        {% if client.is_active %}
+                            <a href="{% url 'referential:client_edit' client.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                            <a href="{% url 'referential:client_delete' client.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                        {% else %}
+                            <form action="{% url 'referential:client_restore' client.pk %}" method="post" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-success">Restore</button>
+                            </form>
+                            {% if client.deleted_by %}
+                                <div class="text-danger mt-1" style="font-size: 0.7rem;">
+                                    Deleted by {{ client.deleted_by.username }} on {{ client.deleted_at|date:"d/m/Y" }}
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-5 text-muted">No clients found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

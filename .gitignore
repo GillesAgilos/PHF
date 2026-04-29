@@ -1,0 +1,7 @@
+.env
+.venv/
+venv/
+.idea/
+*.iml
+db.sqlite3
+__pycache__/
