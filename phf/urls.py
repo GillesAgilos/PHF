@@ -10,4 +10,7 @@ urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
     path('', TemplateView.as_view(template_name='index.html'), name='home'),
     path('referential/', include('referential.urls')),
+    path('methodology/', include('methodology.urls')),
+
+    path('production/', include('production.urls')),
 ]

@@ -26,7 +26,9 @@ INSTALLED_APPS = [
     'django_auth_adfs',
     'crispy_forms',
     'crispy_bootstrap5',
-    'referential'
+    'referential.apps.ReferentialConfig',
+    'methodology.apps.MethodologyConfig',
+    'production.apps.ProductionConfig'
 ]
 
 MIDDLEWARE = [

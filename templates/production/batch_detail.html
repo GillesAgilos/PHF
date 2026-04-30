@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Batch Detail - {{ batch.category }}{{ batch.iteration_number }}{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{% url 'production:batch_list' %}" class="btn btn-sm btn-outline-secondary mb-2">← Back to List</a>
+    <div class="d-flex justify-content-between align-items-center">
+        <h2 class="text-secondary">Batch {{ batch.category }}{{ batch.iteration_number }}</h2>
+        <span class="badge {% if batch.is_active %}bg-success{% else %}bg-secondary{% endif %} fs-6">
+            {% if batch.is_active %}Active Production{% else %}Archived{% endif %}
+        </span>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-dark text-white">General Information</div>
+            <div class="card-body">
+                <p><strong>Project:</strong> {{ batch.project.name }} ({{ batch.project.code }})</p>
+                <p><strong>Process:</strong> {{ batch.process.name }}</p>
+                <p><strong>Started:</strong> {{ batch.start_date|date:"d M Y H:i" }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white">Sampling Plans & Analytical Results</div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Sample Name</th>
+                            <th>Method</th>
+                            <th>Measured Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for plan in sampling_plans %}
+                        <tr>
+                            <td>{{ plan.sample_name }}</td>
+                            <td>{{ plan.analytical_method.name }}</td>
+                            <td>
+                                {% for result in plan.results.all %}
+                                    <span class="badge bg-info text-dark">{{ result.value }} {{ result.unit }}</span>
+                                {% empty %}
+                                    <span class="text-muted small italic">Pending Analysis...</span>
+                                {% endfor %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3" class="text-center py-4">No sampling plans defined for this batch.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
