@@ -1,9 +1,9 @@
 import uuid
-
 from django.core.exceptions import PermissionDenied
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
+
 
 class BaseModel(models.Model):
     unique_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -75,7 +75,6 @@ class Client(BaseModel):
             raise PermissionDenied("You are not authorized to modify archived clients.")
         return obj
 
-
 class Project(BaseModel):
     client = models.ForeignKey(
         Client,
@@ -92,4 +91,18 @@ class Project(BaseModel):
         obj = super().get_object(queryset)
         if not obj.is_active:
             raise PermissionDenied("You are not authorized to modify archived projects.")
+        return obj
+
+class AnalyticalMethod(BaseModel):
+    name = models.CharField(max_length=255)
+    volume = models.CharField(max_length=100)
+    storage_temp = models.CharField(max_length=100, verbose_name="Storage Temperature")
+
+    def __str__(self):
+        return self.name
+
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset)
+        if not obj.is_active:
+            raise PermissionDenied("You are not authorized to modify archived analytical methods.")
         return obj

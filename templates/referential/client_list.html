@@ -13,11 +13,10 @@
 <div class="card shadow-sm">
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-                <tr>
+            <thead class="table-dark"> <tr>
                     <th style="width: 80px;">Status</th>
                     <th style="width: 120px;">Code</th>
-                    <th>Name</th>
+                    <th>Client Name</th>
                     <th>Audit Trail</th>
                     <th class="text-end">Actions</th>
                 </tr>
@@ -51,7 +50,7 @@
                             </form>
                             {% if client.deleted_by %}
                                 <div class="text-danger mt-1" style="font-size: 0.7rem;">
-                                    Deleted by {{ client.deleted_by.username }} on {{ client.deleted_at|date:"d/m/Y" }}
+                                    Deleted by {{ client.deleted_by.username }}
                                 </div>
                             {% endif %}
                         {% endif %}

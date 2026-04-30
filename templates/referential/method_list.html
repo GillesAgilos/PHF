@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Methods Referential{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="text-secondary">Analytical Methods</h2>
+    <a href="{% url 'referential:method_add' %}" class="btn btn-primary shadow-sm">
+        <i class="bi bi-plus-lg"></i> Create Method
+    </a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th style="width: 80px;">Status</th>
+                    <th>Method Name</th>
+                    <th>Volume</th>
+                    <th>Storage Temp</th>
+                    <th>Audit Trail</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for method in methods %}
+                <tr {% if not method.is_active %}class="table-light text-muted" style="font-style: italic;"{% endif %}>
+                    <td>
+                        {% if method.is_active %}
+                            <span class="badge bg-success">Active</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">Archived</span>
+                        {% endif %}
+                    </td>
+                    <td class="fw-bold">{{ method.name }}</td>
+                    <td><span class="badge bg-info text-white">{{ method.volume }}</span></td>
+                    <td><span class="badge bg-secondary">{{ method.storage_temp }}</span></td>
+                    <td>
+                        <div style="font-size: 0.85rem;">
+                            <span class="text-muted">Created:</span> {{ method.created_at|date:"d/m/y H:i" }} ({{ method.created_by.username|default:"sys" }})<br>
+                            <span class="text-muted">Updated:</span> {{ method.updated_at|date:"d/m/y H:i" }} ({{ method.updated_by.username|default:"sys" }})
+                        </div>
+                    </td>
+                    <td class="text-end">
+                        {% if method.is_active %}
+                            <a href="{% url 'referential:method_edit' method.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                            <a href="{% url 'referential:method_delete' method.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                        {% else %}
+                            <form action="{% url 'referential:method_restore' method.pk %}" method="post" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-success">Restore</button>
+                            </form>
+                            {% if method.deleted_by %}
+                                <div class="text-danger mt-1" style="font-size: 0.7rem;">
+                                    Deleted by {{ method.deleted_by.username }}
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-5 text-muted">No analytical methods available.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

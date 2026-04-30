@@ -18,6 +18,7 @@
             {% if user.is_authenticated %}
                 <a class="nav-link" href="{% url 'referential:client_list' %}">Clients</a>
                 <a class="nav-link" href="{% url 'referential:project_list' %}">Projects</a>
+                <a class="nav-link" href="{% url 'referential:method_list' %}">Analytical Methods</a>
             {% endif %}
         </div>
 

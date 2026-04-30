@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.urls import reverse
 from django.contrib.auth.models import User
-from .models import Client, Project
+from .models import Client, Project, AnalyticalMethod
 
 
 class ReferentialLogicTest(TestCase):
@@ -26,6 +26,14 @@ class ReferentialLogicTest(TestCase):
             name="Eurogentec Test",
             code="EGT-01",
             is_active=True,
+            created_by=self.user
+        )
+
+        # 3. Create a dummy analytical method
+        self.method_obj = AnalyticalMethod.objects.create(
+            name="HPLC Purity",
+            volume="2mL",
+            storage_temp="-20°C",
             created_by=self.user
         )
 
@@ -179,7 +187,53 @@ class ReferentialLogicTest(TestCase):
         new_client = Client.objects.get(code='AUDIT-001')
         self.assertEqual(new_client.created_by, self.user)
 
+    # ==========================================
+    # ANALYTICAL METHOD TESTS
+    # ==========================================
 
+    def test_method_audit_trail_on_create(self):
+        """Verify that method creation assigns the current user to created_by"""
+        self.client.login(username='testworker', password='password123')
+
+        post_data = {
+            'name': 'New Method',
+            'volume': '500uL',
+            'storage_temp': '2-8°C'
+        }
+        response = self.client.post(reverse('referential:method_add'), data=post_data)
+
+        self.assertEqual(response.status_code, 302)
+        new_method = AnalyticalMethod.objects.get(name='New Method')
+        self.assertEqual(new_method.created_by, self.user)
+
+    def test_method_list_content_authenticated(self):
+        """Verify that a logged-in user can see the analytical methods list"""
+        self.client.login(username='testworker', password='password123')
+
+        url = reverse('referential:method_list')
+        response = self.client.get(url, follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "HPLC Purity")
+        self.assertContains(response, "-20°C")
+
+    def test_cannot_update_archived_method(self):
+        """Verify that an archived method cannot be modified via UI"""
+        self.method_obj.is_active = False
+        self.method_obj.save()
+
+        self.client.login(username='testworker', password='password123')
+        url = reverse('referential:method_edit', kwargs={'pk': self.method_obj.unique_id})
+
+        # Attempt to change volume
+        self.client.post(url, data={
+            'name': 'HPLC Purity',
+            'volume': '99mL',
+            'storage_temp': '-20°C'
+        })
+
+        self.method_obj.refresh_from_db()
+        self.assertNotEqual(self.method_obj.volume, '99mL')
 
 # ==============================================================================
 # SUMMARY OF TEST COVERAGE - REFERENTIAL APP

@@ -17,4 +17,11 @@ urlpatterns = [
     path('projects/<uuid:pk>/edit/', views.ProjectUpdateView.as_view(), name='project_edit'),
     path('projects/<uuid:pk>/delete/', views.ProjectDeleteView.as_view(), name='project_delete'),
     path('projects/<uuid:pk>/restore/', views.ProjectRestoreView.as_view(), name='project_restore'),
+
+    # Analytical Methods
+    path('methods/', views.AnalyticalMethodListView.as_view(), name='method_list'),
+    path('methods/add/', views.AnalyticalMethodCreateView.as_view(), name='method_add'),
+    path('methods/<uuid:pk>/edit/', views.AnalyticalMethodUpdateView.as_view(), name='method_edit'),
+    path('methods/<uuid:pk>/delete/', views.AnalyticalMethodDeleteView.as_view(), name='method_delete'),
+    path('methods/<uuid:pk>/restore/', views.AnalyticalMethodRestoreView.as_view(), name='method_restore'),
 ]
