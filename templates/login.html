@@ -4,29 +4,43 @@
 {% block title %}Login | PHF System{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center mt-5">
-    <div class="col-md-4">
-        <div class="card shadow border-0">
-            <div class="card-header bg-primary text-white text-center py-3">
-                <h4 class="mb-0">Access Control</h4>
-            </div>
-            <div class="card-body p-4">
-                <p class="text-muted text-center small mb-4">Please sign in to access the PHF Database.</p>
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-4">
+            <div class="card shadow border-0">
+                <div class="card-header bg-primary text-white text-center py-3">
+                    <h4 class="mb-0">Access Control</h4>
+                </div>
 
-                <form method="post">
-                    {% csrf_token %}
-                    {{ form|crispy }}
-                    <div class="d-grid mt-4">
-                        <button type="submit" class="btn btn-primary shadow-sm">
-                            Sign In
-                        </button>
+                <div class="card-body p-4">
+                    <p class="text-muted text-center small mb-4">Please sign in to access the PHF Database.</p>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn btn-primary shadow-sm">
+                                Sign In
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="position-relative my-4">
+                        <hr>
+                        <span class="position-absolute top-50 start-50 translate-middle bg-white px-2 text-muted small">OR</span>
                     </div>
-                </form>
-            </div>
-            <div class="card-footer bg-light text-center py-2">
-                <small class="text-muted">Eurogentec PHF System &copy; {% now "Y" %}</small>
+
+                    <div class="d-grid">
+                        <a href="{% url 'django_auth_adfs:login' %}" class="btn btn-outline-dark shadow-sm d-flex align-items-center justify-content-center">
+                            <img src="https://authjs.dev/img/providers/azure.svg" width="20" class="me-2 text-primary">
+                            Login with Eurogentec Account
+                        </a>
+                    </div>
+                </div>
+
+                <div class="card-footer bg-light text-center py-2">
+                    <small class="text-muted">Eurogentec PHF System &copy; {% now "Y" %}</small>
+                </div>
             </div>
         </div>
     </div>
-</div>
 {% endblock %}

@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_auth_adfs',
     'crispy_forms',
     'crispy_bootstrap5',
     'referential'
@@ -100,7 +101,22 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
-
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'login'
+
+AUTHENTICATION_BACKENDS = (
+    'django_auth_adfs.backend.AdfsAuthCodeBackend',
+    'django.contrib.auth.backends.ModelBackend',
+)
+
+# Configuration Entra ID
+AUTH_ADFS = {
+    'AUDIENCE': env('AZURE_CLIENT_ID'),
+    'CLIENT_ID': env('AZURE_CLIENT_ID'),
+    'CLIENT_SECRET': env('AZURE_CLIENT_SECRET'),
+    'TENANT_ID': env('AZURE_TENANT_ID'),
+    'RELYING_PARTY_ID': env('AZURE_CLIENT_ID'),
+    'CONFIG_RELOAD_INTERVAL': 1440,
+    'LOGIN_EXEMPT_URLS': ['login'],
+}
