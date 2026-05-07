@@ -1,93 +1,85 @@
 from django.db import models
-from django.core.exceptions import PermissionDenied
-from referential.models import BaseModel, Project, AnalyticalMethod
-from methodology.models import Process, Step
+from referential.models import BaseModel
 
-# ==========================================
-# PRODUCTION MODELS
-# ==========================================
 
-class Batch(BaseModel):
-    """
-    Execution instance linking a Project and a Manufacturing Process.
-    """
-    CATEGORY_CHOICES = [
-        ('M-', 'Manufacturing'),
-        ('E-', 'Engineering'),
+class Process(BaseModel):
+    name = models.CharField(max_length=255, verbose_name="Unit Name")
+    code = models.CharField(max_length=100, unique=True, verbose_name="Process Code")
+    scale = models.CharField(max_length=100, blank=True, verbose_name="Scale")
+
+    def __str__(self):
+        return f"{self.code} ({self.scale})"
+
+
+class UnitOperation(BaseModel):
+    TYPE_CHOICES = [
+        ('USP', 'USP'),
+        ('DSP', 'DSP'),
     ]
+    process = models.ForeignKey(
+        Process,
+        on_delete=models.CASCADE,
+        related_name='units',
+        verbose_name="Related Process"
+    )
+    name = models.CharField(max_length=255, verbose_name="Unit Name")
+    unit_type = models.CharField(max_length=10, choices=TYPE_CHOICES)
 
-    project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name='batches')
-    process = models.ForeignKey(Process, on_delete=models.PROTECT, related_name='batches')
-    iteration_number = models.PositiveIntegerField(verbose_name="Batch Number")
-    category = models.CharField(max_length=10, choices=CATEGORY_CHOICES, default='M-')
-    start_date = models.DateTimeField()
-    end_date = models.DateTimeField(null=True, blank=True)
+    order = models.PositiveIntegerField(verbose_name="Order in Process")
 
     class Meta:
-        verbose_name_plural = "Batches"
-        unique_together = ('category', 'iteration_number')
+        ordering = ['order']
+        unique_together = ('process', 'order')
 
     def __str__(self):
-        return f"{self.category}{self.iteration_number} ({self.project.code})"
+        return f"{self.name} ({self.unit_type})"
 
-    def get_object(self, queryset=None):
-        obj = super().get_object(queryset)
-        if not obj.is_active:
-            raise PermissionDenied("You are not authorized to modify archived batches.")
-        return obj
+class Step(BaseModel):
+    unit_operation = models.ForeignKey(
+        UnitOperation,
+        on_delete=models.CASCADE,
+        related_name='steps'
+    )
+    name = models.CharField(max_length=255, verbose_name="Step Name")
+    order = models.PositiveIntegerField()
 
-
-class SamplingPlan(BaseModel):
-    """
-    Planning of tests for a specific Batch.
-    Bridge between Production and Analytical Methods.
-    """
-    batch = models.ForeignKey(Batch, on_delete=models.CASCADE, related_name='sampling_plans')
-    analytical_method = models.ForeignKey(AnalyticalMethod, on_delete=models.PROTECT)
-    sample_name = models.CharField(max_length=255, help_text="Name of the expected sample")
+    class Meta:
+        ordering = ['order']
+        unique_together = ('unit_operation', 'order')
 
     def __str__(self):
-        return f"Plan: {self.sample_name} [{self.batch}]"
-
-    def get_object(self, queryset=None):
-        obj = super().get_object(queryset)
-        if not obj.is_active:
-            raise PermissionDenied("You are not authorized to modify archived sampling plans.")
-        return obj
+        return f"{self.unit_operation.name} - {self.name} ({self.order})"
 
 
-class Sample(BaseModel):
-    """
-    The physical sample taken from the field.
-    Linked to a methodology 'Step' to track exactly WHEN it was collected.
-    """
-    step = models.ForeignKey(Step, on_delete=models.PROTECT, related_name='samples')
-    phase = models.CharField(max_length=100, help_text="e.g., In-process, Final product")
-    sample_date = models.DateTimeField()
+class Parameter(BaseModel):
+    FORMAT_TYPE_CHOICES = [
+        ('numeric', 'Numeric'),
+        ('text', 'Text/Comment'),
+        ('bool', 'Yes/No'),
+    ]
 
-    def __str__(self):
-        return f"Sample {self.phase} - {self.sample_date.strftime('%Y-%m-%d')}"
+    step = models.ForeignKey(Step, on_delete=models.CASCADE, related_name='parameters')
+    name = models.CharField(max_length=255)
+    unit = models.CharField(max_length=50, blank=True, null=True)
+    format_type = models.CharField(max_length=20, choices=FORMAT_TYPE_CHOICES, default='numeric')
 
-    def get_object(self, queryset=None):
-        obj = super().get_object(queryset)
-        if not obj.is_active:
-            raise PermissionDenied("You are not authorized to modify archived samples.")
-        return obj
+    # Validation Ranges (Format)
+    format_low_range = models.FloatField(blank=True, null=True)
+    format_high_range = models.FloatField(blank=True, null=True)
 
+    # Proven Acceptable Range (PAR)
+    low_proven_acceptable_range = models.FloatField(blank=True, null=True)
+    high_proven_acceptable_range = models.FloatField(blank=True, null=True)
 
-class SampleResult(BaseModel):
-    """
-    Final analytical data entry.
-    """
-    sampling_plan = models.ForeignKey(SamplingPlan, on_delete=models.CASCADE, related_name='results')
-    value = models.CharField(max_length=255, verbose_name="Measured Value")
-    unit = models.CharField(max_length=50)
+    # Normal Operating Range (NOR)
+    low_normal_operating_range = models.FloatField(blank=True, null=True)
+    high_normal_operating_range = models.FloatField(blank=True, null=True)
+
+    order = models.PositiveIntegerField()
+
+    class Meta:
+        ordering = ['order']
+        unique_together = ('step', 'order')
 
     def __str__(self):
-        return f"Result: {self.value} {self.unit} ({self.sampling_plan.sample_name})"
-
-    def get_object(self, queryset=None):
-        obj = super().get_object(queryset)
-        if not obj.is_active:
-            raise PermissionDenied("You are not authorized to modify archived results.")
-        return obj
+        return f"{self.name} ({self.step.name})"

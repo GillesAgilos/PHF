@@ -1,5 +1,4 @@
 import uuid
-from django.core.exceptions import PermissionDenied
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
@@ -14,8 +13,7 @@ class BaseModel(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True, blank=True,
-        related_name="%(class)s_created",
-        verbose_name="Created By"
+        related_name="%(class)s_created"
     )
 
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Last Updated At")
@@ -23,25 +21,24 @@ class BaseModel(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True, blank=True,
-        related_name="%(class)s_updated",
-        verbose_name="Last Updated By"
+        related_name="%(class)s_updated"
     )
 
-    # --- Soft Delete & Status ---
+    # --- Soft Delete ---
     is_active = models.BooleanField(default=True, verbose_name="Active")
     deleted_at = models.DateTimeField(null=True, blank=True, editable=False)
     deleted_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True, blank=True,
-        related_name="%(class)s_deleted",
-        verbose_name="Deleted By"
+        related_name="%(class)s_deleted"
     )
 
     class Meta:
         abstract = True
 
     def delete(self, user=None, *args, **kwargs):
+        """Soft delete implementation."""
         self.is_active = False
         self.deleted_at = timezone.now()
         if user:
@@ -49,18 +46,23 @@ class BaseModel(models.Model):
         self.save()
 
     def restore(self):
+        """Restore an archived object."""
         self.is_active = True
         self.deleted_at = None
         self.deleted_by = None
         self.save()
 
     def save(self, *args, **kwargs):
+        # Protection against modifying archived records
         if self.pk:
             on_db = self.__class__.objects.filter(pk=self.pk).first()
-            if on_db and not on_db.is_active and self.is_active == on_db.is_active:
-                raise PermissionError("Modification forbidden on archived objects.")
+            if on_db and not on_db.is_active:
+                # If it's already inactive and we are not trying to restore it
+                if not self.is_active == True:
+                    raise PermissionError("Modification forbidden on archived objects.")
 
         super().save(*args, **kwargs)
+
 
 class Client(BaseModel):
     name = models.CharField(max_length=255)
@@ -69,11 +71,12 @@ class Client(BaseModel):
     def __str__(self):
         return f"{self.code} - {self.name}"
 
-    def get_object(self, queryset=None):
-        obj = super().get_object(queryset)
-        if not obj.is_active:
-            raise PermissionDenied("You are not authorized to modify archived clients.")
-        return obj
+class MoleculeType(BaseModel):
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return self.name
 
 class Project(BaseModel):
     client = models.ForeignKey(
@@ -84,25 +87,16 @@ class Project(BaseModel):
     name = models.CharField(max_length=255)
     code = models.CharField(max_length=50, unique=True)
 
+    molecule_type = models.ForeignKey(
+        MoleculeType,
+        on_delete=models.PROTECT,
+        related_name='projects'
+    )
+
+    molecule_name = models.CharField(max_length=255)
+
+    class Meta:
+        unique_together = ('client', 'name')
+
     def __str__(self):
         return f"{self.code} - {self.name}"
-
-    def get_object(self, queryset=None):
-        obj = super().get_object(queryset)
-        if not obj.is_active:
-            raise PermissionDenied("You are not authorized to modify archived projects.")
-        return obj
-
-class AnalyticalMethod(BaseModel):
-    name = models.CharField(max_length=255)
-    volume = models.CharField(max_length=100)
-    storage_temp = models.CharField(max_length=100, verbose_name="Storage Temperature")
-
-    def __str__(self):
-        return self.name
-
-    def get_object(self, queryset=None):
-        obj = super().get_object(queryset)
-        if not obj.is_active:
-            raise PermissionDenied("You are not authorized to modify archived analytical methods.")
-        return obj

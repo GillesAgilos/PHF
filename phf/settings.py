@@ -27,8 +27,9 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_bootstrap5',
     'referential.apps.ReferentialConfig',
-    'methodology.apps.MethodologyConfig',
-    'production.apps.ProductionConfig'
+    #'methodology.apps.MethodologyConfig',
+    'production.apps.ProductionConfig',
+    'phf.apps.PhfConfig',
 ]
 
 MIDDLEWARE = [

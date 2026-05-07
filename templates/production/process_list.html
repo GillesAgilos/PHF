@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Process{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-secondary">Process Methodology</h2>
+        <a href="{% url 'production:process_add' %}" class="btn btn-primary shadow-sm">
+            <i class="bi bi-plus-lg"></i> Add New Process
+        </a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                <tr>
+                    <th style="width: 80px;">Status</th>
+                    <th>Process Code</th>
+                    <th>Scale</th>
+                    <th>Audit Trail</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for process in processes %}
+                    <tr {% if not process.is_active %}class="table-light text-muted"
+                        style="font-style: italic;"{% endif %}>
+                        <td>
+                            {% if process.is_active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">Archived</span>
+                            {% endif %}
+                        </td>
+                        <td class="fw-bold">{{ process.code }}</td>
+                        <td>{{ process.scale|default:"---" }}</td>
+                        <td>
+                            <div style="font-size: 0.85rem;">
+                                <span class="text-muted">Created:</span> {{ process.created_at|date:"d/m/y H:i" }}
+                                ({{ process.created_by.username|default:"sys" }})<br>
+                                <span class="text-muted">Updated:</span> {{ process.updated_at|date:"d/m/y H:i" }}
+                                ({{ process.updated_by.username|default:"sys" }})
+                            </div>
+                        </td>
+                        <td class="text-end">
+                            {% if process.is_active %}
+                                <a href="{% url 'production:unit_manage' process.pk %}"
+                                   class="btn btn-sm btn-info text-white shadow-sm me-1">
+                                    <i class="bi bi-diagram-3"></i> Structure
+                                </a>
+                                <a href="{% url 'production:process_edit' process.pk %}"
+                                   class="btn btn-sm btn-outline-secondary">Edit</a>
+                                <a href="{% url 'production:process_delete' process.pk %}"
+                                   class="btn btn-sm btn-outline-danger">Archive</a>
+                            {% else %}
+                                <form action="{% url 'production:process_restore' process.pk %}" method="post"
+                                      class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-success">Restore</button>
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-muted">No processes defined.</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

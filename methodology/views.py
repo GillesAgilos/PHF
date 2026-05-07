@@ -3,7 +3,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic import ListView, CreateView, UpdateView
-from .models import Process, UnitOperation, Sequence, Parameter
+from .models import Process, UnitOperation, Sequence, Parameter, AnalyticalMethod
 from .forms import ProcessForm, UnitOperationForm, SequenceForm, ParameterForm
 
 # ==========================================
@@ -118,3 +118,68 @@ class MethodologyRestoreView(View):
         obj = get_object_or_404(model, pk=pk)
         obj.restore()
         return redirect(request.META.get('HTTP_REFERER', 'methodology:process_list'))
+
+
+
+# ==========================================
+# ANALYTICAL METHOD VIEWS
+# ==========================================
+
+class AnalyticalMethodListView(ListView):
+    model = AnalyticalMethod
+    template_name = 'referential/../templates/method_list.html'
+    context_object_name = 'methods'
+    queryset = AnalyticalMethod.objects.all().order_by('-is_active', 'name')
+
+class AnalyticalMethodCreateView(CreateView):
+    model = AnalyticalMethod
+    form_class = AnalyticalMethodForm
+    template_name = 'generic/generic_form.html'
+    success_url = reverse_lazy('referential:method_list')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Add Analytical Method"
+        context['success_url'] = self.success_url
+        return context
+
+    def form_valid(self, form):
+        form.instance.created_by = self.request.user
+        form.instance.updated_by = self.request.user
+        return super().form_valid(form)
+
+class AnalyticalMethodUpdateView(UpdateView):
+    model = AnalyticalMethod
+    form_class = AnalyticalMethodForm
+    template_name = 'generic/generic_form.html'
+    success_url = reverse_lazy('referential:method_list')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = f"Edit Method: {self.object.name}"
+        context['success_url'] = self.success_url
+        return context
+
+    def form_valid(self, form):
+        current_obj = self.get_object()
+        if not current_obj.is_active:
+            messages.error(self.request, "Error: method is archived, modification impossible.")
+            return redirect('referential:method_list')
+        form.instance.updated_by = self.request.user
+        return super().form_valid(form)
+
+class AnalyticalMethodDeleteView(DeleteView):
+    model = AnalyticalMethod
+    template_name = 'generic/generic_confirm_delete.html'
+    success_url = reverse_lazy('referential:method_list')
+
+    def form_valid(self, form):
+        success_url = self.get_success_url()
+        self.object.delete(user=self.request.user)
+        return HttpResponseRedirect(success_url)
+
+class AnalyticalMethodRestoreView(View):
+    def post(self, request, pk):
+        method = get_object_or_404(AnalyticalMethod, pk=pk)
+        method.restore()
+        return redirect('referential:method_list')

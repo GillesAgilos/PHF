@@ -97,3 +97,18 @@ class Step(BaseModel):
         if not obj.is_active:
             raise PermissionDenied("You are not authorized to modify archived steps.")
         return obj
+
+
+class AnalyticalMethod(BaseModel):
+    name = models.CharField(max_length=255)
+    volume = models.CharField(max_length=100)
+    storage_temp = models.CharField(max_length=100, verbose_name="Storage Temperature")
+
+    def __str__(self):
+        return self.name
+
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset)
+        if not obj.is_active:
+            raise PermissionDenied("You are not authorized to modify archived analytical methods.")
+        return obj

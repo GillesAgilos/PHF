@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Steps: {{ unit.name }}{% endblock %}
+
+{% block content %}
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb bg-light p-3 rounded shadow-sm">
+            <li class="breadcrumb-item"><a href="{% url 'production:process_list' %}" class="text-decoration-none">Processes</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'production:unit_manage' process.pk %}" class="text-decoration-none">{{ process.code }}</a></li>
+            <li class="breadcrumb-item active fw-bold text-dark">Unit: {{ unit.name }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card shadow-sm border-dark">
+                <div class="card-header bg-dark text-white fw-bold">
+                    <i class="bi bi-plus-square"></i> Add New Step
+                </div>
+                <div class="card-body">
+                    <form action="{% url 'production:step_add' unit.pk %}" method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted">STEP NAME</label>
+                            <input type="text" name="name" class="form-control form-control-sm border-secondary" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted">ORDER (#)</label>
+                            <input type="number" name="order" class="form-control form-control-sm border-secondary" value="{{ steps|length|add:1 }}">
+                            {% if form.order.errors %}<div class="text-danger small">{{ form.order.errors.0 }}</div>{% endif %}
+                        </div>
+
+                        <button type="submit" class="btn btn-dark w-100 fw-bold shadow-sm py-2">
+                            <i class="bi bi-plus-lg"></i> Add to Unit
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="mt-3">
+                <a href="{% url 'production:unit_manage' process.pk %}" class="btn btn-outline-secondary btn-sm w-100">
+                    <i class="bi bi-arrow-left"></i> Back to Process Structure
+                </a>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Unit Steps: {{ unit.name }}</h5>
+                    <span class="badge bg-light text-dark">{{ steps|length }} Steps</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for step in steps %}
+                            <div class="list-group-item d-flex align-items-center p-3">
+                                <div class="me-3 text-center" style="width: 40px;">
+                                    <span class="badge bg-dark rounded-circle py-2 px-2">
+                                        {{ step.order }}
+                                    </span>
+                                </div>
+
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-0 fw-bold text-black" style="color: #000 !important;">
+                                        {{ step.name }}
+                                    </h6>
+                                    <small class="text-muted">Defined Step</small>
+                                </div>
+
+                                <div class="text-end d-flex align-items-center">
+                                    <div class="btn-group-vertical btn-group-sm me-3" style="min-width: 20px;">
+                                        {% if not forloop.first %}
+                                            <a href="{% url 'production:step_reorder' step.pk 'up' %}" class="btn btn-link text-muted p-0"><i class="bi bi-chevron-up"></i></a>
+                                        {% else %}<div style="height:16px"></div>{% endif %}
+                                        
+                                        {% if not forloop.last %}
+                                            <a href="{% url 'production:step_reorder' step.pk 'down' %}" class="btn btn-link text-muted p-0"><i class="bi bi-chevron-down"></i></a>
+                                        {% else %}<div style="height:16px"></div>{% endif %}
+                                    </div>
+
+                                    <a href="{% url 'production:parameter_manage' step.pk %}" class="btn btn-sm btn-outline-primary me-2 shadow-sm" title="Configure Parameters">
+                                        <i class="bi bi-gear-fill"></i>
+                                    </a>
+
+                                    <form action="{% url 'production:step_delete' step.pk %}" method="post" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger border-0"><i class="bi bi-trash3"></i></button>
+                                    </form>
+                                </div>
+                            </div>
+                        {% empty %}
+                            <div class="p-5 text-center text-muted">
+                                <i class="bi bi-list-task display-4 d-block mb-3"></i>
+                                <p class="italic">No steps defined for this unit operation.</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

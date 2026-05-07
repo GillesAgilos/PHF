@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Molecule Types Referential{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="text-secondary">Molecule Types Referential</h2>
+    <a href="{% url 'referential:molecule_type_add' %}" class="btn btn-primary shadow-sm">
+        <i class="bi bi-plus-lg"></i> Add New Type
+    </a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th style="width: 80px;">Status</th>
+                    <th>Type Name</th>
+                    <th>Description</th>
+                    <th>Audit Trail</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m_type in molecule_types %}
+                <tr {% if not m_type.is_active %}class="table-light text-muted" style="font-style: italic;"{% endif %}>
+                    <td>
+                        {% if m_type.is_active %}
+                            <span class="badge bg-success">Active</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">Archived</span>
+                        {% endif %}
+                    </td>
+                    <td class="fw-bold">{{ m_type.name }}</td>
+                    <td>{{ m_type.description|default:"---" }}</td>
+                    <td>
+                        <div style="font-size: 0.85rem;">
+                            <span class="text-muted">Created:</span> {{ m_type.created_at|date:"d/m/y H:i" }} ({{ m_type.created_by.username|default:"sys" }})<br>
+                            <span class="text-muted">Updated:</span> {{ m_type.updated_at|date:"d/m/y H:i" }} ({{ m_type.updated_by.username|default:"sys" }})
+                        </div>
+                    </td>
+                    <td class="text-end">
+                        {% if m_type.is_active %}
+                            <a href="{% url 'referential:molecule_type_edit' m_type.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                            <a href="{% url 'referential:molecule_type_delete' m_type.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                        {% else %}
+                            <form action="{% url 'referential:molecule_type_restore' m_type.pk %}" method="post" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-success">Restore</button>
+                            </form>
+                            {% if m_type.deleted_by %}
+                                <div class="text-danger mt-1" style="font-size: 0.7rem;">
+                                    Deleted by {{ m_type.deleted_by.username }}
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-5 text-muted">No molecule types found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -24,42 +24,17 @@
                     <ul class="dropdown-menu shadow" aria-labelledby="navRef">
                         <li><a class="dropdown-item" href="{% url 'referential:client_list' %}">Clients</a></li>
                         <li><a class="dropdown-item" href="{% url 'referential:project_list' %}">Projects</a></li>
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-                        <li><a class="dropdown-item" href="{% url 'referential:method_list' %}">Analytical Methods</a>
+                        <li><a class="dropdown-item" href="{% url 'referential:molecule_type_list' %}">Molecule Type</a>
                         </li>
                     </ul>
                 </li>
 
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navMeth" role="button" data-bs-toggle="dropdown"
-                       aria-expanded="false">
-                        Methodology
-                    </a>
-                    <ul class="dropdown-menu shadow" aria-labelledby="navMeth">
-                        <li><a class="dropdown-item" href="{% url 'methodology:process_list' %}">Manufacturing
-                            Processes</a></li>
-                        <li><a class="dropdown-item" href="{% url 'methodology:unit_op_list' %}">Unit Operations</a>
-                        </li>
-                        <li><a class="dropdown-item" href="{% url 'methodology:sequence_list' %}">Sequences</a></li>
-                        <li><a class="dropdown-item" href="{% url 'methodology:parameter_list' %}">Parameters</a></li>
-                    </ul>
-                </li>
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navProd" role="button" data-bs-toggle="dropdown"
-                       aria-expanded="false">
+                    <a class="nav-link dropdown-toggle" href="#" id="navProd" role="button" data-bs-toggle="dropdown">
                         Production
                     </a>
-                    <ul class="dropdown-menu shadow" aria-labelledby="navProd">
-                        <li><a class="dropdown-item" href="{% url 'production:batch_list' %}">Batch Monitoring</a></li>
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-                        <li><a class="dropdown-item" href="{% url 'production:sample_add' %}">Collect New Sample</a>
-                        </li>
-                        <li><a class="dropdown-item" href="{% url 'production:result_add' %}">Enter Analysis Result</a>
-                        </li>
+                    <ul class="dropdown-menu shadow">
+                        <li><a class="dropdown-item" href="{% url 'production:process_list' %}">Processes</a></li>
                     </ul>
                 </li>
             {% endif %}
@@ -68,7 +43,12 @@
         {% if user.is_authenticated %}
             <div class="d-flex align-items-center">
             <span class="navbar-text text-white me-3 border-end pe-3">
-                <i class="bi bi-person-circle"></i> {{ user.username }}
+                <i class="bi bi-person-circle"></i>
+                {% if user.first_name or user.last_name %}
+                    {{ user.first_name }} {{ user.last_name }}
+                {% else %}
+                    {{ user.username }}
+                {% endif %}
             </span>
                 <form action="{% url 'logout' %}" method="post" class="d-inline">
                     {% csrf_token %}

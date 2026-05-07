@@ -1,49 +1,62 @@
 from django import forms
-from .models import Batch, SamplingPlan, Sample, SampleResult
-from referential.models import Project, AnalyticalMethod
-from methodology.models import Process, Step
+from .models import Process, UnitOperation, Step, Parameter
 
-class BatchForm(forms.ModelForm):
+
+class ProcessForm(forms.ModelForm):
     class Meta:
-        model = Batch
-        fields = ['project', 'process', 'iteration_number', 'category', 'start_date', 'end_date']
-        widgets = {
-            'start_date': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
-            'end_date': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
-        }
+        model = Process
+        fields = ['code', 'scale']
+
+class UnitOperationForm(forms.ModelForm):
+    class Meta:
+        model = UnitOperation
+        fields = ['order', 'unit_type', 'name']
 
     def __init__(self, *args, **kwargs):
+        self.process = kwargs.pop('process', None)
         super().__init__(*args, **kwargs)
-        self.fields['project'].queryset = Project.objects.filter(is_active=True)
-        self.fields['process'].queryset = Process.objects.filter(is_active=True)
 
-class SamplingPlanForm(forms.ModelForm):
+    def clean_order(self):
+        order = self.cleaned_data.get('order')
+        if self.process and order:
+            if UnitOperation.objects.filter(process=self.process, order=order).exists():
+                raise forms.ValidationError(f"The position {order} is already occupied in this process.")
+        return order
+
+class StepForm(forms.ModelForm):
     class Meta:
-        model = SamplingPlan
-        fields = ['batch', 'analytical_method', 'sample_name']
+        model = Step
+        fields = ['name', 'order']
 
     def __init__(self, *args, **kwargs):
+        self.unit_operation = kwargs.pop('unit_operation', None)
         super().__init__(*args, **kwargs)
-        self.fields['batch'].queryset = Batch.objects.filter(is_active=True)
-        self.fields['analytical_method'].queryset = AnalyticalMethod.objects.filter(is_active=True)
 
-class SampleForm(forms.ModelForm):
+    def clean_order(self):
+        order = self.cleaned_data.get('order')
+        if self.unit_operation and order:
+            if Step.objects.filter(unit_operation=self.unit_operation, order=order, is_active=True).exists():
+                raise forms.ValidationError(f"Step order {order} already exists for this unit.")
+        return order
+
+class ParameterForm(forms.ModelForm):
     class Meta:
-        model = Sample
-        fields = ['step', 'phase', 'sample_date']
-        widgets = {
-            'sample_date': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
-        }
+        model = Parameter
+        fields = [
+            'name', 'unit', 'format_type',
+            'format_low_range', 'format_high_range',
+            'low_proven_acceptable_range', 'high_proven_acceptable_range',
+            'low_normal_operating_range', 'high_normal_operating_range',
+            'order'
+        ]
 
     def __init__(self, *args, **kwargs):
+        self.step = kwargs.pop('step', None)
         super().__init__(*args, **kwargs)
-        self.fields['step'].queryset = Step.objects.filter(is_active=True)
 
-class SampleResultForm(forms.ModelForm):
-    class Meta:
-        model = SampleResult
-        fields = ['sampling_plan', 'value', 'unit']
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['sampling_plan'].queryset = SamplingPlan.objects.filter(is_active=True)
+    def clean_order(self):
+        order = self.cleaned_data.get('order')
+        if self.step and order:
+            if Parameter.objects.filter(step=self.step, order=order, is_active=True).exists():
+                raise forms.ValidationError(f"Order {order} already exists for this step.")
+        return order

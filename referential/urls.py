@@ -18,10 +18,10 @@ urlpatterns = [
     path('projects/<uuid:pk>/delete/', views.ProjectDeleteView.as_view(), name='project_delete'),
     path('projects/<uuid:pk>/restore/', views.ProjectRestoreView.as_view(), name='project_restore'),
 
-    # Analytical Methods
-    path('methods/', views.AnalyticalMethodListView.as_view(), name='method_list'),
-    path('methods/add/', views.AnalyticalMethodCreateView.as_view(), name='method_add'),
-    path('methods/<uuid:pk>/edit/', views.AnalyticalMethodUpdateView.as_view(), name='method_edit'),
-    path('methods/<uuid:pk>/delete/', views.AnalyticalMethodDeleteView.as_view(), name='method_delete'),
-    path('methods/<uuid:pk>/restore/', views.AnalyticalMethodRestoreView.as_view(), name='method_restore'),
+    # --- Molecule Types ---
+    path('molecules/', views.MoleculeTypeListView.as_view(), name='molecule_type_list'),
+    path('molecules/add/', views.MoleculeTypeCreateView.as_view(), name='molecule_type_add'),
+    path('molecules/<uuid:pk>/edit/', views.MoleculeTypeUpdateView.as_view(), name='molecule_type_edit'),
+    path('molecules/<uuid:pk>/delete/', views.MoleculeTypeDeleteView.as_view(), name='molecule_type_delete'),
+    path('molecules/<uuid:pk>/restore/', views.MoleculeTypeRestoreView.as_view(), name='molecule_type_restore'),
 ]
