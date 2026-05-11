@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+    <div class="mb-4 d-flex justify-content-between align-items-center">
+        <a href="javascript:history.back()" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+        <h2 class="text-secondary mb-0">{{ title }}</h2>
+    </div>
+
+    {% if not object.is_active %}
+        <div class="alert alert-secondary shadow-sm border-0 d-flex justify-content-between align-items-center p-3 mb-4">
+            <div>
+                <h5 class="alert-heading mb-1 text-dark"><i class="bi bi-archive"></i> Record Archived</h5>
+                <p class="mb-0 small text-muted">This record is currently inactive. You can restore it to make changes.</p>
+            </div>
+            <div class="d-flex gap-2">
+                <form action="{% url 'referential:'|add:model_name|add:'_restore' object.pk %}" method="post" class="m-0">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-info shadow-sm">
+                        <i class="bi bi-arrow-counterclockwise"></i> Restore Record
+                    </button>
+                </form>
+            </div>
+        </div>
+
+    {% elif object.status != 'VALIDATED' %}
+        <div class="alert alert-warning shadow-sm border-0 d-flex justify-content-between align-items-center p-3 mb-4">
+            <div>
+                <h5 class="alert-heading mb-1"><i class="bi bi-shield-check"></i> Action Required</h5>
+                <p class="mb-0 small">Please review the record details and audit trail before taking a decision.</p>
+            </div>
+            <div class="d-flex gap-2">
+                <form action="{{ object.validate_url }}" method="post" class="m-0">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success shadow-sm">Validate</button>
+                </form>
+
+                {% if object.status != 'REJECTED' %}
+                    <form action="{{ object.reject_url }}" method="post" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger shadow-sm">Reject</button>
+                    </form>
+                {% endif %}
+
+                <a href="{{ object.edit_url }}" class="btn btn-outline-primary shadow-sm">Edit</a>
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="card shadow-sm mb-5">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Record Details</h5>
+            <div>
+                <span class="badge {% if object.is_active %}bg-success{% else %}bg-warning text-dark{% endif %} me-2">
+                    {% if object.is_active %}Active{% else %}Archived{% endif %}
+                </span>
+                <span class="badge rounded-pill {% if object.status == 'VALIDATED' %}bg-info text-dark{% elif object.status == 'REJECTED' %}bg-danger{% else %}bg-secondary{% endif %}">
+                    {{ object.get_status_display }}
+                </span>
+            </div>
+        </div>
+        <div class="card-body p-0"> <div class="table-responsive">
+                <table class="table mb-0">
+                    <tbody>
+                        {% for field in display_fields %}
+                            <tr>
+                                <th class="text-muted small align-middle">
+                                    {{ field.label|upper }}
+                                </th>
+                                <td class="fw-bold align-middle">
+                                    {% if field.value.year %}
+                                        {{ field.value|date:"d/m/Y H:i" }}
+                                    {% elif field.value is True %}
+                                        Yes
+                                    {% elif field.value is False %}
+                                        No
+                                    {% else %}
+                                        {{ field.value|default:"---" }}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% if object.is_active %}
+            <div class="card-footer bg-white text-end">
+                <a href="{{ object.edit_url }}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-pencil"></i> Edit this Record
+                </a>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="text-secondary mb-0"><i class="bi bi-clock-history"></i> Audit Trail</h4>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 200px;">Timestamp</th>
+                        <th>User</th>
+                        <th>Action</th>
+                        <th>Changes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in history_list %}
+                        <tr>
+                            <td class="text-nowrap fw-bold">{{ item.record.history_date|date:"d/m/Y H:i:s" }}</td>
+                            <td><i class="bi bi-person-circle"></i> {{ item.record.history_user.username|default:"System" }}</td>
+                            <td>
+                                {% if item.record.history_type == '+' %}
+                                    <span class="badge bg-success">Created</span>
+                                {% elif item.record.history_type == '~' %}
+                                    <span class="badge bg-primary">Updated</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Deleted</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.changes %}
+                                    <ul class="list-unstyled mb-0 small">
+                                        {% for change in item.changes %}
+                                            <li>
+                                                <span class="text-muted">{{ change.field }}:</span>
+                                                <span class="text-danger-emphasis text-decoration-line-through">{{ change.old }}</span>
+                                                <i class="bi bi-arrow-right mx-1"></i>
+                                                <span class="text-success-emphasis fw-bold">{{ change.new }}</span>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <span class="text-muted small italic">Metadata only (no field changes).</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

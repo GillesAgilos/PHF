@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Plan: {{ plan.name }}{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'sampling:plan_list' %}">Sampling Plans</a></li>
+                    <li class="breadcrumb-item active">Manage</li>
+                </ol>
+            </nav>
+            <h2 class="text-secondary">Sampling Plan: <span class="text-primary">{{ plan.name }}</span></h2>
+        </div>
+        <a href="{% url 'sampling:plan_list' %}" class="btn btn-outline-secondary shadow-sm">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+
+    <div class="card shadow-sm mb-4 border-start border-primary border-4">
+        <div class="card-body py-2">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <span class="text-muted small text-uppercase fw-bold">Associated Analytical Methods:</span><br>
+                    {% for method in plan.analytical_method.all %}
+                        <span class="badge bg-info text-dark">{{ method.name }}</span>
+                    {% empty %}
+                        <span class="text-danger small">No methods defined for this plan.</span>
+                    {% endfor %}
+                </div>
+                <div class="col-md-4 text-end border-start">
+                    <div style="font-size: 0.85rem;">
+                        <span class="text-muted">Plan Created:</span> {{ plan.created_at|date:"d/m/y" }}<br>
+                        <span class="text-muted">By:</span> {{ plan.created_by.username|default:"sys" }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="bi bi-list-ul"></i> Plan Entries (Samples)</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                        <tr>
+                            <th>Step</th>
+                            <th>Sample Name</th>
+                            <th>Audit Trail</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for entry in entries %}
+                            <tr>
+                                <td class="fw-bold text-secondary">
+                                    <div style="font-size: 0.7rem;" class="text-muted text-uppercase">
+                                        {{ entry.step.unit_operation.process.project.code }}
+                                        | {{ entry.step.unit_operation.process.name }}
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-arrow-return-right me-2 small"></i>
+                                        <span>{{ entry.step.unit_operation.name }} — {{ entry.step.name }}</span>
+                                    </div>
+                                </td>
+
+                                <td>{{ entry.sample_name }}</td>
+                                <td>
+                                    <div style="font-size: 0.75rem;" class="text-muted">
+                                        {{ entry.created_at|date:"d/m/y H:i" }}
+                                        ({{ entry.created_by.username|default:"sys" }})
+                                    </div>
+                                </td>
+                                <td class="text-end">
+                                    <form action="{% url 'sampling:sample_delete' entry.pk %}" method="post"
+                                          class="d-inline" onsubmit="return confirm('Remove this sample point?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center py-5 text-muted">
+                                    <i class="bi bi-info-circle"></i> No sample points defined for this plan yet.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-plus-lg"></i> Add Sample</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'sampling:sample_add' plan.pk %}">
+                        {% csrf_token %}
+                        {% if form.errors %}
+                            <div class="alert alert-danger small">
+                                {{ form.errors }}
+                            </div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            {{ form.as_p }}
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 shadow-sm">
+                            Confirm and Add
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

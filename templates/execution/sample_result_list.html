@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Sample Results{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-secondary">Sample Results</h2>
+        <a href="{% url 'execution:sample_result_create' %}" class="btn btn-primary shadow-sm">
+            <i class="bi bi-plus-lg"></i> Manual Entry
+        </a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                <tr>
+                    <th>Batch</th>
+                    <th>Sample Name</th>
+                    <th>Result</th>
+                    <th>Unit</th>
+                    <th>Audit Trail</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for result in object_list %}
+                    <tr>
+                        <td class="fw-bold text-primary">{{ result.batch.code }}</td>
+                        <td class="fw-bold">{{ result.name }}</td>
+                        <td>
+                            <span class="badge bg-info-subtle text-info border border-info px-3 py-2">
+                                {{ result.value }}
+                            </span>
+                        </td>
+                        <td>{{ result.unit|default:"---" }}</td>
+                        <td>
+                            <div >
+                                <span class="text-muted">Logged:</span> {{ result.created_at|date:"d/m/y H:i" }}<br>
+                                <span class="text-muted">By:</span> {{ result.created_by.username|default:"sys" }}
+                            </div>
+                        </td>
+                        <td class="text-end">
+                            <a href="{% url 'execution:sample_result_update' result.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="6" class="text-center py-5 text-muted">No sample results recorded.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

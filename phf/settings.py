@@ -24,12 +24,14 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_auth_adfs',
+    'simple_history',
+    'phf.apps.PhfConfig',
     'crispy_forms',
     'crispy_bootstrap5',
     'referential.apps.ReferentialConfig',
-    #'methodology.apps.MethodologyConfig',
     'production.apps.ProductionConfig',
-    'phf.apps.PhfConfig',
+    'sampling.apps.SamplingConfig',
+    'execution.apps.ExecutionConfig'
 ]
 
 MIDDLEWARE = [
@@ -41,6 +43,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'phf.middleware.LoginRequiredMiddleware',
+    'simple_history.middleware.HistoryRequestMiddleware',
 ]
 
 ROOT_URLCONF = 'phf.urls'
@@ -67,6 +70,7 @@ DATABASES = {
     'default': env.db('DATABASE_URL')
 }
 DATABASES['default']['ENGINE'] = 'mssql'
+
 base_options = {
     'driver': env('DB_DRIVER', default='ODBC Driver 17 for SQL Server'),
     'connection_timeout': 30,

@@ -7,6 +7,7 @@
     {% load static %}
     <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
     <link rel="stylesheet" href="{% static 'css/phf_custom.css' %}">
+    <link rel="icon" type="image/png" href="{% static 'images/favicon.ico' %}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
 </head>
 <body>
@@ -24,7 +25,7 @@
                     <ul class="dropdown-menu shadow" aria-labelledby="navRef">
                         <li><a class="dropdown-item" href="{% url 'referential:client_list' %}">Clients</a></li>
                         <li><a class="dropdown-item" href="{% url 'referential:project_list' %}">Projects</a></li>
-                        <li><a class="dropdown-item" href="{% url 'referential:molecule_type_list' %}">Molecule Type</a>
+                        <li><a class="dropdown-item" href="{% url 'referential:moleculetype_list' %}">Molecule Type</a>
                         </li>
                     </ul>
                 </li>
@@ -35,6 +36,31 @@
                     </a>
                     <ul class="dropdown-menu shadow">
                         <li><a class="dropdown-item" href="{% url 'production:process_list' %}">Processes</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navSampling" role="button"
+                       data-bs-toggle="dropdown">
+                        Sampling
+                    </a>
+                    <ul class="dropdown-menu shadow" aria-labelledby="navSampling">
+                        <li><a class="dropdown-item" href="{% url 'sampling:plan_list' %}">Sampling Plans</a></li>
+                        <li><a class="dropdown-item" href="{% url 'sampling:method_list' %}">Analytical Methods</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navSampling" role="button"
+                       data-bs-toggle="dropdown">
+                        Execution
+                    </a>
+                    <ul class="dropdown-menu shadow" aria-labelledby="navSampling">
+                        <li><a class="dropdown-item" href="{% url 'execution:batch_list' %}">Batches</a></li>
+                        <li><a class="dropdown-item" href="{% url 'execution:parameter_result_list' %}">Parameters
+                            Results</a></li>
+                        <li><a class="dropdown-item" href="{% url 'execution:sample_result_list' %}">Sample Results</a>
+                        </li>
                     </ul>
                 </li>
             {% endif %}

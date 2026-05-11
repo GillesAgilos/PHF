@@ -1,27 +1,44 @@
 from django.urls import path
 from . import views
+from .models import Client, Project, MoleculeType
 
 app_name = 'referential'
 
 urlpatterns = [
-    # Clients
+    # ==========================================
+    # CLIENTS
+    # ==========================================
     path('clients/', views.ClientListView.as_view(), name='client_list'),
     path('clients/add/', views.ClientCreateView.as_view(), name='client_add'),
     path('clients/<uuid:pk>/edit/', views.ClientUpdateView.as_view(), name='client_edit'),
     path('clients/<uuid:pk>/delete/', views.ClientDeleteView.as_view(), name='client_delete'),
     path('clients/<uuid:pk>/restore/', views.ClientRestoreView.as_view(), name='client_restore'),
+    # New: Validation and History
+    path('clients/<uuid:pk>/validate/', views.ClientValidateView.as_view(), name='client_validate'),
+    path('clients/<uuid:pk>/', views.ClientDetailView.as_view(), name='client_detail'),
+    path('clients/<uuid:pk>/reject/', views.ClientRejectView.as_view(), name='client_reject'),
 
-    # Projects
+    # ==========================================
+    # PROJECT VIEWS
+    # ==========================================
     path('projects/', views.ProjectListView.as_view(), name='project_list'),
     path('projects/add/', views.ProjectCreateView.as_view(), name='project_add'),
     path('projects/<uuid:pk>/edit/', views.ProjectUpdateView.as_view(), name='project_edit'),
     path('projects/<uuid:pk>/delete/', views.ProjectDeleteView.as_view(), name='project_delete'),
     path('projects/<uuid:pk>/restore/', views.ProjectRestoreView.as_view(), name='project_restore'),
+    path('projects/<uuid:pk>/validate/', views.ProjectValidateView.as_view(), name='project_validate'),
+    path('projects/<uuid:pk>/', views.ProjectDetailView.as_view(), name='project_detail'),
+    path('projects/<uuid:pk>/reject/', views.ProjectRejectView.as_view(), name='project_reject'),
 
-    # --- Molecule Types ---
-    path('molecules/', views.MoleculeTypeListView.as_view(), name='molecule_type_list'),
-    path('molecules/add/', views.MoleculeTypeCreateView.as_view(), name='molecule_type_add'),
-    path('molecules/<uuid:pk>/edit/', views.MoleculeTypeUpdateView.as_view(), name='molecule_type_edit'),
-    path('molecules/<uuid:pk>/delete/', views.MoleculeTypeDeleteView.as_view(), name='molecule_type_delete'),
-    path('molecules/<uuid:pk>/restore/', views.MoleculeTypeRestoreView.as_view(), name='molecule_type_restore'),
+    # ==========================================
+    # MOLECULE TYPES VIEWS
+    # ==========================================
+    path('molecules/', views.MoleculeTypeListView.as_view(), name='moleculetype_list'),
+    path('molecules/add/', views.MoleculeTypeCreateView.as_view(), name='moleculetype_add'),
+    path('molecules/<uuid:pk>/edit/', views.MoleculeTypeUpdateView.as_view(), name='moleculetype_edit'),
+    path('molecules/<uuid:pk>/delete/', views.MoleculeTypeDeleteView.as_view(), name='moleculetype_delete'),
+    path('molecules/<uuid:pk>/restore/', views.MoleculeTypeRestoreView.as_view(), name='moleculetype_restore'),
+    path('molecules/<uuid:pk>/validate/', views.MoleculeTypeValidateView.as_view(), name='moleculetype_validate'),
+    path('molecules/<uuid:pk>/', views.MoleculeTypeDetailView.as_view(), name='moleculetype_detail'),
+    path('molecules/<uuid:pk>/reject/', views.MoleculeTypeRejectView.as_view(), name='moleculetype_reject'),
 ]

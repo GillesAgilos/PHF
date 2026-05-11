@@ -2,8 +2,8 @@
 
 {% block content %}
 <div class="alert alert-danger shadow p-4">
-    <h4>Confirm Suppression</h4>
-    <p>Are you sure you want to deactivate <strong>{{ object }}</strong>?</p>
+    <h4>Confirm Deactivation</h4>
+    <p>Are you sure you want to archive <strong>{{ object }}</strong>?</p>
     <p><small>(Note: The data will be archived, not permanently deleted).</small></p>
     <form method="post">
         {% csrf_token %}
