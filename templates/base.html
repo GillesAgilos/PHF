@@ -37,6 +37,29 @@
                         <li><a class="dropdown-item" href="{% url 'production:process_list' %}">Processes</a></li>
                     </ul>
                 </li>
+
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navSampling" role="button"
+                       data-bs-toggle="dropdown">
+                        Sampling
+                    </a>
+                    <ul class="dropdown-menu shadow" aria-labelledby="navSampling">
+                        <li><a class="dropdown-item" href="{% url 'sampling:plan_list' %}">Sampling Plans</a></li>
+                        <li><a class="dropdown-item" href="{% url 'sampling:method_list' %}">Analytical Methods</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navSampling" role="button"
+                       data-bs-toggle="dropdown">
+                        Execution
+                    </a>
+                    <ul class="dropdown-menu shadow" aria-labelledby="navSampling">
+                        <li><a class="dropdown-item" href="{% url 'execution:batch_list' %}">Batches</a></li>
+                        <li><a class="dropdown-item" href="{% url 'execution:parameter_result_list' %}">Parameters Results</a></li>
+                        <li><a class="dropdown-item" href="{% url 'execution:sample_result_list' %}">Sample Results</a></li>
+                    </ul>
+                </li>
             {% endif %}
         </div>
 
