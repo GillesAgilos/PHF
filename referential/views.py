@@ -13,6 +13,7 @@ class MoleculeTypeListView(FilterStateMixin, ListView):
     model = MoleculeType
     template_name = 'referential/molecule_type_list.html'
     context_object_name = 'molecule_types'
+    search_fields = ['name']
 
 class MoleculeTypeCreateView(AuditTrailMixin, CreateView):
     model = MoleculeType
@@ -57,7 +58,7 @@ class ClientListView(FilterStateMixin, ListView):
     model = Client
     template_name = 'referential/client_list.html'
     context_object_name = 'clients'
-    queryset = Client.objects.all().order_by('-is_active', 'status', 'name')
+    search_fields = ['name', 'code']
 
 class ClientCreateView(AuditTrailMixin, CreateView):
     model = Client
@@ -97,10 +98,10 @@ class ProjectListView(FilterStateMixin, ListView):
     model = Project
     template_name = 'referential/project_list.html'
     context_object_name = 'projects'
+    search_fields = ['name', 'code', 'client__name']
 
     def get_queryset(self):
-        queryset = super().get_queryset()
-        return queryset.select_related('client', 'molecule_type')
+        return super().get_queryset().select_related('client', 'molecule_type')
 
 class ProjectCreateView(AuditTrailMixin, CreateView):
     model = Project

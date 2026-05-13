@@ -1,6 +1,7 @@
 import uuid
 from django.db import models
 from django.conf import settings
+from django.db.models import Q
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect
@@ -128,28 +129,49 @@ class StatusResetMixin:
             messages.info(self.request, "Changes detected: Status reset to 'To validate'.")
         return super().form_valid(form)
 
+
 class FilterStateMixin:
-    """manage filter on archived or active objects"""
+    """manage filter on archived or active objects, search options on list"""
+    search_fields = ['name']
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        view_mode = self.request.GET.get('view', 'pending')
+        search_query = self.request.GET.get('q')
+        if search_query:
+            search_filter = Q()
+            for field in self.search_fields:
+                search_filter |= Q(**{f"{field}__icontains": search_query})
+            queryset = queryset.filter(search_filter)
+
+        view_mode = self.request.GET.get('view', 'pending') or 'pending'
 
         if view_mode == 'archived':
             return queryset.filter(is_active=False).order_by('-deleted_at')
         elif view_mode == 'active':
             return queryset.filter(is_active=True, status='VALIDATED').order_by('name')
-        else:  # 'pending'
-            # On prend tout ce qui est actif MAIS pas encore validé (donc DRAFT + REJECTED)
+        else:
             return queryset.filter(is_active=True).exclude(status='VALIDATED').order_by('-updated_at')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        view_mode = self.request.GET.get('view', 'pending')
-        context['view_mode'] = view_mode
 
-        context['count_pending'] = self.model.objects.filter(is_active=True).exclude(status='VALIDATED').count()
-        context['count_active'] = self.model.objects.filter(is_active=True, status='VALIDATED').count()
+        view_mode = self.request.GET.get('view', 'pending') or 'pending'
+        search_query = self.request.GET.get('q', '')
+
+        context['view_mode'] = view_mode
+        context['search_query'] = search_query
+
+        base_qs = self.model.objects.all()
+        if search_query:
+            search_filter = Q()
+            for field in self.search_fields:
+                search_filter |= Q(**{f"{field}__icontains": search_query})
+            base_qs = base_qs.filter(search_filter)
+
+        context['count_pending'] = base_qs.filter(is_active=True).exclude(status='VALIDATED').count()
+        context['count_active'] = base_qs.filter(is_active=True, status='VALIDATED').count()
+        context['count_archived'] = base_qs.filter(is_active=False).count()
+
         return context
 
 # ==========================================

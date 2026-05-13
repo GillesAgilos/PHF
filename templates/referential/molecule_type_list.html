@@ -3,19 +3,41 @@
 {% block title %}Molecule Types Referential{% endblock %}
 
 {% block content %}
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="text-secondary">
-            <i class="bi bi-funnel-fill"></i>Molecule Types Referential
-        </h2>
-        <a href="{% url 'referential:moleculetype_add' %}" class="btn btn-primary shadow-sm">
-            <i class="bi bi-plus-lg"></i> Add New Type
-        </a>
+    <div class="d-flex justify-content-between align-items-end mb-4">
+        <div class="d-flex flex-column gap-3">
+            <h2 class="text-secondary mb-0">
+                <i class="bi bi-funnel-fill"></i> Molecule Types Referential
+            </h2>
+
+            <form method="get" class="d-flex border rounded shadow-sm bg-white p-1" style="max-width: 350px;">
+                <input type="hidden" name="view" value="{{ view_mode }}">
+
+                <input type="text" name="q" class="form-control form-control-sm border-0 shadow-none"
+                       placeholder="Search molecule type..." value="{{ search_query }}">
+
+                {% if search_query %}
+                    <a href="?view={{ view_mode }}" class="btn btn-sm btn-link text-muted px-2">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
+                {% endif %}
+
+                <button type="submit" class="btn btn-sm btn-primary px-3">
+                    <i class="bi bi-search"></i>
+                </button>
+            </form>
+        </div>
+
+        <div>
+            <a href="{% url 'referential:moleculetype_add' %}" class="btn btn-primary shadow-sm">
+                <i class="bi bi-plus-lg"></i> Add New Type
+            </a>
+        </div>
     </div>
 
     <ul class="nav nav-tabs mb-4">
         <li class="nav-item">
             <a class="nav-link {% if view_mode == 'pending' %}active fw-bold text-primary border-bottom-0{% endif %}"
-               href="?view=pending">
+               href="?view=pending{% if search_query %}&q={{ search_query }}{% endif %}">
                 To Validate and Corrections
                 {% if count_pending > 0 %}
                     <span class="badge rounded-pill bg-danger ms-1">{{ count_pending }}</span>
@@ -24,15 +46,16 @@
         </li>
         <li class="nav-item">
             <a class="nav-link {% if view_mode == 'active' %}active fw-bold text-success{% endif %}"
-               href="?view=active">
+               href="?view=active{% if search_query %}&q={{ search_query }}{% endif %}">
                 Active and Validated
                 <span class="badge rounded-pill bg-light text-dark border ms-1">{{ count_active }}</span>
             </a>
         </li>
         <li class="nav-item">
             <a class="nav-link {% if view_mode == 'archived' %}active fw-bold text-muted{% endif %}"
-               href="?view=archived">
+               href="?view=archived{% if search_query %}&q={{ search_query }}{% endif %}">
                 Archives
+                <span class="badge rounded-pill bg-light text-dark border ms-1">{{ count_archived }}</span>
             </a>
         </li>
     </ul>
@@ -64,7 +87,7 @@
                             {% endif %}
                         </td>
                         <td>
-                            <span class="fw-bold">{{ m_type.name }}</span>
+                            <span class="fw-semibold">{{ m_type.name }}</span>
                             {% if m_type.status == 'REJECTED' and view_mode == 'pending' %}
                                 <br><small class="text-danger fw-bold"><i class="bi bi-arrow-right"></i> Needs correction</small>
                             {% endif %}
@@ -104,11 +127,15 @@
                 {% empty %}
                     <tr>
                         <td colspan="5" class="text-center py-5 text-muted">
-                            {% if view_mode == 'pending' %}
-                                <i class="bi bi-check2-all text-success"></i><br>
+                            {% if search_query %}
+                                <i class="bi bi-search fs-2"></i><br>
+                                <p class="mt-2">No results for "{{ search_query }}" in this category.</p>
+                                <a href="?view={{ view_mode }}" class="btn btn-sm btn-link">Clear search</a>
+                            {% elif view_mode == 'pending' %}
+                                <i class="bi bi-check2-all text-success fs-2"></i><br>
                                 <p class="mt-2">No molecule types waiting for validation.</p>
                             {% else %}
-                                <i class="bi bi-inbox"></i><br>
+                                <i class="bi bi-inbox fs-2"></i><br>
                                 <p class="mt-2">No molecule types found in this category.</p>
                             {% endif %}
                         </td>
@@ -133,9 +160,6 @@
     </script>
 
     <style>
-        .clickable-row:hover {
-            background-color: rgba(0, 0, 0, 0.03) !important;
-            transition: all 0.2s ease;
-        }
+        .clickable-row:hover { background-color: rgba(0, 0, 0, 0.03) !important; transition: all 0.2s ease; }
     </style>
 {% endblock %}
