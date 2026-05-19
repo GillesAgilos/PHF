@@ -1,6 +1,5 @@
 from django.urls import path
 from . import views
-from .models import Client, Project, MoleculeType
 
 app_name = 'referential'
 
@@ -41,4 +40,21 @@ urlpatterns = [
     path('molecules/<uuid:pk>/validate/', views.MoleculeTypeValidateView.as_view(), name='moleculetype_validate'),
     path('molecules/<uuid:pk>/', views.MoleculeTypeDetailView.as_view(), name='moleculetype_detail'),
     path('molecules/<uuid:pk>/reject/', views.MoleculeTypeRejectView.as_view(), name='moleculetype_reject'),
+
+    # ==========================================
+    # ANALYTICAL METHODS
+    # ==========================================
+    path('analytical-methods/', views.AnalyticalMethodListView.as_view(), name='analyticalmethod_list'),
+    path('analytical-methods/add/', views.AnalyticalMethodCreateView.as_view(), name='analyticalmethod_add'),
+    path('analytical-methods/<uuid:pk>/edit/', views.AnalyticalMethodUpdateView.as_view(),
+         name='analyticalmethod_edit'),
+    path('analytical-methods/<uuid:pk>/delete/', views.AnalyticalMethodDeleteView.as_view(),
+         name='analyticalmethod_delete'),
+    path('analytical-methods/<uuid:pk>/restore/', views.AnalyticalMethodRestoreView.as_view(),
+         name='analyticalmethod_restore'),
+    path('analytical-methods/<uuid:pk>/validate/', views.AnalyticalMethodValidateView.as_view(),
+         name='analyticalmethod_validate'),
+    path('analytical-methods/<uuid:pk>/', views.AnalyticalMethodDetailView.as_view(), name='analyticalmethod_detail'),
+    path('analytical-methods/<uuid:pk>/reject/', views.AnalyticalMethodRejectView.as_view(),
+         name='analyticalmethod_reject'),
 ]

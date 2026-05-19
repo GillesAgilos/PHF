@@ -41,3 +41,14 @@ class Project(BaseModel):
 
     def __str__(self):
         return f"{self.code} - {self.name}"
+
+class AnalyticalMethod(BaseModel):
+    name = models.CharField(max_length=255, verbose_name="Method Name")
+    volume_required = models.FloatField(verbose_name="Volume Required (mL)")
+    storage_temp = models.CharField(max_length=255, verbose_name="Storage Temperature")
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name

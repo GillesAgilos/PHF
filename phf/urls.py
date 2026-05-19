@@ -11,6 +11,4 @@ urlpatterns = [
     path('', TemplateView.as_view(template_name='index.html'), name='home'),
     path('referential/', include('referential.urls')),
     path('production/', include('production.urls')),
-    path('sampling/', include('sampling.urls')),
-    path('execution/', include('execution.urls')),
 ]

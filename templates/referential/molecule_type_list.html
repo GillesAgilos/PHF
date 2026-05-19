@@ -9,11 +9,11 @@
                 <i class="bi bi-funnel-fill"></i> Molecule Types Referential
             </h2>
 
-            <form method="get" class="d-flex border rounded shadow-sm bg-white p-1" style="max-width: 350px;">
+            <form method="get" class="d-flex border rounded shadow-sm bg-white p-1">
                 <input type="hidden" name="view" value="{{ view_mode }}">
 
                 <input type="text" name="q" class="form-control form-control-sm border-0 shadow-none"
-                       placeholder="Search molecule type..." value="{{ search_query }}">
+                       placeholder="Search..." value="{{ search_query }}">
 
                 {% if search_query %}
                     <a href="?view={{ view_mode }}" class="btn btn-sm btn-link text-muted px-2">
@@ -38,9 +38,18 @@
         <li class="nav-item">
             <a class="nav-link {% if view_mode == 'pending' %}active fw-bold text-primary border-bottom-0{% endif %}"
                href="?view=pending{% if search_query %}&q={{ search_query }}{% endif %}">
-                To Validate and Corrections
+                To Validate
                 {% if count_pending > 0 %}
-                    <span class="badge rounded-pill bg-danger ms-1">{{ count_pending }}</span>
+                    <span class="badge rounded-pill bg-primary ms-1">{{ count_pending }}</span>
+                {% endif %}
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if view_mode == 'rejected' %}active fw-bold text-danger{% endif %}"
+               href="?view=rejected{% if search_query %}&q={{ search_query }}{% endif %}">
+                Rejected
+                {% if count_rejected > 0 %}
+                    <span class="badge rounded-pill bg-danger ms-1">{{ count_rejected }}</span>
                 {% endif %}
             </a>
         </li>
@@ -63,7 +72,7 @@
     <div class="card shadow-sm border-0">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
-                <thead class="{% if view_mode == 'pending' %}table-warning{% elif view_mode == 'active' %}table-dark{% else %}table-secondary{% endif %}">
+                <thead class="{% if view_mode == 'pending' %}table-primary{% elif view_mode == 'rejected' %}table-danger{% elif view_mode == 'active' %}table-dark{% else %}table-secondary{% endif %}">
                 <tr>
                     <th>Status</th>
                     <th>Type Name</th>
@@ -74,21 +83,22 @@
                 </thead>
                 <tbody>
                 {% for m_type in molecule_types %}
-                    <tr class="clickable-row {% if m_type.status == 'REJECTED' and view_mode == 'pending' %}table-danger{% endif %}"
-                        data-href="{% url 'referential:moleculetype_detail' m_type.pk %}"
-                        style="cursor: pointer;">
+                    <tr class="clickable-row {% if m_type.status == 'REJECTED' %}table-danger{% endif %}"
+                        data-href="{% url 'referential:moleculetype_detail' m_type.pk %}" style="cursor: pointer;">
                         <td>
-                            {% if m_type.status == 'VALIDATED' %}
-                                <span class="badge rounded-pill bg-info text-dark"><i class="bi bi-check-circle"></i>Validated</span>
+                            {% if not m_type.is_active %}
+                                <span class="badge rounded-pill bg-dark text-white">Archived</span>
+                            {% elif m_type.status == 'VALIDATED' %}
+                                <span class="badge rounded-pill bg-success text-white">Validated</span>
                             {% elif m_type.status == 'DRAFT' %}
-                                <span class="badge rounded-pill bg-secondary text-white">Draft</span>
-                            {% else %}
-                                <span class="badge rounded-pill bg-danger"><i class="bi bi-exclamation-octagon"></i>Rejected</span>
+                                <span class="badge rounded-pill bg-secondary text-white">To validate</span>
+                            {% elif m_type.status == 'REJECTED' %}
+                                <span class="badge rounded-pill bg-danger text-white">Rejected</span>
                             {% endif %}
                         </td>
                         <td>
-                            <span class="fw-semibold">{{ m_type.name }}</span>
-                            {% if m_type.status == 'REJECTED' and view_mode == 'pending' %}
+                            <span class="fw-semibold text-dark">{{ m_type.name }}</span>
+                            {% if m_type.status == 'REJECTED' %}
                                 <br><small class="text-danger fw-bold"><i class="bi bi-arrow-right"></i> Needs correction</small>
                             {% endif %}
                         </td>
@@ -104,17 +114,15 @@
                                 <small class="text-muted">by {{ m_type.updated_by.username|default:"sys" }}</small>
                             {% endif %}
                         </td>
-                        <td class="text-end">
-                            {% if view_mode == 'pending' %}
-                                <a href="{% url 'referential:moleculetype_detail' m_type.pk %}"
-                                   class="btn btn-sm btn-primary px-3 shadow-sm" title="Review details">
-                                    <i class="bi bi-pencil-square"></i> Review
-                                </a>
-                            {% endif %}
+                        <td class="text-end" onclick="event.stopPropagation();">
+                            <a href="{% url 'referential:moleculetype_detail' m_type.pk %}"
+                               class="btn btn-sm btn-outline-primary px-3 shadow-sm">
+                                <i class="bi bi-eye"></i>
+                            </a>
 
                             {% if m_type.is_active %}
                                 <a href="{% url 'referential:moleculetype_edit' m_type.pk %}"
-                                   class="btn btn-sm btn-outline-secondary ms-1" title="Edit">
+                                   class="btn btn-sm btn-outline-dark ms-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
                                 <a href="{% url 'referential:moleculetype_delete' m_type.pk %}"
@@ -127,17 +135,8 @@
                 {% empty %}
                     <tr>
                         <td colspan="5" class="text-center py-5 text-muted">
-                            {% if search_query %}
-                                <i class="bi bi-search fs-2"></i><br>
-                                <p class="mt-2">No results for "{{ search_query }}" in this category.</p>
-                                <a href="?view={{ view_mode }}" class="btn btn-sm btn-link">Clear search</a>
-                            {% elif view_mode == 'pending' %}
-                                <i class="bi bi-check2-all text-success fs-2"></i><br>
-                                <p class="mt-2">No molecule types waiting for validation.</p>
-                            {% else %}
-                                <i class="bi bi-inbox fs-2"></i><br>
-                                <p class="mt-2">No molecule types found in this category.</p>
-                            {% endif %}
+                            <i class="bi bi-inbox fs-2"></i><br>
+                            <p class="mt-2 mb-0">No molecule types found in this category.</p>
                         </td>
                     </tr>
                 {% endfor %}
@@ -147,13 +146,11 @@
     </div>
 
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
+        document.addEventListener("DOMContentLoaded", function () {
             const rows = document.querySelectorAll(".clickable-row");
             rows.forEach(row => {
-                row.addEventListener("click", function(e) {
-                    if (e.target.tagName !== 'A' && e.target.tagName !== 'BUTTON' && !e.target.closest('button') && !e.target.closest('a')) {
-                        window.location.href = this.dataset.href;
-                    }
+                row.addEventListener("click", function () {
+                    window.location.href = this.dataset.href;
                 });
             });
         });

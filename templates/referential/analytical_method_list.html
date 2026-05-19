@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}Projects Referential{% endblock %}
+{% block title %}Analytical Methods Referential{% endblock %}
 
 {% block content %}
     <div class="d-flex justify-content-between align-items-end mb-4">
         <div class="d-flex flex-column gap-3">
             <h2 class="text-secondary mb-0">
-                <i class="bi bi-briefcase-fill"></i> Projects Referential
+                <i class="bi bi-flask-fill"></i> Analytical Methods Referential
             </h2>
 
             <form method="get" class="d-flex border rounded shadow-sm bg-white p-1">
@@ -28,8 +28,8 @@
         </div>
 
         <div>
-            <a href="{% url 'referential:project_add' %}" class="btn btn-primary shadow-sm">
-                <i class="bi bi-plus-lg"></i> Add New Project
+            <a href="{% url 'referential:analyticalmethod_add' %}" class="btn btn-primary shadow-sm">
+                <i class="bi bi-plus-lg"></i> Add New Method
             </a>
         </div>
     </div>
@@ -75,64 +75,71 @@
                 <thead class="{% if view_mode == 'pending' %}table-primary{% elif view_mode == 'rejected' %}table-danger{% elif view_mode == 'active' %}table-dark{% else %}table-secondary{% endif %}">
                 <tr>
                     <th>Status</th>
-                    <th>Project Name</th>
-                    <th>Client</th>
-                    <th>Code</th>
+                    <th>Method Name</th>
+                    <th>Vol. Required</th>
+                    <th>Storage Temp.</th>
                     <th>{% if view_mode == 'archived' %}Archived on{% else %}Last Update{% endif %}</th>
                     <th class="text-end">Actions</th>
                 </tr>
                 </thead>
                 <tbody>
-                {% for project in projects %}
-                    <tr class="clickable-row {% if project.status == 'REJECTED' %}table-danger{% endif %}"
-                        data-href="{% url 'referential:project_detail' project.pk %}" style="cursor: pointer;">
+                {% for method in analytical_methods %}
+                    <tr class="clickable-row {% if method.status == 'REJECTED' %}table-danger{% endif %}"
+                        data-href="{% url 'referential:analyticalmethod_detail' method.pk %}" style="cursor: pointer;">
                         <td>
-                            {% if not project.is_active %}
+                            {% if not method.is_active %}
                                 <span class="badge rounded-pill bg-dark text-white">Archived</span>
-                            {% elif project.status == 'VALIDATED' %}
+                            {% elif method.status == 'VALIDATED' %}
                                 <span class="badge rounded-pill bg-success text-white">Validated</span>
-                            {% elif project.status == 'DRAFT' %}
+                            {% elif method.status == 'DRAFT' %}
                                 <span class="badge rounded-pill bg-secondary text-white">To validate</span>
-                            {% elif project.status == 'REJECTED' %}
+                            {% elif method.status == 'REJECTED' %}
                                 <span class="badge rounded-pill bg-danger text-white">Rejected</span>
                             {% endif %}
                         </td>
                         <td>
-                            <span class="fw-semibold text-dark">{{ project.name }}</span>
-                            {% if project.status == 'REJECTED' %}
+                            <span class="fw-semibold text-dark">{{ method.name }}</span>
+                            {% if method.status == 'REJECTED' %}
                                 <br><small class="text-danger fw-bold"><i class="bi bi-arrow-right"></i> Needs correction</small>
                             {% endif %}
                         </td>
                         <td>
-                            <span class="badge bg-light text-dark border fw-normal">
-                                {{ project.client.name }}
-                            </span>
+                            <span class="badge bg-light text-dark border font-monospace">{{ method.volume_required }} mL</span>
                         </td>
-                        <td class="fw-bold font-monospace">{{ project.code }}</td>
+                        <td class="text-muted small">
+                            <i class="bi bi-thermometer-snow text-info"></i> {{ method.storage_temp }}
+                        </td>
                         <td>
                             {% if view_mode == 'archived' %}
-                                {{ project.deleted_at|date:"d/m/y H:i" }}<br>
-                                <small class="text-muted">by {{ project.deleted_by.username|default:"sys" }}</small>
+                                {{ method.deleted_at|date:"d/m/y H:i" }}<br>
+                                <small class="text-muted">by {{ method.deleted_by.username|default:"sys" }}</small>
                             {% else %}
-                                {{ project.updated_at|date:"d/m/y H:i" }}<br>
-                                <small class="text-muted">by {{ project.updated_by.username|default:"sys" }}</small>
+                                {{ method.updated_at|date:"d/m/y H:i" }}<br>
+                                <small class="text-muted">by {{ method.updated_by.username|default:"sys" }}</small>
                             {% endif %}
                         </td>
-                        <td class="text-end" onclick="event.stopPropagation();">
-                            <a href="{% url 'referential:project_detail' project.pk %}"
+                        <td class="text-end">
+                            <a href="{% url 'referential:analyticalmethod_detail' method.pk %}"
                                class="btn btn-sm btn-outline-primary px-3 shadow-sm">
                                 <i class="bi bi-eye"></i>
                             </a>
 
-                            {% if project.is_active %}
-                                <a href="{% url 'referential:project_edit' project.pk %}"
+                            {% if method.is_active %}
+                                <a href="{% url 'referential:analyticalmethod_edit' method.pk %}"
                                    class="btn btn-sm btn-outline-dark ms-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <a href="{% url 'referential:project_delete' project.pk %}"
+                                <a href="{% url 'referential:analyticalmethod_delete' method.pk %}"
                                    class="btn btn-sm btn-outline-danger ms-1" title="Archive">
                                     <i class="bi bi-trash"></i>
                                 </a>
+                            {% else %}
+                                <form action="{% url 'referential:analyticalmethod_restore' method.pk %}" method="post" class="d-inline m-0">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-success ms-1" title="Restore">
+                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                    </button>
+                                </form>
                             {% endif %}
                         </td>
                     </tr>
@@ -140,7 +147,7 @@
                     <tr>
                         <td colspan="6" class="text-center py-5 text-muted">
                             <i class="bi bi-inbox fs-2"></i><br>
-                            <p class="mt-2 mb-0">No projects found in this category.</p>
+                            <p class="mt-2 mb-0">No analytical methods found in this category.</p>
                         </td>
                     </tr>
                 {% endfor %}
@@ -150,10 +157,14 @@
     </div>
 
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
+        document.addEventListener("DOMContentLoaded", function () {
             const rows = document.querySelectorAll(".clickable-row");
             rows.forEach(row => {
-                row.addEventListener("click", function() {
+                row.addEventListener("click", function (e) {
+                    // Sécurité importante : évite d'ouvrir le détail si on clique sur un bouton d'action
+                    if (e.target.closest('a') || e.target.closest('button') || e.target.closest('form')) {
+                        return;
+                    }
                     window.location.href = this.dataset.href;
                 });
             });

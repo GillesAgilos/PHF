@@ -1,12 +1,13 @@
-from django import forms
-from .models import Client, Project, MoleculeType
+from phf.utils import BaseEntityForm
+from .models import Client, Project, MoleculeType, AnalyticalMethod
 
-class ClientForm(forms.ModelForm):
+
+class ClientForm(BaseEntityForm):
     class Meta:
         model = Client
         fields = ['name', 'code']
 
-class ProjectForm(forms.ModelForm):
+class ProjectForm(BaseEntityForm):
     class Meta:
         model = Project
         fields = ['client', 'name', 'code', 'molecule_type', 'molecule_name']
@@ -23,7 +24,12 @@ class ProjectForm(forms.ModelForm):
             status=MoleculeType.Status.VALIDATED
         )
 
-class MoleculeTypeForm(forms.ModelForm):
+class MoleculeTypeForm(BaseEntityForm):
     class Meta:
         model = MoleculeType
         fields = ['name', 'description']
+
+class AnalyticalMethodForm(BaseEntityForm):
+    class Meta:
+        model = AnalyticalMethod
+        fields = ['name', 'volume_required', 'storage_temp']

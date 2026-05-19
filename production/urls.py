@@ -4,29 +4,72 @@ from . import views
 app_name = 'production'
 
 urlpatterns = [
-    # --- Processes ---
+    # =========================================================================
+    # NIVEAU 1 : PROCESS TEMPLATES (CRUD & Workflow Actions)
+    # =========================================================================
     path('processes/', views.ProcessListView.as_view(), name='process_list'),
     path('processes/add/', views.ProcessCreateView.as_view(), name='process_add'),
     path('processes/<uuid:pk>/edit/', views.ProcessUpdateView.as_view(), name='process_edit'),
     path('processes/<uuid:pk>/delete/', views.ProcessDeleteView.as_view(), name='process_delete'),
     path('processes/<uuid:pk>/restore/', views.ProcessRestoreView.as_view(), name='process_restore'),
+    path('processes/<uuid:pk>/detail/', views.ProcessDetailView.as_view(), name='process_detail'),
 
-    # --- Unit Operations ---
-    path('processes/<uuid:process_pk>/units/', views.UnitOperationManageView.as_view(), name='unit_manage'),
-    path('processes/<uuid:process_pk>/units/add/', views.UnitOperationCreateView.as_view(), name='unit_add'),
-    path('units/<uuid:pk>/delete/', views.UnitOperationDeleteView.as_view(), name='unit_delete'),
-    path('units/<uuid:pk>/reorder/<str:direction>/', views.UnitReorderView.as_view(), name='unit_reorder'),
+    # Moteur de Statuts / Versioning du Process
+    path('processes/<uuid:pk>/submit/', views.ProcessSubmitView.as_view(), name='process_submit'),
+    path('processes/<uuid:pk>/validate/', views.ProcessValidateView.as_view(), name='process_validate'),
+    path('processes/<uuid:pk>/reject/', views.ProcessRejectView.as_view(), name='process_reject'),
+    path('processes/<uuid:pk>/new-version/', views.ProcessCreateNewVersionView.as_view(), name='process_versioning'),
 
-    # --- Steps ---
-    path('units/<uuid:unit_pk>/steps/', views.StepManageView.as_view(), name='step_manage'),
-    path('units/<uuid:unit_pk>/steps/add/', views.StepCreateView.as_view(), name='step_add'),
-    path('steps/<uuid:pk>/reorder/<str:direction>/', views.StepReorderView.as_view(), name='step_reorder'),
+    # =========================================================================
+    # NIVEAU 2 : UNIT OPERATIONS (Structure du Flowchart Principal)
+    # =========================================================================
+    path('processes/<uuid:process_pk>/structure/', views.UnitOperationStructureView.as_view(), name='unitoperation_list'),
+    path('processes/<uuid:process_pk>/structure/add/', views.UnitOperationAddView.as_view(), name='unitoperation_add'),
+
+    # Actions sur les lignes de l'opération unitaire
+    path('unit-operations/<uuid:pk>/edit/', views.UnitOperationUpdateView.as_view(), name='unitoperation_edit'),
+    path('unit-operations/<uuid:pk>/delete/', views.UnitOperationDeleteView.as_view(), name='unitoperation_delete'),
+    path('unit-operations/<uuid:pk>/restore/', views.UnitOperationRestoreView.as_view(), name='unitoperation_restore'),
+    path('unit-operations/<uuid:pk>/reorder/<str:direction>/', views.UnitOperationReorderView.as_view(), name='unitoperation_reorder'),
+    path('unit-operations/<uuid:pk>/detail/', views.UnitOperationDetailView.as_view(), name='unitoperation_detail'),
+
+    # =========================================================================
+    # NIVEAU 3 : STEPS (Sous-étapes de configuration des Unités)
+    # =========================================================================
+    path('unit-operations/<uuid:unit_pk>/manage/', views.StepStructureView.as_view(), name='step_list'),
+    path('unit-operations/<uuid:unit_pk>/manage/add/', views.StepAddView.as_view(), name='step_add'),
+
+    # Actions sur les lignes de Steps
+    path('steps/<uuid:pk>/edit/', views.StepUpdateView.as_view(), name='step_edit'),
     path('steps/<uuid:pk>/delete/', views.StepDeleteView.as_view(), name='step_delete'),
+    path('steps/<uuid:pk>/restore/', views.StepRestoreView.as_view(), name='step_restore'),
+    path('steps/<uuid:pk>/reorder/<str:direction>/', views.StepReorderView.as_view(), name='step_reorder'),
+    path('steps/<uuid:pk>/detail/', views.StepDetailView.as_view(), name='step_detail'),
 
-    # --- Parameters ---
-    path('steps/<uuid:step_pk>/parameters/', views.ParameterManageView.as_view(), name='parameter_manage'),
-    path('steps/<uuid:step_pk>/parameters/add/', views.ParameterCreateView.as_view(), name='parameter_add'),
-    path('parameters/<uuid:pk>/reorder/<str:direction>/', views.ParameterReorderView.as_view(),
-         name='parameter_reorder'),
+    # =========================================================================
+    # NIVEAU 4 : PARAMETERS (Spécifications et fenêtres opératoires des Steps)
+    # =========================================================================
+    path('steps/<uuid:step_pk>/parameters/', views.ParameterStructureView.as_view(), name='parameter_list'),
+    path('steps/<uuid:step_pk>/parameters/add/', views.ParameterAddView.as_view(), name='parameter_add'),
+
+    # Actions sur les lignes de Parameters
+    path('parameters/<uuid:pk>/edit/', views.ParameterUpdateView.as_view(), name='parameter_edit'),
     path('parameters/<uuid:pk>/delete/', views.ParameterDeleteView.as_view(), name='parameter_delete'),
+    path('parameters/<uuid:pk>/restore/', views.ParameterRestoreView.as_view(), name='parameter_restore'),
+    path('parameters/<uuid:pk>/reorder/<str:direction>/', views.ParameterReorderView.as_view(), name='parameter_reorder'),
+    path('parameters/<uuid:pk>/detail/', views.ParameterDetailView.as_view(), name='parameter_detail'),
+
+    # =========================================================================
+    # NIVEAU 4 : SAMPLES (Échantillonnage lié aux Steps)
+    # =========================================================================
+    # Harmonisation : Utilisation stricte de SampleStructureView pour correspondre à tes views.py
+    path('steps/<uuid:step_pk>/samples/', views.SampleStructureView.as_view(), name='sample_list'),
+    path('steps/<uuid:step_pk>/samples/add/', views.SampleAddView.as_view(), name='sample_add'),
+
+    # Actions sur les lignes de Samples
+    # Note : SampleUpdateView est liée au nom d'URL 'sample_edit' utilisé par tes templates
+    path('samples/<uuid:pk>/edit/', views.SampleUpdateView.as_view(), name='sample_edit'),
+    path('samples/<uuid:pk>/delete/', views.SampleDeleteView.as_view(), name='sample_delete'),
+    path('samples/<uuid:pk>/restore/', views.SampleRestoreView.as_view(), name='sample_restore'),
+    path('samples/<uuid:pk>/detail/', views.SampleDetailView.as_view(), name='sample_detail'),
 ]

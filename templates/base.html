@@ -20,48 +20,22 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navRef" role="button" data-bs-toggle="dropdown"
                        aria-expanded="false">
-                        Referential
+                        <i class="bi bi-folder2-open me-1"></i> Referential
                     </a>
                     <ul class="dropdown-menu shadow" aria-labelledby="navRef">
                         <li><a class="dropdown-item" href="{% url 'referential:client_list' %}">Clients</a></li>
                         <li><a class="dropdown-item" href="{% url 'referential:project_list' %}">Projects</a></li>
-                        <li><a class="dropdown-item" href="{% url 'referential:moleculetype_list' %}">Molecule Type</a>
+                        <li><a class="dropdown-item" href="{% url 'referential:moleculetype_list' %}">Molecule Types</a>
+                        <li><a class="dropdown-item" href="{% url 'referential:analyticalmethod_list' %}">Analytical
+                            Methods</a>
                         </li>
                     </ul>
                 </li>
 
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navProd" role="button" data-bs-toggle="dropdown">
-                        Production
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'production:process_list' %}">
+                        <i class="bi bi-diagram-3 me-1"></i> Production Templates
                     </a>
-                    <ul class="dropdown-menu shadow">
-                        <li><a class="dropdown-item" href="{% url 'production:process_list' %}">Processes</a></li>
-                    </ul>
-                </li>
-
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navSampling" role="button"
-                       data-bs-toggle="dropdown">
-                        Sampling
-                    </a>
-                    <ul class="dropdown-menu shadow" aria-labelledby="navSampling">
-                        <li><a class="dropdown-item" href="{% url 'sampling:plan_list' %}">Sampling Plans</a></li>
-                        <li><a class="dropdown-item" href="{% url 'sampling:method_list' %}">Analytical Methods</a></li>
-                    </ul>
-                </li>
-
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navSampling" role="button"
-                       data-bs-toggle="dropdown">
-                        Execution
-                    </a>
-                    <ul class="dropdown-menu shadow" aria-labelledby="navSampling">
-                        <li><a class="dropdown-item" href="{% url 'execution:batch_list' %}">Batches</a></li>
-                        <li><a class="dropdown-item" href="{% url 'execution:parameter_result_list' %}">Parameters
-                            Results</a></li>
-                        <li><a class="dropdown-item" href="{% url 'execution:sample_result_list' %}">Sample Results</a>
-                        </li>
-                    </ul>
                 </li>
             {% endif %}
         </div>
@@ -105,5 +79,15 @@
 </div>
 
 <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        document.body.addEventListener("click", function (e) {
+            const row = e.target.closest(".clickable-row");
+            if (row && !e.target.closest("a") && !e.target.closest("button") && !e.target.closest("form")) {
+                window.location.href = row.dataset.href;
+            }
+        });
+    });
+</script>
 </body>
 </html>

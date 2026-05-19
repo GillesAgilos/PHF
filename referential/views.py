@@ -1,7 +1,7 @@
 from django.urls import reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView
-from .models import Client, Project, MoleculeType
-from .forms import ClientForm, ProjectForm, MoleculeTypeForm
+from .models import Client, Project, MoleculeType, AnalyticalMethod
+from .forms import ClientForm, ProjectForm, MoleculeTypeForm, AnalyticalMethodForm
 from phf.utils import AuditTrailMixin, StatusResetMixin, GenericDeleteView, GenericRestoreView, EntityDetailView, \
     EntityValidateView, EntityRejectView, FilterStateMixin
 
@@ -133,3 +133,49 @@ class ProjectValidateView(EntityValidateView):
 class ProjectRejectView(EntityRejectView):
     model = Project
     redirect_url = 'referential:project_list'
+
+
+# ==========================================
+# ANALYTICAL METHOD VIEWS
+# ==========================================
+class AnalyticalMethodListView(FilterStateMixin, ListView):
+    model = AnalyticalMethod
+    template_name = 'referential/analytical_method_list.html'
+    context_object_name = 'analytical_methods'
+    search_fields = ['name', 'storage_temp']
+
+class AnalyticalMethodCreateView(AuditTrailMixin, CreateView):
+    model = AnalyticalMethod
+    form_class = AnalyticalMethodForm
+    template_name = 'generic/generic_form.html'
+    success_url = reverse_lazy('referential:analyticalmethod_list')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Add New Analytical Method"
+        return context
+
+class AnalyticalMethodUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
+    model = AnalyticalMethod
+    form_class = AnalyticalMethodForm
+    template_name = 'generic/generic_form.html'
+    success_url = reverse_lazy('referential:analyticalmethod_list')
+
+class AnalyticalMethodDeleteView(GenericDeleteView):
+    model = AnalyticalMethod
+    success_url = reverse_lazy('referential:analyticalmethod_list')
+
+class AnalyticalMethodRestoreView(GenericRestoreView):
+    model = AnalyticalMethod
+    redirect_url = 'referential:analyticalmethod_list'
+
+class AnalyticalMethodDetailView(EntityDetailView):
+    model = AnalyticalMethod
+
+class AnalyticalMethodValidateView(EntityValidateView):
+    model = AnalyticalMethod
+    redirect_url = 'referential:analyticalmethod_list'
+
+class AnalyticalMethodRejectView(EntityRejectView):
+    model = AnalyticalMethod
+    redirect_url = 'referential:analyticalmethod_list'

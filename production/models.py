@@ -1,20 +1,45 @@
 from django.db import models
-from referential.models import BaseModel
+from phf.utils import BaseModel, BaseComponentEntity
 
 
 class Process(BaseModel):
-    name = models.CharField(max_length=255, verbose_name="Unit Name")
-    code = models.CharField(max_length=100, unique=True, verbose_name="Process Code")
+    class Status(models.TextChoices):
+        DRAFT = 'DRAFT', 'Draft'
+        PENDING = 'PENDING', 'To Validate'
+        VALIDATED = 'VALIDATED', 'Validated'
+        REJECTED = 'REJECTED', 'Needs Correction'
+
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.DRAFT
+    )
+    name = models.CharField(max_length=255, verbose_name="Process Name")
+    code = models.CharField(max_length=100, verbose_name="Process Code")
     scale = models.CharField(max_length=100, blank=True, verbose_name="Scale")
 
+    # Versioning fields
+    version = models.PositiveIntegerField(default=1, verbose_name="Version")
+    parent_version = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='child_versions'
+    )
+
+    class Meta:
+        unique_together = ('code', 'version')
+        ordering = ['code', '-version']
+
     def __str__(self):
-        return f"{self.code} ({self.scale})"
+        return f"{self.code} v{self.version} ({self.scale})"
 
 
-class UnitOperation(BaseModel):
+class UnitOperation(BaseComponentEntity):
     TYPE_CHOICES = [
-        ('USP', 'USP'),
-        ('DSP', 'DSP'),
+        ('USP', 'USP (Upstream Processing)'),
+        ('DSP', 'DSP (Downstream Processing)'),
     ]
     process = models.ForeignKey(
         Process,
@@ -23,18 +48,21 @@ class UnitOperation(BaseModel):
         verbose_name="Related Process"
     )
     name = models.CharField(max_length=255, verbose_name="Unit Name")
-    unit_type = models.CharField(max_length=10, choices=TYPE_CHOICES)
-
+    unit_type = models.CharField(max_length=10, choices=TYPE_CHOICES, verbose_name="Type")
     order = models.PositiveIntegerField(verbose_name="Order in Process")
 
     class Meta:
         ordering = ['order']
         unique_together = ('process', 'order')
 
+    def get_parent_entity(self):
+        return self.process
+
     def __str__(self):
         return f"{self.name} ({self.unit_type})"
 
-class Step(BaseModel):
+
+class Step(BaseComponentEntity):
     unit_operation = models.ForeignKey(
         UnitOperation,
         on_delete=models.CASCADE,
@@ -47,11 +75,14 @@ class Step(BaseModel):
         ordering = ['order']
         unique_together = ('unit_operation', 'order')
 
+    def get_parent_entity(self):
+        return self.unit_operation
+
     def __str__(self):
-        return f"{self.unit_operation.name} - {self.name} ({self.order})"
+        return f"{self.unit_operation.name} -> {self.name} (#{self.order})"
 
 
-class Parameter(BaseModel):
+class Parameter(BaseComponentEntity):
     FORMAT_TYPE_CHOICES = [
         ('numeric', 'Numeric'),
         ('text', 'Text/Comment'),
@@ -63,7 +94,7 @@ class Parameter(BaseModel):
     unit = models.CharField(max_length=50, blank=True, null=True)
     format_type = models.CharField(max_length=20, choices=FORMAT_TYPE_CHOICES, default='numeric')
 
-    # Validation Ranges (Format)
+    # Validation Ranges
     format_low_range = models.FloatField(blank=True, null=True)
     format_high_range = models.FloatField(blank=True, null=True)
 
@@ -81,5 +112,40 @@ class Parameter(BaseModel):
         ordering = ['order']
         unique_together = ('step', 'order')
 
+    def get_parent_entity(self):
+        return self.step
+
     def __str__(self):
         return f"{self.name} ({self.step.name})"
+
+
+class Sample(BaseComponentEntity):
+    step = models.ForeignKey(
+        Step,
+        on_delete=models.CASCADE,
+        related_name='samples'
+    )
+    sample_name = models.CharField(
+        max_length=25,
+        verbose_name="Sample Name"
+    )
+
+    analytical_methods = models.ManyToManyField(
+        'referential.AnalyticalMethod',
+        related_name='samples',
+        verbose_name="Analytical Methods",
+        blank=True,
+        limit_choices_to={'is_active': True}
+    )
+
+    class Meta:
+        ordering = ['created_at']
+        # Évite d'avoir deux échantillons avec le même nom pour une même étape
+        unique_together = ('step', 'sample_name')
+
+    def get_parent_entity(self):
+        # Remonte à la Step pour hériter des verrous de modification du Processus
+        return self.step
+
+    def __str__(self):
+        return f"{self.sample_name} ({self.step.name})"

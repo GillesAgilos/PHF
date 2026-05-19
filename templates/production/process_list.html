@@ -1,74 +1,245 @@
 {% extends "base.html" %}
 
-{% block title %}Process{% endblock %}
+{% block title %}Process Templates Referential{% endblock %}
 
 {% block content %}
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="text-secondary">Process Methodology</h2>
-        <a href="{% url 'production:process_add' %}" class="btn btn-primary shadow-sm">
-            <i class="bi bi-plus-lg"></i> Add New Process
-        </a>
+    <div class="d-flex justify-content-between align-items-end mb-4">
+        <div class="d-flex flex-column gap-3">
+            <h2 class="text-secondary mb-0">
+                <i class="bi bi-diagram-3-fill"></i> Process Templates
+            </h2>
+
+            <form method="get" class="d-flex border rounded shadow-sm bg-white p-1">
+                <input type="hidden" name="view" value="{{ view_mode }}">
+
+                <input type="text" name="q" class="form-control form-control-sm border-0 shadow-none"
+                       placeholder="Search..." value="{{ search_query }}">
+
+                {% if search_query %}
+                    <a href="?view={{ view_mode }}" class="btn btn-sm btn-link text-muted px-2">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
+                {% endif %}
+
+                <button type="submit" class="btn btn-sm btn-primary px-3">
+                    <i class="bi bi-search"></i>
+                </button>
+            </form>
+        </div>
+
+        <div>
+            <a href="{% url 'production:process_add' %}" class="btn btn-primary shadow-sm">
+                <i class="bi bi-plus-lg"></i> Add New Process Template
+            </a>
+        </div>
     </div>
 
-    <div class="card shadow-sm">
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <a class="nav-link {% if view_mode == 'draft' %}active fw-bold text-secondary border-bottom-0{% endif %}"
+               href="?view=draft{% if search_query %}&q={{ search_query }}{% endif %}">
+                Drafts
+                <span class="badge rounded-pill bg-light text-dark border ms-1">{{ count_draft }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if view_mode == 'pending' %}active fw-bold text-warning border-bottom-0{% endif %}"
+               href="?view=pending{% if search_query %}&q={{ search_query }}{% endif %}">
+                To Validate
+                {% if count_pending > 0 %}
+                    <span class="badge rounded-pill bg-danger ms-1">{{ count_pending }}</span>
+                {% endif %}
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if view_mode == 'rejected' %}active fw-bold text-danger border-bottom-0{% endif %}"
+               href="?view=rejected{% if search_query %}&q={{ search_query }}{% endif %}">
+                Needs Correction
+                <span class="badge rounded-pill bg-light text-dark border ms-1">{{ count_rejected }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if view_mode == 'active' %}active fw-bold text-success border-bottom-0{% endif %}"
+               href="?view=active{% if search_query %}&q={{ search_query }}{% endif %}">
+                Active and Validated
+                <span class="badge rounded-pill bg-light text-dark border ms-1">{{ count_active }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if view_mode == 'archived' %}active fw-bold text-muted border-bottom-0{% endif %}"
+               href="?view=archived{% if search_query %}&q={{ search_query }}{% endif %}">
+                Archives
+                <span class="badge rounded-pill bg-light text-dark border ms-1">{{ count_archived }}</span>
+            </a>
+        </li>
+    </ul>
+
+    <style>
+        /* Style pour indiquer visuellement que la ligne est cliquable */
+        .clickable-row {
+            cursor: pointer;
+        }
+    </style>
+
+    <div class="card shadow-sm border-0">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
-                <thead class="table-dark">
+                <thead class="{% if view_mode == 'pending' %}table-warning{% elif view_mode == 'active' %}table-dark{% elif view_mode == 'rejected' %}table-danger{% else %}table-secondary{% endif %}">
                 <tr>
-                    <th style="width: 80px;">Status</th>
-                    <th>Process Code</th>
+                    <th>Status</th>
+                    <th>Process Name</th>
+                    <th>Code / Version</th>
                     <th>Scale</th>
-                    <th>Audit Trail</th>
+                    <th>{% if view_mode == 'archived' %}Archived on{% else %}Last Update{% endif %}</th>
                     <th class="text-end">Actions</th>
                 </tr>
                 </thead>
                 <tbody>
                 {% for process in processes %}
-                    <tr {% if not process.is_active %}class="table-light text-muted"
-                        style="font-style: italic;"{% endif %}>
+                    <tr class="clickable-row {% if process.status == 'REJECTED' %}table-danger{% endif %}"
+                        data-href="{% url 'production:unitoperation_list' process.pk %}">
                         <td>
-                            {% if process.is_active %}
-                                <span class="badge bg-success">Active</span>
-                            {% else %}
-                                <span class="badge bg-warning text-dark">Archived</span>
+                            {% if not process.is_active %}
+                                <span class="badge rounded-pill bg-dark text-white">Archived</span>
+                            {% elif process.status == 'VALIDATED' %}
+                                <span class="badge rounded-pill bg-success text-white">Validated</span>
+                            {% elif process.status == 'DRAFT' %}
+                                <span class="badge rounded-pill bg-secondary text-white">Draft</span>
+                            {% elif process.status == 'PENDING' %}
+                                <span class="badge rounded-pill bg-warning text-dark fw-bold">To Validate</span>
+                            {% elif process.status == 'REJECTED' %}
+                                <span class="badge rounded-pill bg-danger">Rejected</span>
                             {% endif %}
                         </td>
-                        <td class="fw-bold">{{ process.code }}</td>
-                        <td>{{ process.scale|default:"---" }}</td>
                         <td>
-                            <div style="font-size: 0.85rem;">
-                                <span class="text-muted">Created:</span> {{ process.created_at|date:"d/m/y H:i" }}
-                                ({{ process.created_by.username|default:"sys" }})<br>
-                                <span class="text-muted">Updated:</span> {{ process.updated_at|date:"d/m/y H:i" }}
-                                ({{ process.updated_by.username|default:"sys" }})
-                            </div>
+                            <span class="fw-semibold">{{ process.name }}</span>
+                            {% if process.status == 'REJECTED' and process.rejection_reason %}
+                                <br><small class="text-danger fw-bold"><i class="bi bi-chat-left-text-fill"></i> Note: {{ process.rejection_reason }}</small>
+                            {% endif %}
                         </td>
-                        <td class="text-end">
-                            {% if process.is_active %}
-                                <a href="{% url 'production:unit_manage' process.pk %}"
-                                   class="btn btn-sm btn-info text-white shadow-sm me-1">
-                                    <i class="bi bi-diagram-3"></i> Structure
-                                </a>
-                                <a href="{% url 'production:process_edit' process.pk %}"
-                                   class="btn btn-sm btn-outline-secondary">Edit</a>
-                                <a href="{% url 'production:process_delete' process.pk %}"
-                                   class="btn btn-sm btn-outline-danger">Archive</a>
+                        <td>
+                            <span class="fw-bold font-monospace text-primary">{{ process.code }}</span>
+                            <span class="badge bg-light text-dark border font-monospace ms-1">v{{ process.version }}</span>
+                        </td>
+                        <td><span class="text-muted small">{{ process.scale|default:"-" }}</span></td>
+                        <td>
+                            {% if view_mode == 'archived' %}
+                                {{ process.deleted_at|date:"d/m/y H:i" }}<br>
+                                <small class="text-muted">by {{ process.deleted_by.username|default:"sys" }}</small>
                             {% else %}
-                                <form action="{% url 'production:process_restore' process.pk %}" method="post"
-                                      class="d-inline">
+                                {{ process.updated_at|date:"d/m/y H:i" }}<br>
+                                <small class="text-muted">by {{ process.updated_by.username|default:"sys" }}</small>
+                            {% endif %}
+                        </td>
+                        <td class="text-end text-nowrap">
+                            {% if view_mode == 'archived' %}
+                                <form action="{% url 'production:process_restore' process.pk %}" method="post" class="d-inline m-0">
                                     {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-success">Restore</button>
+                                    <button type="submit" class="btn btn-sm btn-outline-success shadow-sm" title="Restore Process">
+                                        <i class="bi bi-arrow-counterclockwise"></i> Restore
+                                    </button>
                                 </form>
+                            {% else %}
+                                <a href="{% url 'production:unitoperation_list' process.pk %}"
+                                   class="btn btn-sm btn-primary shadow-sm" title="Manage Flowchart Structure">
+                                    <i class="bi bi-diagram-2"></i> Structure
+                                </a>
+
+                                {% if process.status == 'DRAFT' or process.status == 'REJECTED' %}
+                                    <a href="{% url 'production:process_edit' process.pk %}" class="btn btn-sm btn-outline-secondary shadow-sm ms-1">
+                                        <i class="bi bi-pencil"></i> Edit
+                                    </a>
+                                    <form action="{% url 'production:process_submit' process.pk %}" method="post" class="d-inline m-0">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-warning shadow-sm ms-1" title="Submit for review">
+                                            <i class="bi bi-send-check-fill"></i> Submit
+                                        </button>
+                                    </form>
+                                {% endif %}
+
+                                {% if process.status == 'PENDING' %}
+                                    <form action="{% url 'production:process_validate' process.pk %}" method="post" class="d-inline m-0">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-success shadow-sm ms-1" title="Approve">
+                                            <i class="bi bi-check-lg"></i> Accept
+                                        </button>
+                                    </form>
+
+                                    <button type="button" class="btn btn-sm btn-danger shadow-sm ms-1"
+                                            data-bs-toggle="collapse" data-bs-target="#rejectForm-{{ process.pk }}" title="Reject">
+                                        <i class="bi bi-x-lg"></i> Reject
+                                    </button>
+                                {% endif %}
+
+                                {% if process.status == 'VALIDATED' %}
+                                    <form action="{% url 'production:process_versioning' process.pk %}" method="post" class="d-inline m-0">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-dark shadow-sm ms-1" title="Create Version v{{ process.version|add:1 }}">
+                                            <i class="bi bi-git"></i> New Version
+                                        </button>
+                                    </form>
+                                {% endif %}
+
+                                <a href="{% url 'production:process_detail' process.pk %}"
+                                   class="btn btn-sm shadow-sm px-2 btn-outline-info ms-1" title="View details & history">
+                                    <i class="bi bi-eye"></i> Detail
+                                </a>
+
+                                <a href="{% url 'production:process_delete' process.pk %}" class="btn btn-sm btn-outline-danger shadow-sm ms-1">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+
+                                {% if process.status == 'PENDING' %}
+                                <div class="collapse mt-2 text-start" id="rejectForm-{{ process.pk }}">
+                                    <div class="card card-body border-danger p-2 bg-light">
+                                        <form action="{% url 'production:process_reject' process.pk %}" method="post" class="m-0">
+                                            {% csrf_token %}
+                                            <label class="small fw-bold text-danger">Rejection Reason :</label>
+                                            <div class="input-group input-group-sm mt-1">
+                                                <input type="text" name="rejection_reason" class="form-control" required placeholder="Specify what needs correction...">
+                                                <button class="btn btn-danger" type="submit">Confirm Reject</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                                {% endif %}
                             {% endif %}
                         </td>
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center py-5 text-muted">No processes defined.</td>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-3 d-block mb-2"></i> No process templates found in this view.
+                        </td>
                     </tr>
                 {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Sélectionne toutes les lignes qui possèdent la classe clickable-row
+        const rows = document.querySelectorAll(".clickable-row");
+
+        rows.forEach(row => {
+            row.addEventListener("click", function(e) {
+                // SÉCURITÉ IMPORTANTE : Si l'utilisateur clique sur un bouton, un lien, un formulaire
+                // ou à l'intérieur du conteneur de rejet (collapse), on n'exécute pas la redirection globale.
+                if (e.target.closest('button') || e.target.closest('a') || e.target.closest('form') || e.target.closest('.collapse')) {
+                    return;
+                }
+
+                // Récupération de l'URL présente dans le data-href et redirection
+                const url = this.dataset.href;
+                if (url) {
+                    window.location.href = url;
+                }
+            });
+        });
+    });
+</script>
 {% endblock %}

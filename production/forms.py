@@ -1,43 +1,26 @@
 from django import forms
-from .models import Process, UnitOperation, Step, Parameter
+from phf.utils import BaseEntityForm
+from referential.models import AnalyticalMethod
+from .models import Process, UnitOperation, Step, Parameter, Sample
 
 
-class ProcessForm(forms.ModelForm):
+class ProcessForm(BaseEntityForm):
     class Meta:
         model = Process
-        fields = ['code', 'scale']
+        fields = ['name', 'code', 'scale']
+
 
 class UnitOperationForm(forms.ModelForm):
     class Meta:
         model = UnitOperation
-        fields = ['order', 'unit_type', 'name']
+        fields = ['name', 'unit_type', 'order']
 
-    def __init__(self, *args, **kwargs):
-        self.process = kwargs.pop('process', None)
-        super().__init__(*args, **kwargs)
-
-    def clean_order(self):
-        order = self.cleaned_data.get('order')
-        if self.process and order:
-            if UnitOperation.objects.filter(process=self.process, order=order).exists():
-                raise forms.ValidationError(f"The position {order} is already occupied in this process.")
-        return order
 
 class StepForm(forms.ModelForm):
     class Meta:
         model = Step
         fields = ['name', 'order']
 
-    def __init__(self, *args, **kwargs):
-        self.unit_operation = kwargs.pop('unit_operation', None)
-        super().__init__(*args, **kwargs)
-
-    def clean_order(self):
-        order = self.cleaned_data.get('order')
-        if self.unit_operation and order:
-            if Step.objects.filter(unit_operation=self.unit_operation, order=order, is_active=True).exists():
-                raise forms.ValidationError(f"Step order {order} already exists for this unit.")
-        return order
 
 class ParameterForm(forms.ModelForm):
     class Meta:
@@ -50,13 +33,24 @@ class ParameterForm(forms.ModelForm):
             'order'
         ]
 
-    def __init__(self, *args, **kwargs):
-        self.step = kwargs.pop('step', None)
-        super().__init__(*args, **kwargs)
+class SampleForm(forms.ModelForm):
+    class Meta:
+        model = Sample
+        fields = ['sample_name', 'analytical_methods']
+        widgets = {
+            'sample_name': forms.TextInput(attrs={
+                'class': 'form-control form-control-sm border-secondary',
+                'maxlength': '25',
+                'required': True
+            }),
+            'analytical_methods': forms.CheckboxSelectMultiple(attrs={
+                'class': 'form-check-input'
+            })
+        }
 
-    def clean_order(self):
-        order = self.cleaned_data.get('order')
-        if self.step and order:
-            if Parameter.objects.filter(step=self.step, order=order, is_active=True).exists():
-                raise forms.ValidationError(f"Order {order} already exists for this step.")
-        return order
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Filtrage et tri des méthodes analytiques actives pour le formulaire
+        self.fields['analytical_methods'].queryset = AnalyticalMethod.objects.filter(
+            is_active=True
+        ).order_by('name')

@@ -30,8 +30,6 @@ INSTALLED_APPS = [
     'crispy_bootstrap5',
     'referential.apps.ReferentialConfig',
     'production.apps.ProductionConfig',
-    'sampling.apps.SamplingConfig',
-    'execution.apps.ExecutionConfig'
 ]
 
 MIDDLEWARE = [
