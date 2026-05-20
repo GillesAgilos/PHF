@@ -50,7 +50,6 @@ class SampleForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Filtrage et tri des méthodes analytiques actives pour le formulaire
         self.fields['analytical_methods'].queryset = AnalyticalMethod.objects.filter(
             is_active=True
         ).order_by('name')

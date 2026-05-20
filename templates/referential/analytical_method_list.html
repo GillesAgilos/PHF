@@ -63,7 +63,7 @@
         <li class="nav-item">
             <a class="nav-link {% if view_mode == 'archived' %}active fw-bold text-muted{% endif %}"
                href="?view=archived{% if search_query %}&q={{ search_query }}{% endif %}">
-                Archives
+                Archived
                 <span class="badge rounded-pill bg-light text-dark border ms-1">{{ count_archived }}</span>
             </a>
         </li>
@@ -107,7 +107,7 @@
                             <span class="badge bg-light text-dark border font-monospace">{{ method.volume_required }} mL</span>
                         </td>
                         <td class="text-muted small">
-                            <i class="bi bi-thermometer-snow text-info"></i> {{ method.storage_temp }}
+                            {{ method.storage_temp }}
                         </td>
                         <td>
                             {% if view_mode == 'archived' %}
@@ -161,7 +161,6 @@
             const rows = document.querySelectorAll(".clickable-row");
             rows.forEach(row => {
                 row.addEventListener("click", function (e) {
-                    // Sécurité importante : évite d'ouvrir le détail si on clique sur un bouton d'action
                     if (e.target.closest('a') || e.target.closest('button') || e.target.closest('form')) {
                         return;
                     }

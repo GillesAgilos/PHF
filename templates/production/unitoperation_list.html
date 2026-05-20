@@ -84,7 +84,7 @@
                                     <label class="form-label small fw-bold text-muted">ORDER (#)</label>
                                     <input type="number" name="order" min="1"
                                            class="form-control form-control-sm border-secondary"
-                                           value="{{ steps|length|add:1 }}">
+                                           value="{{ units|length|add:1 }}">
                                     {% if form.order.errors %}
                                         <div class="text-danger small">{{ form.order.errors.0 }}</div>
                                     {% endif %}
@@ -121,11 +121,11 @@
             <div class="card shadow-sm">
                 <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0 text-white">Process Flowchart: {{ process.code }}</h5>
-                    <span class="badge bg-light text-dark">{{ steps|length }} Units</span>
+                    <span class="badge bg-light text-dark">{{ units|length }} Units</span>
                 </div>
                 <div class="card-body p-0">
                     <div class="list-group list-group-flush">
-                        {% for unit in steps %}
+                        {% for unit in units %}
                             <div class="list-group-item d-flex align-items-center p-3 clickable-row"
                                  style="cursor: pointer;"
                                  data-href="{% url 'production:step_list' unit_pk=unit.pk %}">
@@ -175,8 +175,8 @@
                                         </a>
 
                                         <a href="{% url 'production:step_list' unit_pk=unit.pk %}"
-                                           class="btn btn-sm btn-outline-info me-2 shadow-sm" title="Manage Steps">
-                                            <i class="bi bi-list-check"></i> Steps
+                                           class="btn btn-sm btn-outline-info me-2 shadow-sm" title="Manage units">
+                                            <i class="bi bi-list-check"></i> units
                                         </a>
 
                                         <a href="{% url 'production:unitoperation_detail' pk=unit.pk %}"
@@ -199,8 +199,8 @@
                                     {% else %}
                                         <a href="{% url 'production:step_list' unit_pk=unit.pk %}"
                                            class="btn btn-sm btn-outline-secondary me-2 shadow-sm"
-                                           title="View Steps (Read Only)">
-                                            <i class="bi bi-eye"></i> View Steps
+                                           title="View units (Read Only)">
+                                            <i class="bi bi-eye"></i> View units
                                         </a>
                                         <span class="text-muted small"><i class="bi bi-lock-fill"></i> Locked</span>
                                     {% endif %}

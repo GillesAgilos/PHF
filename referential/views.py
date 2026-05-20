@@ -43,6 +43,7 @@ class MoleculeTypeRestoreView(GenericRestoreView):
 class MoleculeTypeDetailView(EntityDetailView):
     model = MoleculeType
 
+
 class MoleculeTypeValidateView(EntityValidateView):
     model = MoleculeType
     redirect_url = 'referential:moleculetype_list'
@@ -76,6 +77,7 @@ class ClientDeleteView(GenericDeleteView):
     model = Client
     success_url = reverse_lazy('referential:client_list')
 
+
 class ClientRestoreView(GenericRestoreView):
     model = Client
     redirect_url = 'referential:client_list'
@@ -102,6 +104,7 @@ class ProjectListView(FilterStateMixin, ListView):
 
     def get_queryset(self):
         return super().get_queryset().select_related('client', 'molecule_type')
+
 
 class ProjectCreateView(AuditTrailMixin, CreateView):
     model = Project
@@ -133,7 +136,6 @@ class ProjectValidateView(EntityValidateView):
 class ProjectRejectView(EntityRejectView):
     model = Project
     redirect_url = 'referential:project_list'
-
 
 # ==========================================
 # ANALYTICAL METHOD VIEWS

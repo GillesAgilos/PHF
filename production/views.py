@@ -6,7 +6,6 @@ from django.views.generic import ListView, CreateView, UpdateView, TemplateView
 from django.db import transaction
 from django.contrib import messages
 from django.db.models import Max
-
 from phf.utils import (
     AuditTrailMixin, StatusResetMixin, FilterStateMixin,
     GenericDeleteView, GenericRestoreView, EntityDetailView,
@@ -17,15 +16,13 @@ from .forms import ProcessForm, UnitOperationForm, StepForm, ParameterForm, Samp
 
 
 # =========================================================================
-# 1. PROCESS VIEWS (Gestion globale des templates de Process)
+# 1. PROCESS VIEWS
 # =========================================================================
-
 class ProcessListView(FilterStateMixin, ListView):
     model = Process
     template_name = 'production/process_list.html'
     context_object_name = 'processes'
     search_fields = ['name', 'code']
-
 
 class ProcessCreateView(AuditTrailMixin, CreateView):
     model = Process
@@ -33,40 +30,32 @@ class ProcessCreateView(AuditTrailMixin, CreateView):
     template_name = 'generic/generic_form.html'
     success_url = reverse_lazy('production:process_list')
 
-
 class ProcessUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
     model = Process
     form_class = ProcessForm
     template_name = 'generic/generic_form.html'
     success_url = reverse_lazy('production:process_list')
 
-
 class ProcessDeleteView(GenericDeleteView):
     model = Process
     success_url = reverse_lazy('production:process_list')
-
 
 class ProcessRestoreView(GenericRestoreView):
     model = Process
     redirect_url = 'production:process_list'
 
-
 class ProcessDetailView(EntityDetailView):
     model = Process
-
 
 class ProcessValidateView(EntityValidateView):
     model = Process
     redirect_url = 'production:process_list'
 
-
 class ProcessRejectView(EntityRejectView):
     model = Process
     redirect_url = 'production:process_list'
 
-
 class ProcessSubmitView(View):
-    """Fait passer le processus de DRAFT/REJECTED à PENDING (To Validate)"""
 
     def post(self, request, pk):
         process = get_object_or_404(Process, pk=pk)
@@ -77,9 +66,7 @@ class ProcessSubmitView(View):
             messages.success(request, f"Process template '{process}' has been submitted for review.")
         return redirect('production:process_list')
 
-
 class ProcessCreateNewVersionView(View):
-    """Clone l'intégralité du processus validé pour créer une version n+1 en DRAFT"""
 
     def post(self, request, pk):
         old_process = get_object_or_404(Process, pk=pk)
@@ -89,16 +76,13 @@ class ProcessCreateNewVersionView(View):
             return redirect('production:process_list')
 
         with transaction.atomic():
-            # 1. Protection : On cherche la version la plus élevée existante pour ce code de process
             max_version = Process.objects.filter(
                 code=old_process.code
             ).aggregate(Max('version'))['version__max']
 
-            # Si jamais max_version est None (impossible théoriquement ici), on se rabat sur la version actuelle
             current_max = max_version if max_version is not None else old_process.version
             next_version = current_max + 1
 
-            # 2. Création du nouveau Process avec le bon numéro de version incrémenté
             new_process = Process.objects.create(
                 name=old_process.name,
                 code=old_process.code,
@@ -110,7 +94,6 @@ class ProcessCreateNewVersionView(View):
                 updated_by=request.user
             )
 
-            # 3. Duplication de l'arbre des composants (Unit Operations & Steps)
             for u in old_process.units.filter(is_active=True):
                 new_u = UnitOperation.objects.create(
                     process=new_process,
@@ -121,16 +104,17 @@ class ProcessCreateNewVersionView(View):
                     updated_by=request.user
                 )
                 for s in u.steps.filter(is_active=True):
-                    Step.objects.create(
+                    new_s = Step.objects.create(
                         unit_operation=new_u,
                         name=s.name,
                         order=s.order,
                         created_by=request.user,
                         updated_by=request.user
                     )
+
                     for p in s.parameters.filter(is_active=True):
                         Parameter.objects.create(
-                            step=new_u,
+                            step=new_s,
                             name=p.name,
                             unit=p.unit,
                             format_type=p.format_type,
@@ -145,16 +129,23 @@ class ProcessCreateNewVersionView(View):
                             updated_by=request.user
                         )
 
+                    for sample in s.samples.filter(is_active=True):
+                        new_sample = Sample.objects.create(
+                            step=new_s,  # Lié à la nouvelle étape
+                            sample_name=sample.sample_name,
+                            created_by=request.user,
+                            updated_by=request.user
+                        )
+                        active_methods = sample.analytical_methods.filter(is_active=True)
+                        new_sample.analytical_methods.set(active_methods)
+
         messages.success(request, f"New version {new_process.version} initialized successfully in Draft.")
         return redirect('production:process_list')
 
-
 # =========================================================================
-# 2. UNIT OPERATION VIEWS (Panneau partagé Formulaire + Flowchart)
+# 2. UNIT OPERATION VIEWS
 # =========================================================================
-
 class UnitOperationStructureView(TemplateView):
-    """Vue principale affichant l'écran partagé (Formulaire + Flowchart)"""
     template_name = 'production/unitoperation_list.html'
 
     def get_context_data(self, **kwargs):
@@ -172,7 +163,7 @@ class UnitOperationStructureView(TemplateView):
 
         context.update({
             'process': process,
-            'steps': units,  # Conservé pour la compatibilité avec ton template
+            'units': units,
             'view_mode': view_mode,
             'count_active': count_active,
             'count_archived': count_archived,
@@ -180,9 +171,7 @@ class UnitOperationStructureView(TemplateView):
         })
         return context
 
-
 class UnitOperationAddView(View):
-    """Traitement de l'ajout rapide depuis le panneau de gauche"""
 
     def post(self, request, process_pk):
         process = get_object_or_404(Process, pk=process_pk)
@@ -207,9 +196,7 @@ class UnitOperationAddView(View):
 
         return redirect(f"/production/processes/{process.pk}/structure/?view={view_mode}")
 
-
 class UnitOperationRestoreView(View):
-    """Restauration d'une opération en bout de liste des actifs (Max actifs + 1)"""
 
     def post(self, request, pk):
         unit = get_object_or_404(UnitOperation, pk=pk)
@@ -234,7 +221,6 @@ class UnitOperationRestoreView(View):
 
 
 class UnitOperationReorderView(View):
-    """Algorithme d'inversion des positions (Up / Down)"""
 
     def get(self, request, pk, direction):
         unit = get_object_or_404(UnitOperation, pk=pk)
@@ -275,9 +261,7 @@ class UnitOperationReorderView(View):
 
         return redirect(f"/production/processes/{process.pk}/structure/")
 
-
 class UnitOperationDetailView(EntityDetailView):
-    """Réutilise ton template générique pour afficher l'audit complet d'une Unit Operation"""
     model = UnitOperation
     template_name = 'generic/generic_detail.html'
 
@@ -287,9 +271,7 @@ class UnitOperationUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
     template_name = 'generic/generic_form.html'
 
     def get_success_url(self):
-        # Redirige vers le flowchart du Process parent
         return f"/production/processes/{self.object.process.pk}/structure/?view=active"
-
 
 class UnitOperationDeleteView(GenericDeleteView):
     model = UnitOperation
@@ -302,7 +284,6 @@ class UnitOperationDeleteView(GenericDeleteView):
 
         with transaction.atomic():
             try:
-                # 1. On pousse l'opération au-delà du max absolu pour libérer son index actif
                 max_global_order = UnitOperation.objects.filter(
                     process=self.object.process
                 ).aggregate(Max('order'))['order__max'] or 0
@@ -313,7 +294,6 @@ class UnitOperationDeleteView(GenericDeleteView):
                 # 2. Soft Delete
                 self.object.delete(user=self.request.user)
 
-                # 3. Réorganisation séquentielle des opérations restées actives (1, 2, 3...)
                 active_units = UnitOperation.objects.filter(
                     process=self.object.process,
                     is_active=True
@@ -335,13 +315,10 @@ class UnitOperationDeleteView(GenericDeleteView):
 
         return HttpResponseRedirect(success_url)
 
-
 # =========================================================================
-# 3. STEP VIEWS (Gestion des sous-étapes au sein d'une Unit Operation)
+# 3. STEP VIEWS
 # =========================================================================
-
 class StepStructureView(TemplateView):
-    """Vue principale affichant l'écran partagé pour une unité (Formulaire Step + Liste)"""
     template_name = 'production/step_list.html'
 
     def get_context_data(self, **kwargs):
@@ -368,9 +345,7 @@ class StepStructureView(TemplateView):
         })
         return context
 
-
 class StepAddView(View):
-    """Ajout rapide d'une étape sous l'unité opérationnelle courante"""
 
     def post(self, request, unit_pk):
         unit = get_object_or_404(UnitOperation, pk=unit_pk)
@@ -395,12 +370,7 @@ class StepAddView(View):
 
         return redirect(f"/production/unit-operations/{unit.pk}/manage/?view={view_mode}")
 
-
 class StepDeleteView(GenericDeleteView):
-    """
-    Archivage d'une Step via GenericDeleteView avec gestion du GET (confirmation)
-    et surcharge du form_valid (POST) pour la réindexation.
-    """
     model = Step
 
     def get_success_url(self):
@@ -411,19 +381,14 @@ class StepDeleteView(GenericDeleteView):
 
         with transaction.atomic():
             try:
-                # 1. On trouve le Max global absolu sous cette UnitOperation pour libérer la place active
                 max_global_order = Step.objects.filter(
                     unit_operation=self.object.unit_operation
                 ).aggregate(Max('order'))['order__max'] or 0
 
-                # 2. On pousse la step au-delà du Max pour sortir de la séquence active actuelle
                 self.object.order = max_global_order + 1
                 self.object.save(update_fields=['order'])
-
-                # 3. Soft Delete via la méthode héritée de GenericDeleteView
                 self.object.delete(user=self.request.user)
 
-                # 4. Réorganisation séquentielle des steps restées actives à partir de 1
                 active_steps = Step.objects.filter(
                     unit_operation=self.object.unit_operation,
                     is_active=True
@@ -445,9 +410,7 @@ class StepDeleteView(GenericDeleteView):
 
         return HttpResponseRedirect(success_url)
 
-
 class StepRestoreView(View):
-    """Restauration d'une Step en bout de liste des actifs (Max actifs + 1)"""
 
     def post(self, request, pk):
         step = get_object_or_404(Step, pk=pk)
@@ -471,7 +434,6 @@ class StepRestoreView(View):
 
 
 class StepReorderView(View):
-    """Permutation des positions des Steps (Up / Down)"""
 
     def get(self, request, pk, direction):
         step = get_object_or_404(Step, pk=pk)
@@ -499,23 +461,17 @@ class StepReorderView(View):
 
                 target_step.order = 9999
                 target_step.save()
-
                 step.order = target_order
                 step.save()
-
                 target_step.order = current_order
                 target_step.save()
-
                 storage = messages.get_messages(request)
                 storage.used = True
-
                 messages.info(request, "Step sequence updated.")
 
         return redirect(f"/production/unit-operations/{unit.pk}/manage/")
 
-
 class StepDetailView(EntityDetailView):
-    """Réutilise ton template générique pour afficher l'audit complet d'une Step"""
     model = Step
     template_name = 'generic/generic_detail.html'
 
@@ -531,7 +487,6 @@ class StepUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
 # =========================================================================
 # 4. PARAMETER VIEWS
 # =========================================================================
-
 class ParameterStructureView(TemplateView):
     template_name = 'production/parameter_list.html'
 
@@ -560,7 +515,6 @@ class ParameterStructureView(TemplateView):
         })
         return context
 
-
 class ParameterAddView(View):
     def post(self, request, step_pk):
         step = get_object_or_404(Step, pk=step_pk)
@@ -584,7 +538,6 @@ class ParameterAddView(View):
                     messages.error(request, f"[{field.upper()}] {error}")
 
         return redirect(f"/production/steps/{step.pk}/parameters/?view={view_mode}")
-
 
 class ParameterDeleteView(GenericDeleteView):
     model = Parameter
@@ -644,7 +597,6 @@ class ParameterRestoreView(View):
 
         return redirect(f"/production/steps/{step_pk}/parameters/?view=archived")
 
-
 class ParameterReorderView(View):
     def get(self, request, pk, direction):
         param = get_object_or_404(Parameter, pk=pk)
@@ -682,11 +634,9 @@ class ParameterReorderView(View):
 
         return redirect(f"/production/steps/{step.pk}/parameters/")
 
-
 class ParameterDetailView(EntityDetailView):
     model = Parameter
     template_name = 'generic/generic_detail.html'
-
 
 class ParameterUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
     model = Parameter
@@ -694,13 +644,11 @@ class ParameterUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
     template_name = 'generic/generic_form.html'
 
     def get_success_url(self):
-        # Redirige vers la liste des paramètres de la Step parente
         return f"/production/steps/{self.object.step.pk}/parameters/?view=active"
 
 # =========================================================================
 # 5. SAMPLE VIEWS
 # =========================================================================
-
 class SampleStructureView(TemplateView):
     template_name = 'production/sample_list.html'
 
@@ -731,7 +679,6 @@ class SampleStructureView(TemplateView):
         })
         return context
 
-
 class SampleAddView(View):
     def post(self, request, step_pk):
         step = get_object_or_404(Step, pk=step_pk)
@@ -747,8 +694,6 @@ class SampleAddView(View):
                 sample.created_by = request.user
                 sample.updated_by = request.user
                 sample.save()
-
-                # CHANGEMENT CRUCIAL : Sauvegarde des méthodes analytiques (M2M)
                 form.save_m2m()
 
                 messages.success(request, f"Sample '{sample.sample_name}' successfully added.")
@@ -759,8 +704,6 @@ class SampleAddView(View):
                 for error in errors:
                     messages.error(request, f"[{field.upper()}] {error}")
 
-        # Utilisation de reverse() pour éviter les URLs en dur si tu le souhaites,
-        # mais ton ancienne chaîne fonctionne aussi.
         return redirect(f"/production/steps/{step.pk}/samples/?view={view_mode}")
 
 class SampleDeleteView(GenericDeleteView):
@@ -778,7 +721,6 @@ class SampleDeleteView(GenericDeleteView):
             messages.error(self.request, f"Action denied: {str(e)}")
         return HttpResponseRedirect(success_url)
 
-
 class SampleRestoreView(View):
     def post(self, request, pk):
         sample = get_object_or_404(Sample, pk=pk)
@@ -790,24 +732,18 @@ class SampleRestoreView(View):
             messages.error(request, f"Action denied: {str(e)}")
         return redirect(f"/production/steps/{step_pk}/samples/?view=archived")
 
-
 class SampleDetailView(EntityDetailView):
     model = Sample
     template_name = 'generic/generic_detail.html'
-
 
 class SampleUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
     model = Sample
     form_class = SampleForm
     template_name = 'generic/generic_form.html'
 
-    # Si tu as créé un template custom, tu peux changer pour : 'production/sample_edit.html'
-
     def get_success_url(self):
         return f"/production/steps/{self.object.step.pk}/samples/?view=active"
 
     def form_valid(self, form):
-        # Les UpdateView gèrent le save_m2m() automatiquement, mais si tes Mixins
-        # court-circuitent le comportement standard, sécurise-le comme ceci :
         response = super().form_valid(form)
         return response

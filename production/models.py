@@ -140,11 +140,9 @@ class Sample(BaseComponentEntity):
 
     class Meta:
         ordering = ['created_at']
-        # Évite d'avoir deux échantillons avec le même nom pour une même étape
         unique_together = ('step', 'sample_name')
 
     def get_parent_entity(self):
-        # Remonte à la Step pour hériter des verrous de modification du Processus
         return self.step
 
     def __str__(self):

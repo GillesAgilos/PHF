@@ -1,150 +1,137 @@
+# referential/tests.py
 from django.test import TestCase
 from django.urls import reverse
-from django.contrib.auth.models import User
-from .models import Client, Project, MoleculeType
+from django.core.exceptions import ValidationError
+from .models import Client, MoleculeType, Project, AnalyticalMethod
+from .forms import ClientForm, MoleculeTypeForm, ProjectForm, AnalyticalMethodForm
+from phf.utils_tests import BaseEntityTestMixin  # Ajuste le chemin d'import si nécessaire
 
 
-class ReferentialLogicTest(TestCase):
-    """
-    Test suite for the Referential app updated for MoleculeType and GxP compliance.
-    """
+# ==========================================
+# MOLECULE TYPE TESTS
+# ==========================================
+class TestMoleculeType(BaseEntityTestMixin, TestCase):
+    model = MoleculeType
+    form_class = MoleculeTypeForm
+    app_namespace = 'referential'
 
-    def setUp(self):
-        # 1. User for Audit Trail
-        self.user = User.objects.create_user(
-            username='testworker',
-            password='password123',
-            is_active=True
-        )
-
-        # 2. Molecule Type (Required for Projects)
-        self.mol_type = MoleculeType.objects.create(
-            name="Monoclonal Antibody",
-            description="mAbs for testing",
-            created_by=self.user
-        )
-
-        # 3. Client
-        self.client_obj = Client.objects.create(
-            name="Eurogentec Test",
-            code="EGT-01",
-            is_active=True,
-            created_by=self.user
-        )
-
-    # ==========================================
-    # MODEL LOGIC TESTS
-    # ==========================================
-
-    def test_soft_delete_and_restore(self):
-        """Verifies the delete/restore cycle on MoleculeType"""
-        mol = MoleculeType.objects.create(name="To Archive", created_by=self.user)
-
-        # Delete
-        mol.delete(user=self.user)
-        mol.refresh_from_db()
-        self.assertFalse(mol.is_active)
-        self.assertEqual(mol.deleted_by, self.user)
-
-        # Restore
-        mol.restore()
-        mol.refresh_from_db()
-        self.assertTrue(mol.is_active)
-        self.assertIsNone(mol.deleted_by)
-
-    def test_modification_forbidden_on_archived_object(self):
-        """Business Rule: Prevent saving changes on archived objects (BaseModel logic)"""
-        self.client_obj.is_active = False
-        self.client_obj.save()  # Le premier save pour archiver est permis
-
-        self.client_obj.name = "Forbidden Change"
-        with self.assertRaises(PermissionError):
-            self.client_obj.save()
-
-    # ==========================================
-    # MOLECULE TYPE TESTS
-    # ==========================================
-
-    def test_moleculetype_audit_trail_on_create(self):
-        """Checks if created_by is assigned via View"""
-        self.client.login(username='testworker', password='password123')
-
-        post_data = {'name': 'Vaccine', 'description': 'mRNA platform'}
-        response = self.client.post(reverse('referential:molecule_type_add'), data=post_data)
-
-        self.assertEqual(response.status_code, 302)
-        new_type = MoleculeType.objects.get(name='Vaccine')
-        self.assertEqual(new_type.created_by, self.user)
-
-    # ==========================================
-    # PROJECT SPECIFIC TESTS
-    # ==========================================
-
-    def test_project_creation_with_relations(self):
-        """Verify project creation with Client and MoleculeType ForeignKeys"""
-        self.client.login(username='testworker', password='password123')
-
-        post_data = {
-            'client': self.client_obj.unique_id,
-            'molecule_type': self.mol_type.unique_id,
-            'name': 'BioPharma Project',
-            'code': 'BPH-99',
-            'molecule_name': 'EGT-mAb-01'
+    def get_valid_factory_data(self) -> dict:
+        return {
+            'name': 'Small Molecule',
+            'description': 'Standard small molecule therapeutic description.'
         }
 
-        response = self.client.post(reverse('referential:project_add'), data=post_data)
-        self.assertEqual(response.status_code, 302)
+    def test_filter_state_behavior(self):
+        self.create_instance(name="Draft Molecule", status="DRAFT", is_active=True)
+        self.create_instance(name="Validated Molecule", status="VALIDATED", is_active=True)
+        self.create_instance(name="Archived Molecule", is_active=False)
 
-        new_project = Project.objects.get(code='BPH-99')
-        self.assertEqual(new_project.molecule_type, self.mol_type)
-        self.assertEqual(new_project.created_by, self.user)
+        url = reverse(f"{self.app_namespace}:moleculetype_list")
 
-    def test_project_form_filtering(self):
-        """Ensure archived MoleculeTypes do not appear in the Project creation form"""
-        archived_mol = MoleculeType.objects.create(name="Old Tech", is_active=False)
+        # Vue "To Validate" -> Attend le brouillon (DRAFT)
+        response = self.client.get(f"{url}?view=pending")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Draft Molecule", str(response.content))
 
-        self.client.login(username='testworker', password='password123')
-        url = reverse('referential:project_add')
-        response = self.client.get(url)
+        # Vue active -> Attend l'élément validé (VALIDATED)
+        response = self.client.get(f"{url}?view=active")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Validated Molecule", str(response.content))
 
-        # Check if archived_mol is in the dropdown queryset
-        queryset = response.context['form'].fields['molecule_type'].queryset
-        self.assertNotIn(archived_mol, queryset)
 
-    def test_cannot_update_archived_project(self):
-        """Verify UI level protection (messages.error) in UpdateView"""
-        project = Project.objects.create(
-            client=self.client_obj,
-            molecule_type=self.mol_type,
-            name="Archived Proj",
-            code="ARC-01",
-            molecule_name="Test",
-            is_active=False
+# ==========================================
+# CLIENT TESTS
+# ==========================================
+class TestClient(BaseEntityTestMixin, TestCase):
+    model = Client
+    form_class = ClientForm
+    app_namespace = 'referential'
+
+    def get_valid_factory_data(self) -> dict:
+        return {
+            'name': 'ACME Pharmaceuticals',
+            'code': 'ACME-001'
+        }
+
+    def test_filter_state_behavior(self):
+        self.create_instance(name="Client Draft", code="CL-D", status="DRAFT", is_active=True)
+        self.create_instance(name="Client Validated", code="CL-V", status="VALIDATED", is_active=True)
+
+        url = reverse(f"{self.app_namespace}:client_list")
+
+        # Vue "To Validate" -> Attend le brouillon
+        response = self.client.get(f"{url}?view=pending")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Client Draft", str(response.content))
+
+
+# ==========================================
+# PROJECT TESTS
+# ==========================================
+class TestProject(BaseEntityTestMixin, TestCase):
+    model = Project
+    form_class = ProjectForm
+    app_namespace = 'referential'
+
+    def get_valid_factory_data(self) -> dict:
+        # On s'assure d'avoir des relations valides pour passer le full_clean()
+        self.client_fk = Client.objects.create(name='Valid Client', code='VAL-CLI', status='VALIDATED', is_active=True)
+        self.molecule_fk = MoleculeType.objects.create(name='Valid Molecule', status='VALIDATED', is_active=True)
+
+        return {
+            'name': 'Project Prototype',
+            'code': 'PRJ-PROTO',
+            'molecule_name': 'Proto-X',
+            'client': self.client_fk,
+            'molecule_type': self.molecule_fk
+        }
+
+    def test_clean_raises_error_on_unvalidated_relations(self):
+        valid_data = self.get_valid_factory_data()
+        invalid_client = Client.objects.create(name='Draft Client', code='DRF-CLI', status='DRAFT', is_active=True)
+
+        project = Project(
+            name='Project Fail', code='PRJ-FAIL', molecule_name='Fail-1',
+            client=invalid_client,
+            molecule_type=valid_data['molecule_type']
         )
 
-        self.client.login(username='testworker', password='password123')
-        url = reverse('referential:project_edit', kwargs={'pk': project.unique_id})
+        with self.assertRaises(ValidationError):
+            project.full_clean()
 
-        response = self.client.post(url, data={
-            'name': 'Illegal Change',
-            'code': 'ARC-01',
-            'client': self.client_obj.unique_id,
-            'molecule_type': self.mol_type.unique_id,
-            'molecule_name': 'Test'
-        }, follow=True)
+    def test_filter_state_behavior(self):
+        data = self.get_valid_factory_data()
+        self.model.objects.create(**data)  # Crée l'instance en DRAFT par défaut
 
-        # Check for error message and redirection
-        self.assertContains(response, "Error: project is archived")
-        project.refresh_from_db()
-        self.assertNotEqual(project.name, 'Illegal Change')
+        url = reverse(f"{self.app_namespace}:project_list")
 
-    # ==========================================
-    # SECURITY
-    # ==========================================
+        # Vue "To Validate" -> Attend le brouillon
+        response = self.client.get(f"{url}?view=pending")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Project Prototype", str(response.content))
 
-    def test_unauthenticated_access(self):
-        """Verify unauthenticated users cannot see data"""
-        url = reverse('referential:client_list')
-        response = self.client.get(url)
-        # 302 is redirect to login (if login_required middleware/decorator is active)
-        self.assertIn(response.status_code, [302, 403])
+
+# ==========================================
+# ANALYTICAL METHOD TESTS
+# ==========================================
+class TestAnalyticalMethod(BaseEntityTestMixin, TestCase):
+    model = AnalyticalMethod
+    form_class = AnalyticalMethodForm
+    app_namespace = 'referential'
+
+    def get_valid_factory_data(self) -> dict:
+        return {
+            'name': 'HPLC Quant',
+            'volume_required': 2.5,
+            'storage_temp': '2-8°C'
+        }
+
+    def test_filter_state_behavior(self):
+        self.create_instance(name="Method Draft", status="DRAFT")
+
+        url = reverse(f"{self.app_namespace}:analyticalmethod_list")
+
+        # Vue "To Validate" -> Attend le brouillon
+        response = self.client.get(f"{url}?view=pending")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Method Draft", str(response.content))

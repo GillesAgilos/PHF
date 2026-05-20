@@ -16,7 +16,7 @@ from datetime import datetime, date
 
 
 # =========================================================================
-# BASE INDEPENDENT MODEL (Référentiel & Entités Autonomes)
+# BASE MODEL FOR SIMPLE ENTITIES
 # =========================================================================
 
 class BaseModel(models.Model):
@@ -43,9 +43,7 @@ class BaseModel(models.Model):
     deleted_at = models.DateTimeField(null=True, blank=True, editable=False)
     deleted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
                                    related_name="%(class)s_deleted")
-
     history = HistoricalRecords(inherit=True)
-
     rejection_reason = models.TextField(null=True, blank=True, help_text="Reason why this was rejected")
     _change_reason = None
 
@@ -53,7 +51,7 @@ class BaseModel(models.Model):
         abstract = True
 
     def validate_entity(self, user=None):
-        self.status = 'VALIDATED'  # Utilisation d'une string brute pour éviter les conflits de choix sur Process
+        self.status = 'VALIDATED'
         if user: self.updated_by = user
         self.save()
 
@@ -65,7 +63,6 @@ class BaseModel(models.Model):
 
     def restore(self):
         self.is_active = True
-        # Si le modèle a un statut DRAFT personnalisé (comme Process), on l'utilise, sinon DRAFT par défaut
         self.status = getattr(self.Status, 'DRAFT', 'DRAFT')
         self.deleted_at = None
         self.deleted_by = None
@@ -108,22 +105,16 @@ class BaseModel(models.Model):
 
 
 # =========================================================================
-# BASE COMPONENT MODEL (Pour UnitOperation et tout l'arbre en-dessous)
+# BASE COMPONENT MODEL (FOR DEPENDENT MODELS)
 # =========================================================================
 
 class BaseComponentEntity(models.Model):
-    """
-    Pour les modèles composants dépendants (ex: UnitOperation, OperationParameter).
-    L'état et la sécurité dépendent entièrement du parent Root (Process).
-    """
     unique_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="%(class)s_created")
     updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="%(class)s_updated")
-
-    # AJOUT DES CHAMPS POUR LE SOFT DELETE DANS LE COMPOSANT
     is_active = models.BooleanField(default=True)
     deleted_at = models.DateTimeField(null=True, blank=True, editable=False)
     deleted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="%(class)s_deleted")
@@ -133,7 +124,6 @@ class BaseComponentEntity(models.Model):
     class Meta:
         abstract = True
 
-    # AJOUT DE LA MÉTHODE DELETE ADAPTÉE
     def delete(self, user=None, *args, **kwargs):
         self.is_active = False
         self.deleted_at = timezone.now()
@@ -141,7 +131,6 @@ class BaseComponentEntity(models.Model):
             self.deleted_by = user
         self.save()
 
-    # AJOUT DE LA MÉTHODE RESTORE ADAPTÉE
     def restore(self):
         self.is_active = True
         self.deleted_at = None
@@ -166,10 +155,8 @@ class BaseComponentEntity(models.Model):
         if self.is_active:
             self.full_clean()
 
-        # Rétroaction automatique : si on touche à l'enfant, le parent repasse en modification (DRAFT ou PENDING)
         parent = self.get_parent_entity()
         if parent and hasattr(parent, 'status') and parent.status in ['VALIDATED', 'REJECTED']:
-            # Si le parent est un Process (qui a un état DRAFT local de travail), on le remet en DRAFT
             if hasattr(parent.Status, 'DRAFT'):
                 parent.status = 'DRAFT'
             else:
@@ -212,7 +199,6 @@ class StatusResetMixin:
 
 
 class FilterStateMixin:
-    """Gère dynamiquement le filtrage adaptatif (Référentiel à 4 onglets vs Process à 5 onglets)"""
     search_fields = ['name']
 
     def get_queryset(self):
@@ -225,7 +211,6 @@ class FilterStateMixin:
                 search_filter |= Q(**{f"{field}__icontains": search_query})
             queryset = queryset.filter(search_filter)
 
-        # Détection automatique de la valeur par défaut du mode de vue
         is_process_model = hasattr(self.model, 'Status') and hasattr(self.model.Status, 'PENDING')
         default_view = 'active'
         view_mode = self.request.GET.get('view', default_view) or default_view
@@ -239,7 +224,7 @@ class FilterStateMixin:
             return queryset.filter(is_active=True, status='REJECTED').order_by('-updated_at')
         elif view_mode == 'draft' and is_process_model:
             return queryset.filter(is_active=True, status='DRAFT').order_by('-updated_at')
-        else:  # Onglet principal 'To Validate' (PENDING pour le process, DRAFT pour le référentiel)
+        else:
             if is_process_model:
                 return queryset.filter(is_active=True, status='PENDING').order_by('-updated_at')
             return queryset.filter(is_active=True, status='DRAFT').order_by('-updated_at')
@@ -261,7 +246,6 @@ class FilterStateMixin:
                 search_filter |= Q(**{f"{field}__icontains": context['search_query']})
             base_qs = base_qs.filter(search_filter)
 
-        # Alimentation des compteurs de badges pour les templates
         if is_process_model:
             context['count_draft'] = base_qs.filter(is_active=True, status='DRAFT').count()
             context['count_pending'] = base_qs.filter(is_active=True, status='PENDING').count()
