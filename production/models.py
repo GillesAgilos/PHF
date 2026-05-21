@@ -18,7 +18,6 @@ class Process(BaseModel):
     code = models.CharField(max_length=100, verbose_name="Process Code")
     scale = models.CharField(max_length=100, blank=True, verbose_name="Scale")
 
-    # Versioning fields
     version = models.PositiveIntegerField(default=1, verbose_name="Version")
     parent_version = models.ForeignKey(
         'self',

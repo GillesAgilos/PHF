@@ -1,19 +1,21 @@
 import uuid
+from datetime import date, datetime
 from django import forms
-from django.db import models
 from django.conf import settings
-from django.db.models import Q
-from django.utils import timezone
-from django.core.exceptions import ValidationError
-from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
+from django.core.exceptions import ValidationError
+from django.db import models
+from django.db.models import Q
 from django.http import HttpResponseRedirect
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse, reverse_lazy
+from django.utils import timezone
 from django.views import View
 from django.views.generic import DeleteView, ListView
 from simple_history.models import HistoricalRecords
-from django.urls import reverse_lazy
-from datetime import datetime, date
-
+from django.db.models import Max
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
 
 # =========================================================================
 # BASE MODEL FOR SIMPLE ENTITIES
@@ -89,19 +91,24 @@ class BaseModel(models.Model):
         return reverse_lazy(f'{app_label}:{model_name}_{action}', kwargs={'pk': self.pk})
 
     @property
-    def validate_url(self): return self.get_admin_url('validate')
+    def validate_url(self):
+        return self.get_admin_url('validate')
 
     @property
-    def reject_url(self): return self.get_admin_url('reject')
+    def reject_url(self):
+        return self.get_admin_url('reject')
 
     @property
-    def edit_url(self): return self.get_admin_url('edit')
+    def edit_url(self):
+        return self.get_admin_url('edit')
 
     @property
-    def _history_change_reason(self): return self._change_reason
+    def _history_change_reason(self):
+        return self._change_reason
 
     @_history_change_reason.setter
-    def _history_change_reason(self, value): self._change_reason = value
+    def _history_change_reason(self, value):
+        self._change_reason = value
 
 
 # =========================================================================
@@ -112,12 +119,15 @@ class BaseComponentEntity(models.Model):
     unique_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="%(class)s_created")
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name="%(class)s_created")
     updated_at = models.DateTimeField(auto_now=True)
-    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="%(class)s_updated")
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name="%(class)s_updated")
     is_active = models.BooleanField(default=True)
     deleted_at = models.DateTimeField(null=True, blank=True, editable=False)
-    deleted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="%(class)s_deleted")
+    deleted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name="%(class)s_deleted")
 
     history = HistoricalRecords(inherit=True)
 
@@ -152,17 +162,11 @@ class BaseComponentEntity(models.Model):
                 raise ValidationError(f"Cannot modify this element because the parent template '{parent}' is archived.")
 
     def save(self, *args, **kwargs):
+        # Sécurité au niveau de l'ORM : déclenche le full_clean() qui exécutera clean()
         if self.is_active:
             self.full_clean()
 
-        parent = self.get_parent_entity()
-        if parent and hasattr(parent, 'status') and parent.status in ['VALIDATED', 'REJECTED']:
-            if hasattr(parent.Status, 'DRAFT'):
-                parent.status = 'DRAFT'
-            else:
-                parent.status = 'DRAFT'
-            parent.save()
-
+        # Le bloc qui forçait le statut du parent à repasser en DRAFT a été supprimé ici
         super().save(*args, **kwargs)
 
 
@@ -170,12 +174,80 @@ class BaseComponentEntity(models.Model):
 # MIXIN VIEWS
 # =========================================================================
 
+class ProcessLockRequiredMixin:
+    """
+    Bloque les requêtes HTTP (POST, GET de modification) si le Process racine
+    est verrouillé (VALIDATED ou PENDING). Redirige proprement avec un message d'erreur.
+    """
+
+    def dispatch(self, request, *args, **kwargs):
+        obj = None
+        if hasattr(self, 'get_object'):
+            try:
+                obj = self.get_object()
+            except Exception:
+                pass
+
+        process = None
+        # 1. Extraction du Process depuis l'objet de la vue
+        if obj:
+            if obj.__class__.__name__ == 'Process':
+                process = obj
+            elif hasattr(obj, 'process'):
+                process = obj.process
+            elif hasattr(obj, 'unit_operation'):
+                process = obj.unit_operation.process
+            elif hasattr(obj, 'step'):
+                process = obj.step.unit_operation.process
+
+        # 2. Extraction du Process depuis les paramètres de l'URL (si ajout)
+        if not process:
+            if 'process_pk' in self.kwargs:
+                from django.apps import apps
+                ProcessModel = apps.get_model('production', 'Process')
+                process = get_object_or_404(ProcessModel, pk=self.kwargs['process_pk'])
+            elif 'unit_pk' in self.kwargs:
+                from django.apps import apps
+                UnitModel = apps.get_model('production', 'UnitOperation')
+                unit = get_object_or_404(UnitModel, pk=self.kwargs['unit_pk'])
+                process = unit.process
+            elif 'step_pk' in self.kwargs:
+                from django.apps import apps
+                StepModel = apps.get_model('production', 'Step')
+                step = get_object_or_404(StepModel, pk=self.kwargs['step_pk'])
+                process = step.unit_operation.process
+
+        # 3. Vérification du verrouillage
+        if process and process.status in ['VALIDATED', 'PENDING']:
+            messages.error(
+                request,
+                f"Action denied: The process chart '{process.name}' is locked ({process.get_status_display()})."
+            )
+
+            # Redirections intelligentes selon le niveau de profondeur de l'action déniée
+            if obj and obj.__class__.__name__ == 'Process':
+                return redirect('production:process_list')
+            elif 'step_pk' in self.kwargs or (obj and hasattr(obj, 'step')):
+                step_pk = self.kwargs.get('step_pk') or obj.step.pk
+                return redirect(f"{reverse('production:parameter_list', kwargs={'step_pk': step_pk})}?view=active")
+            elif 'unit_pk' in self.kwargs or (obj and hasattr(obj, 'unit_operation')):
+                unit_pk = self.kwargs.get('unit_pk') or obj.unit_operation.pk
+                return redirect(f"{reverse('production:step_list', kwargs={'unit_pk': unit_pk})}?view=active")
+            else:
+                process_pk = process.pk
+                return redirect(
+                    f"{reverse('production:unitoperation_list', kwargs={'process_pk': process_pk})}?view=active")
+
+        return super().dispatch(request, *args, **kwargs)
+
+
 class AuditTrailMixin:
     def form_valid(self, form):
         if form.instance.pk:
             current_obj = self.model.objects.filter(pk=form.instance.pk).first()
             if current_obj and not current_obj.is_active:
-                messages.error(self.request, f"Action denied: This {self.model._meta.verbose_name} is archived. Restore it first.")
+                messages.error(self.request,
+                               f"Action denied: This {self.model._meta.verbose_name} is archived. Restore it first.")
                 return redirect(current_obj.get_admin_url('detail'))
 
         if form.instance.pk and form.has_changed():
@@ -192,7 +264,6 @@ class AuditTrailMixin:
 class StatusResetMixin:
     def form_valid(self, form):
         if form.instance.pk and form.has_changed():
-            # Support adaptatif pour Process (DRAFT) vs Referential (DRAFT)
             form.instance.status = 'DRAFT'
             messages.info(self.request, "Changes detected: Status reset to 'Draft / To validate'.")
         return super().form_valid(form)
@@ -259,12 +330,14 @@ class FilterStateMixin:
 
         return context
 
+
 # =========================================================================
 # GENERIC VIEWS (Delete, Restore, Validate, Reject, Detail)
 # =========================================================================
 
 class GenericDeleteView(DeleteView):
     template_name = 'generic/generic_confirm_delete.html'
+
     def form_valid(self, form):
         self.object.delete(user=self.request.user)
         messages.success(self.request, f"{self.model.__name__} archived.")
@@ -274,7 +347,10 @@ class GenericDeleteView(DeleteView):
 class GenericRestoreView(View):
     model = None
     redirect_url = None
-    def get_object(self): return get_object_or_404(self.model, pk=self.kwargs.get('pk'))
+
+    def get_object(self):
+        return get_object_or_404(self.model, pk=self.kwargs.get('pk'))
+
     def post(self, request, *args, **kwargs):
         obj = self.get_object()
         try:
@@ -289,6 +365,7 @@ class GenericRestoreView(View):
 class EntityValidateView(View):
     model = None
     redirect_url = None
+
     def post(self, request, pk):
         obj = get_object_or_404(self.model, pk=pk)
         obj.validate_entity(user=request.user)
@@ -299,6 +376,7 @@ class EntityValidateView(View):
 class EntityRejectView(View):
     model = None
     redirect_url = None
+
     def post(self, request, pk):
         obj = get_object_or_404(self.model, pk=pk)
         reason = request.POST.get('rejection_reason')
@@ -336,7 +414,8 @@ class EntityDetailView(AuditTrailMixin, ListView):
                 old_record = records[i + 1]
                 delta = new_record.diff_against(old_record)
                 for change in delta.changes:
-                    ignored = ['updated_at', 'updated_by', 'history_user', 'history_date', 'history_user_id', 'updated_by_id']
+                    ignored = ['updated_at', 'updated_by', 'history_user', 'history_date', 'history_user_id',
+                               'updated_by_id']
                     if change.field not in ignored:
                         field_name = change.field
                         old_val, new_val = change.old, change.new
@@ -347,9 +426,11 @@ class EntityDetailView(AuditTrailMixin, ListView):
                                 rel_model = field_obj.related_model
                                 old_obj = rel_model.objects.filter(pk=old_val).first() if old_val else None
                                 new_obj = rel_model.objects.filter(pk=new_val).first() if new_val else None
-                                old_val, new_val = str(old_obj) if old_obj else "None", str(new_obj) if new_obj else "None"
+                                old_val, new_val = str(old_obj) if old_obj else "None", str(
+                                    new_obj) if new_obj else "None"
                                 field_name = lookup_name
-                        except: pass
+                        except:
+                            pass
                         changes.append({'field': field_name.replace('_', ' ').upper(), 'old': old_val, 'new': new_val})
             history_list.append({'record': new_record, 'changes': changes})
         context['history_list'] = history_list
@@ -366,7 +447,8 @@ class EntityDetailView(AuditTrailMixin, ListView):
                 if hasattr(value, '__str__') and not isinstance(value, (str, int, bool, datetime, date, type(None))):
                     value = str(value)
                 display_fields.append({'label': f.verbose_name.replace('_', ' '), 'value': value})
-            except: continue
+            except:
+                continue
 
         context['display_fields'] = display_fields
         return context
@@ -378,7 +460,8 @@ class EntityDetailView(AuditTrailMixin, ListView):
 
 class BaseEntityForm(forms.ModelForm):
     change_justification = forms.CharField(
-        widget=forms.Textarea(attrs={'rows': 2, 'placeholder': 'Why are you modifying this entity?', 'class': 'form-control'}),
+        widget=forms.Textarea(
+            attrs={'rows': 2, 'placeholder': 'Why are you modifying this entity?', 'class': 'form-control'}),
         required=False,
         label="Reason for modification"
     )
@@ -396,7 +479,8 @@ class BaseEntityForm(forms.ModelForm):
                 return cleaned_data
             justification = cleaned_data.get('change_justification', '').strip()
             if not justification or len(justification) < 5:
-                self.add_error('change_justification', "A descriptive reason (min. 5 characters) is required to save modifications.")
+                self.add_error('change_justification',
+                               "A descriptive reason (min. 5 characters) is required to save modifications.")
         return cleaned_data
 
     def save(self, commit=True):

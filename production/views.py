@@ -24,11 +24,13 @@ class ProcessListView(FilterStateMixin, ListView):
     context_object_name = 'processes'
     search_fields = ['name', 'code']
 
+
 class ProcessCreateView(AuditTrailMixin, CreateView):
     model = Process
     form_class = ProcessForm
     template_name = 'generic/generic_form.html'
     success_url = reverse_lazy('production:process_list')
+
 
 class ProcessUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
     model = Process
@@ -36,24 +38,30 @@ class ProcessUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
     template_name = 'generic/generic_form.html'
     success_url = reverse_lazy('production:process_list')
 
+
 class ProcessDeleteView(GenericDeleteView):
     model = Process
     success_url = reverse_lazy('production:process_list')
+
 
 class ProcessRestoreView(GenericRestoreView):
     model = Process
     redirect_url = 'production:process_list'
 
+
 class ProcessDetailView(EntityDetailView):
     model = Process
+
 
 class ProcessValidateView(EntityValidateView):
     model = Process
     redirect_url = 'production:process_list'
 
+
 class ProcessRejectView(EntityRejectView):
     model = Process
     redirect_url = 'production:process_list'
+
 
 class ProcessSubmitView(View):
 
@@ -65,6 +73,7 @@ class ProcessSubmitView(View):
             process.save()
             messages.success(request, f"Process template '{process}' has been submitted for review.")
         return redirect('production:process_list')
+
 
 class ProcessCreateNewVersionView(View):
 
@@ -131,7 +140,7 @@ class ProcessCreateNewVersionView(View):
 
                     for sample in s.samples.filter(is_active=True):
                         new_sample = Sample.objects.create(
-                            step=new_s,  # Lié à la nouvelle étape
+                            step=new_s,
                             sample_name=sample.sample_name,
                             created_by=request.user,
                             updated_by=request.user
@@ -141,6 +150,7 @@ class ProcessCreateNewVersionView(View):
 
         messages.success(request, f"New version {new_process.version} initialized successfully in Draft.")
         return redirect('production:process_list')
+
 
 # =========================================================================
 # 2. UNIT OPERATION VIEWS
@@ -154,7 +164,7 @@ class UnitOperationStructureView(TemplateView):
         view_mode = self.request.GET.get('view', 'active')
 
         if view_mode == 'archived':
-            units = UnitOperation.objects.filter(process=process, is_active=False).order_by('-deleted_at')
+            units = UnitOperation.objects.filter(process=process, is_active=False).order_by('order')
         else:
             units = UnitOperation.objects.filter(process=process, is_active=True).order_by('order')
 
@@ -171,6 +181,7 @@ class UnitOperationStructureView(TemplateView):
         })
         return context
 
+
 class UnitOperationAddView(View):
 
     def post(self, request, process_pk):
@@ -183,9 +194,17 @@ class UnitOperationAddView(View):
         if form.is_valid():
             try:
                 unit = form.save(commit=False)
+
+                max_active_order = UnitOperation.objects.filter(
+                    process=process,
+                    is_active=True
+                ).aggregate(Max('order'))['order__max'] or 0
+
+                unit.order = max_active_order + 1
                 unit.created_by = request.user
                 unit.updated_by = request.user
                 unit.save()
+
                 messages.success(request, f"Operation '{unit.name}' successfully added to flowchart.")
             except Exception as e:
                 messages.error(request, f"Error saving unit operation: {str(e)}")
@@ -195,6 +214,7 @@ class UnitOperationAddView(View):
                     messages.error(request, f"[{field.upper()}] {error}")
 
         return redirect(f"/production/processes/{process.pk}/structure/?view={view_mode}")
+
 
 class UnitOperationRestoreView(View):
 
@@ -211,6 +231,15 @@ class UnitOperationRestoreView(View):
                 unit.restore()
                 unit.order = max_active_order + 1
                 unit.save(update_fields=['order'])
+
+                # Réindexation propre des archivés pour boucher le trou provoqué par la restauration
+                archived_units = UnitOperation.objects.filter(
+                    process=unit.process, is_active=False
+                ).order_by('order')
+                for index, arch_unit in enumerate(archived_units, start=2000000001):
+                    if arch_unit.order != index:
+                        arch_unit.order = index
+                        arch_unit.save(update_fields=['order'])
 
                 messages.success(request,
                                  f"Operation '{unit.name}' restored back to active flowchart at position {unit.order}.")
@@ -245,25 +274,26 @@ class UnitOperationReorderView(View):
             if target_unit:
                 target_order = target_unit.order
 
-                target_unit.order = 9999
-                target_unit.save()
+                target_unit.order = 2147483647
+                target_unit.save(update_fields=['order'])
 
                 unit.order = target_order
-                unit.save()
+                unit.save(update_fields=['order'])
 
                 target_unit.order = current_order
-                target_unit.save()
+                target_unit.save(update_fields=['order'])
 
                 storage = messages.get_messages(request)
                 storage.used = True
-
                 messages.info(request, "Flowchart sequence updated.")
 
         return redirect(f"/production/processes/{process.pk}/structure/")
 
+
 class UnitOperationDetailView(EntityDetailView):
     model = UnitOperation
     template_name = 'generic/generic_detail.html'
+
 
 class UnitOperationUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
     model = UnitOperation
@@ -272,6 +302,7 @@ class UnitOperationUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
 
     def get_success_url(self):
         return f"/production/processes/{self.object.process.pk}/structure/?view=active"
+
 
 class UnitOperationDeleteView(GenericDeleteView):
     model = UnitOperation
@@ -284,19 +315,15 @@ class UnitOperationDeleteView(GenericDeleteView):
 
         with transaction.atomic():
             try:
-                max_global_order = UnitOperation.objects.filter(
-                    process=self.object.process
-                ).aggregate(Max('order'))['order__max'] or 0
-
-                self.object.order = max_global_order + 1
+                # Isolement temporaire pour casser la contrainte d'unicité active
+                self.object.order = 2147483647
                 self.object.save(update_fields=['order'])
 
-                # 2. Soft Delete
                 self.object.delete(user=self.request.user)
 
+                # Réindexation des actifs (1 à N)
                 active_units = UnitOperation.objects.filter(
-                    process=self.object.process,
-                    is_active=True
+                    process=self.object.process, is_active=True
                 ).order_by('order')
 
                 for index, act_unit in enumerate(active_units, start=1):
@@ -304,16 +331,24 @@ class UnitOperationDeleteView(GenericDeleteView):
                         act_unit.order = index
                         act_unit.save(update_fields=['order'])
 
-                messages.warning(
-                    self.request,
-                    f"Operation '{self.object.name}' archived. Flowchart sequence re-indexed."
-                )
+                # Réindexation des archivés (2000000001 à N)
+                archived_units = UnitOperation.objects.filter(
+                    process=self.object.process, is_active=False
+                ).order_by('order')
+
+                for index, arch_unit in enumerate(archived_units, start=2000000001):
+                    if arch_unit.order != index:
+                        arch_unit.order = index
+                        arch_unit.save(update_fields=['order'])
+
+                messages.warning(self.request, f"Operation '{self.object.name}' archived.")
 
             except Exception as e:
-                messages.error(self.request, f"Action denied: {str(e)}")
+                messages.error(request, f"Action denied: {str(e)}")
                 return HttpResponseRedirect(success_url)
 
         return HttpResponseRedirect(success_url)
+
 
 # =========================================================================
 # 3. STEP VIEWS
@@ -327,7 +362,7 @@ class StepStructureView(TemplateView):
         view_mode = self.request.GET.get('view', 'active')
 
         if view_mode == 'archived':
-            steps = Step.objects.filter(unit_operation=unit, is_active=False).order_by('-deleted_at')
+            steps = Step.objects.filter(unit_operation=unit, is_active=False).order_by('order')
         else:
             steps = Step.objects.filter(unit_operation=unit, is_active=True).order_by('order')
 
@@ -345,6 +380,7 @@ class StepStructureView(TemplateView):
         })
         return context
 
+
 class StepAddView(View):
 
     def post(self, request, unit_pk):
@@ -357,6 +393,13 @@ class StepAddView(View):
         if form.is_valid():
             try:
                 step = form.save(commit=False)
+
+                max_active_order = Step.objects.filter(
+                    unit_operation=unit,
+                    is_active=True
+                ).aggregate(Max('order'))['order__max'] or 0
+
+                step.order = max_active_order + 1
                 step.created_by = request.user
                 step.updated_by = request.user
                 step.save()
@@ -370,6 +413,7 @@ class StepAddView(View):
 
         return redirect(f"/production/unit-operations/{unit.pk}/manage/?view={view_mode}")
 
+
 class StepDeleteView(GenericDeleteView):
     model = Step
 
@@ -381,17 +425,15 @@ class StepDeleteView(GenericDeleteView):
 
         with transaction.atomic():
             try:
-                max_global_order = Step.objects.filter(
-                    unit_operation=self.object.unit_operation
-                ).aggregate(Max('order'))['order__max'] or 0
-
-                self.object.order = max_global_order + 1
+                # Isolation pivot de l'élément à archiver
+                self.object.order = 2147483647
                 self.object.save(update_fields=['order'])
+
                 self.object.delete(user=self.request.user)
 
+                # Réindexation séquentielle des étapes actives restantes
                 active_steps = Step.objects.filter(
-                    unit_operation=self.object.unit_operation,
-                    is_active=True
+                    unit_operation=self.object.unit_operation, is_active=True
                 ).order_by('order')
 
                 for index, act_step in enumerate(active_steps, start=1):
@@ -399,16 +441,25 @@ class StepDeleteView(GenericDeleteView):
                         act_step.order = index
                         act_step.save(update_fields=['order'])
 
-                messages.warning(
-                    self.request,
-                    f"Step '{self.object.name}' archived. Active sequence re-indexed from 1."
-                )
+                # Réindexation séquentielle des étapes archivées
+                archived_steps = Step.objects.filter(
+                    unit_operation=self.object.unit_operation, is_active=False
+                ).order_by('order')
+
+                for index, arch_step in enumerate(archived_steps, start=2000000001):
+                    if arch_step.order != index:
+                        arch_step.order = index
+                        arch_step.save(update_fields=['order'])
+
+                messages.warning(self.request,
+                                 f"Step '{self.object.name}' archived. Active sequence re-indexed from 1.")
 
             except Exception as e:
                 messages.error(self.request, f"Action denied: {str(e)}")
                 return HttpResponseRedirect(success_url)
 
         return HttpResponseRedirect(success_url)
+
 
 class StepRestoreView(View):
 
@@ -425,6 +476,15 @@ class StepRestoreView(View):
                 step.restore()
                 step.order = max_active_order + 1
                 step.save(update_fields=['order'])
+
+                # Réindexation des archives restantes
+                archived_steps = Step.objects.filter(
+                    unit_operation=step.unit_operation, is_active=False
+                ).order_by('order')
+                for index, arch_step in enumerate(archived_steps, start=2000000001):
+                    if arch_step.order != index:
+                        arch_step.order = index
+                        arch_step.save(update_fields=['order'])
 
                 messages.success(request, f"Step '{step.name}' restored successfully at position {step.order}.")
             except Exception as e:
@@ -459,21 +519,26 @@ class StepReorderView(View):
             if target_step:
                 target_order = target_step.order
 
-                target_step.order = 9999
-                target_step.save()
+                target_step.order = 2147483647
+                target_step.save(update_fields=['order'])
+
                 step.order = target_order
-                step.save()
+                step.save(update_fields=['order'])
+
                 target_step.order = current_order
-                target_step.save()
+                target_step.save(update_fields=['order'])
+
                 storage = messages.get_messages(request)
                 storage.used = True
                 messages.info(request, "Step sequence updated.")
 
         return redirect(f"/production/unit-operations/{unit.pk}/manage/")
 
+
 class StepDetailView(EntityDetailView):
     model = Step
     template_name = 'generic/generic_detail.html'
+
 
 class StepUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
     model = Step
@@ -481,8 +546,8 @@ class StepUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
     template_name = 'generic/generic_form.html'
 
     def get_success_url(self):
-        # Redirige vers la liste des étapes de l'UnitOperation parente
         return f"/production/unit-operations/{self.object.unit_operation.pk}/manage/?view=active"
+
 
 # =========================================================================
 # 4. PARAMETER VIEWS
@@ -496,7 +561,7 @@ class ParameterStructureView(TemplateView):
         view_mode = self.request.GET.get('view', 'active')
 
         if view_mode == 'archived':
-            parameters = Parameter.objects.filter(step=step, is_active=False).order_by('-deleted_at')
+            parameters = Parameter.objects.filter(step=step, is_active=False).order_by('order')
         else:
             parameters = Parameter.objects.filter(step=step, is_active=True).order_by('order')
 
@@ -515,6 +580,7 @@ class ParameterStructureView(TemplateView):
         })
         return context
 
+
 class ParameterAddView(View):
     def post(self, request, step_pk):
         step = get_object_or_404(Step, pk=step_pk)
@@ -526,6 +592,13 @@ class ParameterAddView(View):
         if form.is_valid():
             try:
                 param = form.save(commit=False)
+
+                max_active_order = Parameter.objects.filter(
+                    step=step,
+                    is_active=True
+                ).aggregate(Max('order'))['order__max'] or 0
+
+                param.order = max_active_order + 1
                 param.created_by = request.user
                 param.updated_by = request.user
                 param.save()
@@ -539,6 +612,7 @@ class ParameterAddView(View):
 
         return redirect(f"/production/steps/{step.pk}/parameters/?view={view_mode}")
 
+
 class ParameterDeleteView(GenericDeleteView):
     model = Parameter
 
@@ -550,23 +624,31 @@ class ParameterDeleteView(GenericDeleteView):
 
         with transaction.atomic():
             try:
-                max_global_order = Parameter.objects.filter(
-                    step=self.object.step
-                ).aggregate(Max('order'))['order__max'] or 0
-
-                self.object.order = max_global_order + 1
+                # Évacuation de l'élément vers la zone pivot
+                self.object.order = 2147483647
                 self.object.save(update_fields=['order'])
+
                 self.object.delete(user=self.request.user)
 
+                # Réindexation des actifs
                 active_params = Parameter.objects.filter(
-                    step=self.object.step,
-                    is_active=True
+                    step=self.object.step, is_active=True
                 ).order_by('order')
 
                 for index, act_param in enumerate(active_params, start=1):
                     if act_param.order != index:
                         act_param.order = index
                         act_param.save(update_fields=['order'])
+
+                # Réindexation des archivés
+                archived_params = Parameter.objects.filter(
+                    step=self.object.step, is_active=False
+                ).order_by('order')
+
+                for index, arch_param in enumerate(archived_params, start=2000000001):
+                    if arch_param.order != index:
+                        arch_param.order = index
+                        arch_param.save(update_fields=['order'])
 
                 messages.warning(self.request, f"Parameter '{self.object.name}' archived and sequence re-indexed.")
             except Exception as e:
@@ -591,11 +673,21 @@ class ParameterRestoreView(View):
                 param.order = max_active_order + 1
                 param.save(update_fields=['order'])
 
+                # Ajustement des archives restantes
+                archived_params = Parameter.objects.filter(
+                    step=param.step, is_active=False
+                ).order_by('order')
+                for index, arch_param in enumerate(archived_params, start=2000000001):
+                    if arch_param.order != index:
+                        arch_param.order = index
+                        arch_param.save(update_fields=['order'])
+
                 messages.success(request, f"Parameter '{param.name}' restored back at position {param.order}.")
             except Exception as e:
-                messages.error(request, f"Action denied: {str(e)}")
+                messages.error(self.request, f"Action denied: {str(e)}")
 
         return redirect(f"/production/steps/{step_pk}/parameters/?view=archived")
+
 
 class ParameterReorderView(View):
     def get(self, request, pk, direction):
@@ -621,22 +713,25 @@ class ParameterReorderView(View):
 
             if target_param:
                 target_order = target_param.order
-                target_param.order = 9999
-                target_param.save()
+
+                target_param.order = 2147483647
+                target_param.save(update_fields=['order'])
 
                 param.order = target_order
-                param.save()
+                param.save(update_fields=['order'])
 
                 target_param.order = current_order
-                target_param.save()
+                target_param.save(update_fields=['order'])
 
                 messages.info(request, "Parameters sequence updated.")
 
         return redirect(f"/production/steps/{step.pk}/parameters/")
 
+
 class ParameterDetailView(EntityDetailView):
     model = Parameter
     template_name = 'generic/generic_detail.html'
+
 
 class ParameterUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
     model = Parameter
@@ -645,6 +740,7 @@ class ParameterUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
 
     def get_success_url(self):
         return f"/production/steps/{self.object.step.pk}/parameters/?view=active"
+
 
 # =========================================================================
 # 5. SAMPLE VIEWS
@@ -679,6 +775,7 @@ class SampleStructureView(TemplateView):
         })
         return context
 
+
 class SampleAddView(View):
     def post(self, request, step_pk):
         step = get_object_or_404(Step, pk=step_pk)
@@ -690,7 +787,7 @@ class SampleAddView(View):
         if form.is_valid():
             try:
                 sample = form.save(commit=False)
-                sample.step = step  # On associe l'étape
+                sample.step = step
                 sample.created_by = request.user
                 sample.updated_by = request.user
                 sample.save()
@@ -705,6 +802,7 @@ class SampleAddView(View):
                     messages.error(request, f"[{field.upper()}] {error}")
 
         return redirect(f"/production/steps/{step.pk}/samples/?view={view_mode}")
+
 
 class SampleDeleteView(GenericDeleteView):
     model = Sample
@@ -721,6 +819,7 @@ class SampleDeleteView(GenericDeleteView):
             messages.error(self.request, f"Action denied: {str(e)}")
         return HttpResponseRedirect(success_url)
 
+
 class SampleRestoreView(View):
     def post(self, request, pk):
         sample = get_object_or_404(Sample, pk=pk)
@@ -732,9 +831,11 @@ class SampleRestoreView(View):
             messages.error(request, f"Action denied: {str(e)}")
         return redirect(f"/production/steps/{step_pk}/samples/?view=archived")
 
+
 class SampleDetailView(EntityDetailView):
     model = Sample
     template_name = 'generic/generic_detail.html'
+
 
 class SampleUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
     model = Sample
