@@ -72,20 +72,13 @@ DATABASES = {
         'PASSWORD': env('DB_PASSWORD'),
         'HOST': env('DB_HOST'),
         'PORT': env('DB_PORT'),
+        'OPTIONS': {
+            'driver': env('DB_DRIVER'),
+            'extra_params': 'Encrypt=no;TrustServerCertificate=yes',
+            'connection_timeout': 30,
+        },
     }
 }
-
-base_options = {
-    'driver': env('DB_DRIVER'),
-    'connection_timeout': 30,
-}
-
-if DEBUG:
-    base_options['extra_params'] = 'Trusted_Connection=yes;Encrypt=no;TrustServerCertificate=yes'
-else:
-    base_options['extra_params'] = 'Encrypt=yes;TrustServerCertificate=yes'
-
-DATABASES['default']['OPTIONS'] = base_options
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
