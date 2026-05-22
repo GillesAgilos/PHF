@@ -17,7 +17,8 @@
                 <p class="mb-0 small text-muted">This record is currently inactive. Restoration is required for any
                     changes.</p>
             </div>
-            <form action="{% url request.resolver_match.namespace|add:':'|add:model_name|add:'_restore' object.pk %}" method="post" class="m-0">
+            <form action="{% url request.resolver_match.namespace|add:':'|add:model_name|add:'_restore' object.pk %}"
+                  method="post" class="m-0">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-info shadow-sm">
                     <i class="bi bi-arrow-counterclockwise"></i> Restore Record
@@ -81,7 +82,7 @@
                     {% for field in display_fields %}
                         <tr>
                             <th class="text-muted small align-middle ps-4"
-                                >{{ field.label|upper }}</th>
+                            >{{ field.label|upper }}</th>
                             <td class="fw-bold align-middle py-3">
                                 {% if field.value.year %}
                                     {{ field.value|date:"d/m/Y H:i" }}
@@ -100,6 +101,116 @@
             </div>
         </div>
     </div>
+
+    {% if is_process_view %}
+        <h4 class="text-secondary mb-3">
+            <i class="bi bi-diagram-3"></i> Process Architecture
+        </h4>
+        <div class="card shadow-sm mb-5 border-0 bg-light p-4">
+            <div class="position-relative">
+
+                {% for unit in object.units.all %}
+                    {% if unit.is_active %}
+                        <div class="card mb-4 border-0 shadow-sm rounded-3">
+                            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
+                                <div class="d-flex align-items-center">
+                                    <span class="badge bg-light text-dark rounded-circle me-3 fw-bold d-flex align-items-center justify-content-center"
+                                          style="width: 30px; height: 30px;">
+                                        {{ unit.order }}
+                                    </span>
+                                    <h5 class="mb-0 fw-bold">
+                                        {{ unit.name }}
+                                        <span class="badge {% if unit.unit_type == 'USP' %}bg-info text-dark{% else %}bg-primary{% endif %} ms-2 small text-uppercase"
+                                              style="font-size: 0.75rem;">
+                                            {{ unit.unit_type }}
+                                        </span>
+                                    </h5>
+                                </div>
+                                <div>
+                                    <a href="{% url 'production:step_list' unit_pk=unit.pk %}"
+                                       class="btn btn-sm btn-outline-light me-1">
+                                        <i class="bi bi-gear-fill"></i> Manage Steps
+                                    </a>
+                                    <a href="{% url 'production:unitoperation_detail' pk=unit.pk %}"
+                                       class="btn btn-sm btn-link text-white-50 p-0 ms-2" title="History">
+                                        <i class="bi bi-clock-history"></i>
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div class="card-body bg-white p-3">
+                                <div class="position-relative ps-3 border-start border-2 border-light">
+                                    {% for step in unit.steps.all %}
+                                        {% if step.is_active %}
+                                            <div class="p-3 mb-3 bg-light rounded-3 border-start border-4 border-secondary shadow-xs">
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <span class="fw-bold text-dark">
+                                                        <i class="bi bi-arrow-right-square-fill text-muted me-2"></i>
+                                                        Step {{ step.order }} : {{ step.name }}
+                                                    </span>
+                                                    <div class="btn-group">
+                                                        <a href="{% url 'production:parameter_list' step_pk=step.pk %}"
+                                                           class="btn btn-xs btn-outline-primary py-0 px-2"
+                                                           style="font-size: 0.8rem;">
+                                                            <i class="bi bi-sliders"></i> Parameters
+                                                        </a>
+                                                        <a href="{% url 'production:sample_list' step_pk=step.pk %}"
+                                                           class="btn btn-xs btn-outline-info py-0 px-2"
+                                                           style="font-size: 0.8rem;">
+                                                            <i class="bi-eyedropper"></i>Samples
+                                                        </a>
+                                                    </div>
+                                                </div>
+
+                                                <div class="d-flex flex-wrap gap-2 mt-2 ps-4">
+                                                    {% for param in step.parameters.all %}
+                                                        {% if param.is_active %}
+                                                            <span class="badge bg-white text-primary border border-primary fw-normal py-1 px-2"
+                                                                  title="Format: {{ param.format_type }}">
+                                                                <i class="bi bi-sliders me-1"></i> {{ param.name }}
+                                                                {% if param.unit %}
+                                                                    <small class="text-muted">({{ param.unit }})</small>{% endif %}
+                                                            </span>
+                                                        {% endif %}
+                                                    {% endfor %}
+
+                                                    {% for sample in step.samples.all %}
+                                                        {% if sample.is_active %}
+                                                            <span class="badge bg-white text-info border border-info fw-normal py-1 px-2">
+                                                                <i class="bi-eyedropper"></i> {{ sample.sample_name }}
+                                                            </span>
+                                                        {% endif %}
+                                                    {% endfor %}
+
+                                                    {% if not step.parameters.all and not step.samples.all %}
+                                                        <small class="text-muted italic small"><i
+                                                                class="bi bi-dash"></i> No parameters or samples
+                                                            configured.</small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        {% endif %}
+                                    {% empty %}
+                                        <div class="text-muted small italic p-2">
+                                            <i class="bi bi-exclamation-circle"></i> No active steps found for this
+                                            unit.
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% empty %}
+                    <div class="text-center p-4 bg-white rounded shadow-sm">
+                        <i class="bi bi-diagram-3 text-muted display-6 d-block mb-2"></i>
+                        <span class="text-muted italic">No operational units attached to this process.</span>
+                    </div>
+                {% endfor %}
+
+            </div>
+        </div>
+    {% endif %}
+
 
     <h4 class="text-secondary mb-3"><i class="bi bi-clock-history"></i> Audit Trail</h4>
     <div class="card shadow-sm border-0">

@@ -1,4 +1,4 @@
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, request
 from django.urls import reverse_lazy
 from django.shortcuts import get_object_or_404, redirect
 from django.views import View
@@ -51,6 +51,22 @@ class ProcessRestoreView(GenericRestoreView):
 
 class ProcessDetailView(EntityDetailView):
     model = Process
+
+    def get_queryset(self):
+        return Process.objects.filter(pk=self.kwargs['pk']).prefetch_related(
+            'units__steps__parameters',
+            'units__steps__samples__analytical_methods'
+        )
+
+    def get_context_data(self, **kwargs):
+        self.object = get_object_or_404(self.get_queryset())
+        self.obj = self.object
+        context = super().get_context_data(**kwargs)
+
+        context['object'] = self.object
+        context['is_process_view'] = True
+
+        return context
 
 
 class ProcessValidateView(EntityValidateView):
