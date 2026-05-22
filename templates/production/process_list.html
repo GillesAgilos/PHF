@@ -75,7 +75,6 @@
     </ul>
 
     <style>
-        /* Style pour indiquer visuellement que la ligne est cliquable */
         .clickable-row {
             cursor: pointer;
         }
@@ -114,7 +113,8 @@
                         <td>
                             <span class="fw-semibold">{{ process.name }}</span>
                             {% if process.status == 'REJECTED' and process.rejection_reason %}
-                                <br><small class="text-danger fw-bold"><i class="bi bi-chat-left-text-fill"></i> Note: {{ process.rejection_reason }}</small>
+                                <br><small class="text-danger fw-bold"><i class="bi bi-arrow-right"></i> Needs
+                                correction</small>
                             {% endif %}
                         </td>
                         <td>
@@ -222,18 +222,14 @@
 {% block extra_js %}
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        // Sélectionne toutes les lignes qui possèdent la classe clickable-row
         const rows = document.querySelectorAll(".clickable-row");
 
         rows.forEach(row => {
             row.addEventListener("click", function(e) {
-                // SÉCURITÉ IMPORTANTE : Si l'utilisateur clique sur un bouton, un lien, un formulaire
-                // ou à l'intérieur du conteneur de rejet (collapse), on n'exécute pas la redirection globale.
                 if (e.target.closest('button') || e.target.closest('a') || e.target.closest('form') || e.target.closest('.collapse')) {
                     return;
                 }
 
-                // Récupération de l'URL présente dans le data-href et redirection
                 const url = this.dataset.href;
                 if (url) {
                     window.location.href = url;

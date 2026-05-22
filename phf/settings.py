@@ -65,18 +65,25 @@ TEMPLATES = [
 WSGI_APPLICATION = 'phf.wsgi.application'
 
 DATABASES = {
-    'default': env.db('DATABASE_URL')
+    'default': {
+        'ENGINE': 'mssql',
+        'NAME': env('DB_NAME'),
+        'USER': env('DB_USER'),
+        'PASSWORD': env('DB_PASSWORD'),
+        'HOST': env('DB_HOST'),
+        'PORT': env('DB_PORT'),
+    }
 }
-DATABASES['default']['ENGINE'] = 'mssql'
 
 base_options = {
-    'driver': env('DB_DRIVER', default='ODBC Driver 17 for SQL Server'),
+    'driver': env('DB_DRIVER'),
     'connection_timeout': 30,
 }
+
 if DEBUG:
     base_options['extra_params'] = 'Trusted_Connection=yes;Encrypt=no;TrustServerCertificate=yes'
 else:
-    base_options['extra_params'] = 'Encrypt=yes'
+    base_options['extra_params'] = 'Encrypt=yes;TrustServerCertificate=yes'
 
 DATABASES['default']['OPTIONS'] = base_options
 

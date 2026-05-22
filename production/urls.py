@@ -41,7 +41,7 @@ urlpatterns = [
     path('steps/<uuid:pk>/detail/', views.StepDetailView.as_view(), name='step_detail'),
 
     # =========================================================================
-    # LEVEL 4.1 : PARAMETERS (
+    # LEVEL 4.1 : PARAMETERS
     # =========================================================================
     path('steps/<uuid:step_pk>/parameters/', views.ParameterStructureView.as_view(), name='parameter_list'),
     path('steps/<uuid:step_pk>/parameters/add/', views.ParameterAddView.as_view(), name='parameter_add'),

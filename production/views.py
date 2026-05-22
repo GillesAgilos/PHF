@@ -232,7 +232,6 @@ class UnitOperationRestoreView(View):
                 unit.order = max_active_order + 1
                 unit.save(update_fields=['order'])
 
-                # Réindexation propre des archivés pour boucher le trou provoqué par la restauration
                 archived_units = UnitOperation.objects.filter(
                     process=unit.process, is_active=False
                 ).order_by('order')
@@ -315,13 +314,11 @@ class UnitOperationDeleteView(GenericDeleteView):
 
         with transaction.atomic():
             try:
-                # Isolement temporaire pour casser la contrainte d'unicité active
                 self.object.order = 2147483647
                 self.object.save(update_fields=['order'])
 
                 self.object.delete(user=self.request.user)
 
-                # Réindexation des actifs (1 à N)
                 active_units = UnitOperation.objects.filter(
                     process=self.object.process, is_active=True
                 ).order_by('order')
@@ -331,7 +328,6 @@ class UnitOperationDeleteView(GenericDeleteView):
                         act_unit.order = index
                         act_unit.save(update_fields=['order'])
 
-                # Réindexation des archivés (2000000001 à N)
                 archived_units = UnitOperation.objects.filter(
                     process=self.object.process, is_active=False
                 ).order_by('order')
@@ -413,7 +409,6 @@ class StepAddView(View):
 
         return redirect(f"/production/unit-operations/{unit.pk}/manage/?view={view_mode}")
 
-
 class StepDeleteView(GenericDeleteView):
     model = Step
 
@@ -425,13 +420,11 @@ class StepDeleteView(GenericDeleteView):
 
         with transaction.atomic():
             try:
-                # Isolation pivot de l'élément à archiver
                 self.object.order = 2147483647
                 self.object.save(update_fields=['order'])
 
                 self.object.delete(user=self.request.user)
 
-                # Réindexation séquentielle des étapes actives restantes
                 active_steps = Step.objects.filter(
                     unit_operation=self.object.unit_operation, is_active=True
                 ).order_by('order')
@@ -441,7 +434,6 @@ class StepDeleteView(GenericDeleteView):
                         act_step.order = index
                         act_step.save(update_fields=['order'])
 
-                # Réindexation séquentielle des étapes archivées
                 archived_steps = Step.objects.filter(
                     unit_operation=self.object.unit_operation, is_active=False
                 ).order_by('order')
@@ -460,7 +452,6 @@ class StepDeleteView(GenericDeleteView):
 
         return HttpResponseRedirect(success_url)
 
-
 class StepRestoreView(View):
 
     def post(self, request, pk):
@@ -477,7 +468,6 @@ class StepRestoreView(View):
                 step.order = max_active_order + 1
                 step.save(update_fields=['order'])
 
-                # Réindexation des archives restantes
                 archived_steps = Step.objects.filter(
                     unit_operation=step.unit_operation, is_active=False
                 ).order_by('order')
@@ -624,13 +614,11 @@ class ParameterDeleteView(GenericDeleteView):
 
         with transaction.atomic():
             try:
-                # Évacuation de l'élément vers la zone pivot
                 self.object.order = 2147483647
                 self.object.save(update_fields=['order'])
 
                 self.object.delete(user=self.request.user)
 
-                # Réindexation des actifs
                 active_params = Parameter.objects.filter(
                     step=self.object.step, is_active=True
                 ).order_by('order')
@@ -640,7 +628,6 @@ class ParameterDeleteView(GenericDeleteView):
                         act_param.order = index
                         act_param.save(update_fields=['order'])
 
-                # Réindexation des archivés
                 archived_params = Parameter.objects.filter(
                     step=self.object.step, is_active=False
                 ).order_by('order')
@@ -673,7 +660,6 @@ class ParameterRestoreView(View):
                 param.order = max_active_order + 1
                 param.save(update_fields=['order'])
 
-                # Ajustement des archives restantes
                 archived_params = Parameter.objects.filter(
                     step=param.step, is_active=False
                 ).order_by('order')
