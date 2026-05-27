@@ -117,32 +117,49 @@ class Parameter(BaseComponentEntity):
     def __str__(self):
         return f"{self.name} ({self.step.name})"
 
-
-class Sample(BaseComponentEntity):
+class SamplingPlan(BaseComponentEntity):
     step = models.ForeignKey(
         Step,
         on_delete=models.CASCADE,
-        related_name='samples'
+        related_name='sampling_plans',
+        verbose_name="Related Step"
     )
-    sample_name = models.CharField(
-        max_length=25,
-        verbose_name="Sample Name"
-    )
-
-    analytical_methods = models.ManyToManyField(
-        'referential.AnalyticalMethod',
-        related_name='samples',
-        verbose_name="Analytical Methods",
-        blank=True,
-        limit_choices_to={'is_active': True}
-    )
+    name = models.CharField(max_length=255)
 
     class Meta:
-        ordering = ['created_at']
-        unique_together = ('step', 'sample_name')
+        verbose_name = "Sampling Plan"
 
     def get_parent_entity(self):
         return self.step
 
     def __str__(self):
-        return f"{self.sample_name} ({self.step.name})"
+        return f"Sampling Plan for {self.step.name}"
+
+
+class Sample(BaseComponentEntity):
+    sampling_plan = models.ForeignKey(
+        SamplingPlan,
+        on_delete=models.CASCADE,
+        related_name='samples',
+        verbose_name="Related Sampling Plan"
+    )
+    sample_name = models.CharField(
+        max_length=25,
+        verbose_name="Sample Name"
+    )
+    analytical_method = models.ForeignKey(
+        'referential.AnalyticalMethod',
+        on_delete=models.PROTECT,
+        related_name='samples',
+        verbose_name="Analytical Method",
+        limit_choices_to={'is_active': True}
+    )
+
+    class Meta:
+        unique_together = ('sampling_plan', 'sample_name', 'analytical_method')
+
+    def get_parent_entity(self):
+        return self.sampling_plan
+
+    def __str__(self):
+        return f"{self.sample_name} -> {self.analytical_method.name}"

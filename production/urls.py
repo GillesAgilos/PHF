@@ -52,10 +52,20 @@ urlpatterns = [
     path('parameters/<uuid:pk>/detail/', views.ParameterDetailView.as_view(), name='parameter_detail'),
 
     # =========================================================================
-    # LEVEL 4.2 : SAMPLES
+    # LEVEL 4.2 : SAMPLING PLANS
     # =========================================================================
-    path('steps/<uuid:step_pk>/samples/', views.SampleStructureView.as_view(), name='sample_list'),
-    path('steps/<uuid:step_pk>/samples/add/', views.SampleAddView.as_view(), name='sample_add'),
+    path('steps/<uuid:step_pk>/samplingplans/', views.SamplingPlanStructureView.as_view(), name='samplingplan_list'),
+    path('steps/<uuid:step_pk>/samplingplans/add/', views.SamplingPlanAddView.as_view(), name='samplingplan_add'),
+    path('samplingplans/<uuid:pk>/edit/', views.SamplingPlanUpdateView.as_view(), name='samplingplan_edit'),
+    path('samplingplans/<uuid:pk>/delete/', views.SamplingPlanDeleteView.as_view(), name='samplingplan_delete'),
+    path('samplingplans/<uuid:pk>/restore/', views.SamplingPlanRestoreView.as_view(), name='samplingplan_restore'),
+    path('samplingplans/<uuid:pk>/detail/', views.SamplingPlanDetailView.as_view(), name='samplingplan_detail'),
+
+    # =========================================================================
+    # LEVEL 4.3 : SAMPLES
+    # =========================================================================
+    path('samplingplans/<uuid:sampling_plan_pk>/samples/', views.SampleStructureView.as_view(), name='sample_list'),
+    path('samplingplans/<uuid:sampling_plan_pk>/samples/add/', views.SampleAddView.as_view(), name='sample_add'),
     path('samples/<uuid:pk>/edit/', views.SampleUpdateView.as_view(), name='sample_edit'),
     path('samples/<uuid:pk>/delete/', views.SampleDeleteView.as_view(), name='sample_delete'),
     path('samples/<uuid:pk>/restore/', views.SampleRestoreView.as_view(), name='sample_restore'),

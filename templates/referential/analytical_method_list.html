@@ -76,8 +76,8 @@
                 <tr>
                     <th>Status</th>
                     <th>Method Name</th>
-                    <th>Vol. Required</th>
-                    <th>Storage Temp.</th>
+                    <th>Format</th>
+                    <th>Unit</th>
                     <th>{% if view_mode == 'archived' %}Archived on{% else %}Last Update{% endif %}</th>
                     <th class="text-end">Actions</th>
                 </tr>
@@ -98,7 +98,7 @@
                             {% endif %}
                         </td>
                         <td>
-                            <span class="fw-semibold text-dark">{{ method.name }}</span>
+                            <span class="fw-semibold text-dark">{{ method.format }}</span>
                             {% if method.status == 'REJECTED' %}
                                 <br><small class="text-danger fw-bold"><i class="bi bi-arrow-right"></i> Needs correction</small>
                             {% endif %}
@@ -107,7 +107,7 @@
                             <span class="badge bg-light text-dark border font-monospace">{{ method.volume_required }} mL</span>
                         </td>
                         <td class="text-muted small">
-                            {{ method.storage_temp }}
+                            {{ method.unit }}
                         </td>
                         <td>
                             {% if view_mode == 'archived' %}

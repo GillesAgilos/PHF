@@ -28,8 +28,10 @@ INSTALLED_APPS = [
     'phf.apps.PhfConfig',
     'crispy_forms',
     'crispy_bootstrap5',
+    'django_select2',
     'referential.apps.ReferentialConfig',
     'production.apps.ProductionConfig',
+    'batch.apps.BatchConfig'
 ]
 
 MIDDLEWARE = [

@@ -43,9 +43,9 @@ class Project(BaseModel):
         return f"{self.code} - {self.name}"
 
 class AnalyticalMethod(BaseModel):
-    name = models.CharField(max_length=255, verbose_name="Method Name")
-    volume_required = models.FloatField(verbose_name="Volume Required (mL)")
-    storage_temp = models.CharField(max_length=255, verbose_name="Storage Temperature")
+    name = models.CharField(max_length=255, unique=True, verbose_name="Method Name")
+    unit = models.CharField(max_length=255, verbose_name="Unit")
+    format = models.CharField(max_length=255, verbose_name="Format")
 
     class Meta:
         ordering = ['name']

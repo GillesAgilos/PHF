@@ -1,170 +1,212 @@
 {% extends "base.html" %}
 
-{% block title %}Samples: {{ step.name }}{% endblock %}
+{% block title %}Samples: {{ sampling_plan.Name }}{% endblock %}
 
 {% block content %}
-    <nav aria-label="breadcrumb" class="mb-4">
-        <ol class="breadcrumb bg-light p-3 rounded shadow-sm">
-            <li class="breadcrumb-item"><a href="{% url 'production:process_list' %}" class="text-decoration-none">Processes</a></li>
-            <li class="breadcrumb-item"><a href="{% url 'production:unitoperation_list' process_pk=process.pk %}" class="text-decoration-none">{{ process.code }} Structure</a></li>
-            <li class="breadcrumb-item"><a href="{% url 'production:step_list' unit_pk=unit.pk %}" class="text-decoration-none">{{ unit.name }} Steps</a></li>
-            <li class="breadcrumb-item active fw-bold text-primary">{{ step.name }} Samples</li>
-        </ol>
-    </nav>
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb bg-light p-3 rounded shadow-sm">
+        <li class="breadcrumb-item">
+            <a href="{% url 'production:process_list' %}" class="text-decoration-none">Processes</a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="{% url 'production:unitoperation_list' process_pk=process.pk %}" class="text-decoration-none">{{ process.code }} Structure</a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="{% url 'production:step_list' unit_pk=unit.pk %}" class="text-decoration-none">{{ unit.name }} Steps</a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="{% url 'production:samplingplan_list' step_pk=step.pk %}" class="text-decoration-none">{{ step.name }} Plans</a>
+        </li>
+        <li class="breadcrumb-item active fw-bold text-primary">{{ sampling_plan.Name }} Samples</li>
+    </ol>
+</nav>
 
-    <div class="alert {% if process.status == 'VALIDATED' %}alert-success{% elif process.status == 'PENDING' %}alert-warning{% elif process.status == 'REJECTED' %}alert-danger{% else %}alert-secondary{% endif %} shadow-sm mb-4">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <i class="bi bi-info-circle-fill me-2"></i> Current Step: <strong>{{ step.name }}</strong>
-                <span class="ms-2 text-muted">| Process Status: <strong>{{ process.get_status_display }}</strong></span>
-            </div>
-            <span class="badge bg-white text-dark border px-3 py-2 fw-mono">v{{ process.version }}</span>
+<div class="alert {% if process.status == 'VALIDATED' %}alert-success{% elif process.status == 'PENDING' %}alert-warning{% elif process.status == 'REJECTED' %}alert-danger{% else %}alert-secondary{% endif %} shadow-sm mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <i class="bi bi-info-circle-fill me-2"></i>
+            Current Plan: <strong>{{ sampling_plan.Name }}</strong>
+            <span class="ms-2 text-muted">| Process Status: <strong>{{ process.get_status_display }}</strong></span>
+
+            {% if process.status == 'REJECTED' and process.rejection_reason %}
+                <div class="mt-2 small text-danger fw-bold">
+                    <i class="bi bi-exclamation-circle-fill"></i> Correction Note: {{ process.rejection_reason }}
+                </div>
+            {% endif %}
         </div>
+        <span class="badge bg-white text-dark border px-3 py-2 fw-mono">{{ process.code }}</span>
     </div>
+</div>
 
-    <div class="row">
-        <div class="col-md-4">
-            <div class="card shadow-sm border-dark">
-                <div class="card-header bg-dark text-white fw-bold">
-                    <i class="bi bi-plus-circle"></i> Define New Sample
-                </div>
-                <div class="card-body">
-                    {% if process.status == 'PENDING' or process.status == 'VALIDATED' %}
-                        <div class="alert alert-secondary small mb-0 border-0">
-                            <i class="bi bi-lock-fill text-warning"></i> This step section is locked because the parent process is <strong>{{ process.get_status_display }}</strong>.
-                        </div>
-                    {% elif view_mode == 'archived' %}
-                        <div class="alert alert-warning small mb-0 border-0">
-                            <i class="bi bi-exclamation-triangle-fill"></i> Switch to Active view to append new samples.
-                        </div>
-                    {% else %}
-                        <form id="sampleForm" action="{% url 'production:sample_add' step_pk=step.pk %}?view={{ view_mode|default:'active' }}" method="post">
-                            {% csrf_token %}
-
-                            {% if form.non_field_errors %}
-                                <div class="alert alert-danger small p-2 shadow-sm mb-3">
-                                    {% for error in form.non_field_errors %}<i class="bi bi-exclamation-triangle-fill"></i> {{ error }}{% endfor %}
-                                </div>
-                            {% endif %}
-
-                            <div class="mb-3">
-                                <label class="form-label small fw-bold text-muted">SAMPLE NAME</label>
-                                {{ form.sample_name }}
-                                {% if form.sample_name.errors %}<div class="text-danger small">{{ form.sample_name.errors.0 }}</div>{% endif %}
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label small fw-bold text-muted d-block">ANALYTICAL METHODS</label>
-                                <div class="border rounded p-3 bg-light style-scroll" style="max-height: 180px; overflow-y: auto;">
-                                    {% for checkbox in form.analytical_methods %}
-                                        <div class="form-check mb-1">
-                                            {{ checkbox.tag }}
-                                            <label class="form-check-label small text-dark" for="{{ checkbox.id_for_label }}">
-                                                {{ checkbox.choice_label }}
-                                            </label>
-                                        </div>
-                                    {% empty %}
-                                        <small class="text-muted italic">No active methods available.</small>
-                                    {% endfor %}
-                                </div>
-                                {% if form.analytical_methods.errors %}<div class="text-danger small">{{ form.analytical_methods.errors.0 }}</div>{% endif %}
-                            </div>
-
-                            <button type="submit" class="btn btn-dark w-100 fw-bold shadow-sm py-2">
-                                <i class="bi bi-plus-lg"></i> Add Sample
-                            </button>
-                        </form>
-                    {% endif %}
-                </div>
+<div class="row">
+    <div class="col-md-4">
+        <div class="card shadow-sm border-dark">
+            <div class="card-header bg-dark text-white fw-bold">
+                <i class="bi bi-plus-circle"></i> Define New Sample
             </div>
-        </div>
-
-        <div class="col-md-8">
-            <ul class="nav nav-tabs mb-3 shadow-sm rounded-top bg-light p-1">
-                <li class="nav-item">
-                    <a class="nav-link {% if view_mode == 'active' or not view_mode %}active fw-bold text-primary{% endif %}" href="?view=active">
-                        <i class="bi bi-check-circle-fill me-1 text-success"></i> Active Samples <span class="badge bg-secondary ms-1">{{ count_active }}</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {% if view_mode == 'archived' %}active fw-bold text-danger{% endif %}" href="?view=archived">
-                        <i class="bi bi-archive-fill me-1 text-muted"></i> Archived Samples <span class="badge bg-dark ms-1">{{ count_archived }}</span>
-                    </a>
-                </li>
-            </ul>
-
-            <div class="card shadow-sm">
-                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 text-white">Samples: {{ step.name }}</h5>
-                    <span class="badge bg-light text-dark">{{ samples|length }} Sample(s)</span>
-                </div>
-                <div class="card-body p-0">
-                    <div class="list-group list-group-flush">
-                        {% for sample in samples %}
-                            <div class="list-group-item d-flex align-items-center p-3 clickable-row" style="cursor: pointer;" data-href="{% url 'production:sample_detail' pk=sample.pk %}">
-
-                                <div class="flex-grow-1">
-                                    <h6 class="mb-0 fw-bold text-black" style="color: #000 !important;">{{ sample.sample_name }}</h6>
-
-                                    <div class="mt-1">
-                                        {% for method in sample.analytical_methods.all %}
-                                            <span class="badge bg-light text-dark border font-monospace me-1 small" title="Required: {{ method.volume_required }}mL | Temp: {{ method.storage_temp }}">
-                                                <i class="bi bi-capsule-cutoff text-primary small"></i> {{ method.name }}
-                                            </span>
-                                        {% empty %}
-                                            <small class="text-muted fst-italic small">No testing methods bound</small>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-
-                                <div class="text-end d-flex align-items-center">
-                                    {% if sample.is_active and process.status != 'VALIDATED' and process.status != 'PENDING' %}
-                                        <a href="{% url 'production:sample_edit' pk=sample.pk %}" class="btn btn-sm btn-outline-warning shadow-sm me-2" title="Edit Sample Identity">
-                                            <i class="bi bi-pencil"></i> Edit
-                                        </a>
-                                        <a href="{% url 'production:sample_detail' pk=sample.pk %}" class="btn btn-sm btn-outline-secondary shadow-sm me-2" title="View details & history">
-                                            <i class="bi bi-eye"></i> Detail
-                                        </a>
-                                        <a href="{% url 'production:sample_delete' pk=sample.pk %}" class="btn btn-sm btn-outline-danger shadow-sm border-0" title="Archive Sample">
-                                            <i class="bi bi-trash3"></i>
-                                        </a>
-                                    {% elif not sample.is_active %}
-                                        <form action="{% url 'production:sample_restore' pk=sample.pk %}" method="post" class="d-inline m-0">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-success py-1"><i class="bi bi-arrow-counterclockwise"></i> Restore</button>
-                                        </form>
-                                    {% else %}
-                                        <a href="{% url 'production:sample_detail' pk=sample.pk %}" class="btn btn-sm btn-outline-secondary me-2 shadow-sm" title="View Details (Read Only)">
-                                            <i class="bi bi-eye"></i> Detail
-                                        </a>
-                                        <span class="text-muted small"><i class="bi bi-lock-fill"></i> Locked</span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        {% empty %}
-                            <div class="p-5 text-center text-muted italic">
-                                <i class="bi bi-vial display-4 d-block mb-3"></i> No samples defined for this manufacturing step.
-                            </div>
-                        {% endfor %}
+            <div class="card-body">
+                {% if process.status == 'PENDING' or process.status == 'VALIDATED' %}
+                    <div class="alert alert-secondary small mb-0 border-0">
+                        <i class="bi bi-lock-fill text-warning"></i>
+                        Sample structure is locked because this process is currently <strong>{{ process.get_status_display }}</strong>.
                     </div>
+                {% elif view_mode == 'archived' %}
+                    <div class="alert alert-warning small mb-0 border-0">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        Switch to Active view to add new samples.
+                    </div>
+                {% else %}
+                    <form id="sampleForm"
+                          action="{% url 'production:sample_add' sampling_plan_pk=sampling_plan.pk %}?view={{ view_mode|default:'active' }}"
+                          method="post">
+                        {% csrf_token %}
+
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger small p-2 shadow-sm mb-3">
+                                {% for error in form.non_field_errors %}
+                                    <i class="bi bi-exclamation-triangle-fill"></i> {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted">SAMPLE NAME</label>
+                            <input type="text" name="sample_name" class="form-control form-control-sm border-secondary" required value="{{ form.sample_name.value|default_if_none:'' }}">
+                            {% if form.sample_name.errors %}
+                                <div class="text-danger small">{{ form.sample_name.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted">ANALYTICAL METHOD</label>
+                            <div class="select2-blue-theme select2-sm">
+                                {{ form.analytical_method }}
+                            </div>
+                            {% if form.analytical_method.errors %}
+                                <div class="text-danger small">{{ form.analytical_method.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <button type="submit" class="btn btn-dark w-100 fw-bold shadow-sm py-2">
+                            <i class="bi bi-plus-lg"></i> Add Sample
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <ul class="nav nav-tabs mb-3 shadow-sm rounded-top bg-light p-1">
+            <li class="nav-item">
+                <a class="nav-link {% if view_mode == 'active' or not view_mode %}active fw-bold text-primary{% endif %}" href="?view=active">
+                    <i class="bi bi-check-circle-fill me-1 text-success"></i> Active Samples
+                    <span class="badge bg-secondary ms-1">{{ count_active }}</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if view_mode == 'archived' %}active fw-bold text-danger{% endif %}" href="?view=archived">
+                    <i class="bi bi-archive-fill me-1 text-muted"></i> Archived Samples
+                    <span class="badge bg-dark ms-1">{{ count_archived }}</span>
+                </a>
+            </li>
+        </ul>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-white">Plan Samples: {{ sampling_plan.Name }}</h5>
+                <span class="badge bg-light text-dark">{{ samples|length }} Sample(s)</span>
+            </div>
+
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for sample in samples %}
+                        <div class="list-group-item d-flex align-items-center p-3 clickable-row" style="cursor: pointer;" data-href="{% url 'production:sample_detail' pk=sample.pk %}">
+                            <div class="me-3 text-center" style="width: 40px;">
+                                {% if sample.is_active %}
+                                    <span class="badge bg-dark rounded-circle py-2 px-2" style="min-width: 32px;">
+                                        <i class="bi bi-vial"></i>
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">
+                                        <i class="bi bi-archive text-secondary text-center d-block fs-5"></i>
+                                    </span>
+                                {% endif %}
+                            </div>
+
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0 fw-bold text-black" style="color: #000 !important;">
+                                    {{ sample.sample_name }}
+                                </h6>
+                                <small class="text-uppercase fw-bold text-muted font-monospace">
+                                    Method:
+                                    <span class="badge bg-light text-secondary border ms-1">
+                                        {{ sample.analytical_method.name }}
+                                    </span>
+                                </small>
+                            </div>
+
+                            <div class="text-end d-flex align-items-center">
+                                {% if sample.is_active and process.status != 'VALIDATED' and process.status != 'PENDING' %}
+                                    <a href="{% url 'production:sample_edit' pk=sample.pk %}" class="btn btn-sm btn-outline-warning me-2 shadow-sm" title="Edit Sample Specifications">
+                                        <i class="bi bi-pencil"></i> Edit
+                                    </a>
+
+                                    <a href="{% url 'production:sample_detail' pk=sample.pk %}" class="btn btn-sm btn-outline-info shadow-sm me-2" title="View details & history">
+                                        <i class="bi bi-eye"></i> Detail
+                                    </a>
+
+                                    <a href="{% url 'production:sample_delete' pk=sample.pk %}" class="btn btn-sm btn-outline-danger border-0" title="Archive Sample">
+                                        <i class="bi bi-trash3"></i>
+                                    </a>
+                                {% elif not sample.is_active %}
+                                    <form action="{% url 'production:sample_restore' pk=sample.pk %}" method="post" class="d-inline m-0">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-success py-1 me-2 shadow-sm">
+                                            <i class="bi bi-arrow-counterclockwise"></i> Restore
+                                        </button>
+                                    </form>
+                                    <a href="{% url 'production:sample_detail' pk=sample.pk %}" class="btn btn-sm btn-outline-secondary me-2 shadow-sm" title="View Details (Read Only)">
+                                        <i class="bi bi-eye"></i> Detail
+                                    </a>
+                                    <span class="text-muted small"><i class="bi bi-lock-fill"></i> Locked</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="p-5 text-center text-muted italic">
+                            <i class="bi bi-vial display-4 d-block mb-3"></i>
+                            Empty sample view segment.
+                        </div>
+                    {% endfor %}
                 </div>
             </div>
         </div>
     </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    {{ form.media.js }}
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+
     <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const rows = document.querySelectorAll(".clickable-row");
-            rows.forEach(row => {
-                row.addEventListener("click", function (e) {
-                    if (e.target.closest('button') || e.target.closest('a') || e.target.closest('form')) {
-                        return;
-                    }
-                    const url = this.dataset.href;
-                    if (url) { window.location.href = url; }
-                });
+        $(document).ready(function () {
+            $('.django-select2-custom').select2({
+                theme: 'bootstrap-5',
+                placeholder: 'Search an analytical method...',
+                width: '100%',
+                dropdownParent: $('.select2-sm')
+            });
+
+            $('.clickable-row').on('click', function (e) {
+                if (!$(e.target).closest('a, button, form, input, select, textarea, .select2-container').length) {
+                    window.location = $(this).data('href');
+                }
             });
         });
     </script>

@@ -121,11 +121,12 @@
 
                                 <div class="me-3 text-center" style="width: 40px;">
                                     {% if step.is_active %}
-                                    <span class="badge bg-secondary rounded-circle py-2 px-2" style="min-width: 32px;">
+                                        <span class="badge bg-secondary rounded-circle py-2 px-2"
+                                              style="min-width: 32px;">
                                         {{ step.order }}
                                     </span>
                                     {% else %}
-                                    <span class="text-muted"><i class="bi bi-archive text-secondary"></i></span>
+                                        <span class="text-muted"><i class="bi bi-archive text-secondary"></i></span>
                                     {% endif %}
                                 </div>
 
@@ -170,19 +171,15 @@
                                             <i class="bi bi-sliders"></i> Parameters
                                         </a>
 
-                                        <a href="{% url 'production:sample_list' step_pk=step.pk %}"
+                                        <a href="{% url 'production:samplingplan_list' step_pk=step.pk %}"
                                            class="btn btn-sm btn-outline-info me-2 shadow-sm"
                                            title="Configure Samples">
-                                            <i class="bi-eyedropper"></i> Samples
-                                        </a>
-
-                                        <a href="{% url 'production:step_detail' pk=step.pk %}"
-                                           class="btn btn-sm btn-outline-secondary me-2 shadow-sm" title="View Audit Trail">
-                                            <i class="bi bi-eye"></i> Detail
+                                            <i class="bi-eyedropper"></i> Sample Plan
                                         </a>
 
                                         <a href="{% url 'production:step_delete' pk=step.pk %}"
-                                           class="btn btn-sm btn-outline-danger shadow-sm border-0" title="Archive Step">
+                                           class="btn btn-sm btn-outline-danger shadow-sm border-0"
+                                           title="Archive Step">
                                             <i class="bi bi-trash3"></i>
                                         </a>
                                     {% elif not step.is_active %}
@@ -195,7 +192,8 @@
                                         </form>
                                     {% else %}
                                         <a href="{% url 'production:parameter_list' step_pk=step.pk %}"
-                                           class="btn btn-sm btn-outline-secondary me-1 shadow-sm" title="View Parameters">
+                                           class="btn btn-sm btn-outline-secondary me-1 shadow-sm"
+                                           title="View Parameters">
                                             <i class="bi bi-sliders"></i> Params
                                         </a>
                                         <a href="{% url 'production:sample_list' step_pk=step.pk %}"
@@ -203,11 +201,18 @@
                                             <i class="bi bi-vial"></i> Samples
                                         </a>
                                         <a href="{% url 'production:step_detail' pk=step.pk %}"
-                                           class="btn btn-sm btn-outline-secondary me-2 shadow-sm" title="View Audit Trail">
+                                           class="btn btn-sm btn-outline-secondary me-2 shadow-sm"
+                                           title="View Audit Trail">
                                             <i class="bi bi-eye"></i> Detail
                                         </a>
                                         <span class="text-muted small"><i class="bi bi-lock-fill"></i> Locked</span>
                                     {% endif %}
+
+
+                                    <a href="{% url 'production:step_detail' pk=step.pk %}"
+                                       class="btn btn-sm btn-outline-secondary me-2 shadow-sm" title="View Audit Trail">
+                                        <i class="bi bi-eye"></i> Detail
+                                    </a>
                                 </div>
                             </div>
                         {% empty %}

@@ -133,9 +133,11 @@
                         </td>
                         <td class="text-end text-nowrap">
                             {% if view_mode == 'archived' %}
-                                <form action="{% url 'production:process_restore' process.pk %}" method="post" class="d-inline m-0">
+                                <form action="{% url 'production:process_restore' process.pk %}" method="post"
+                                      class="d-inline m-0">
                                     {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-outline-success shadow-sm" title="Restore Process">
+                                    <button type="submit" class="btn btn-sm btn-outline-success shadow-sm"
+                                            title="Restore Process">
                                         <i class="bi bi-arrow-counterclockwise"></i> Restore
                                     </button>
                                 </form>
@@ -146,64 +148,74 @@
                                 </a>
 
                                 {% if process.status == 'DRAFT' or process.status == 'REJECTED' %}
-                                    <a href="{% url 'production:process_edit' process.pk %}" class="btn btn-sm btn-outline-secondary shadow-sm ms-1">
+                                    <a href="{% url 'production:process_edit' process.pk %}"
+                                       class="btn btn-sm btn-outline-secondary shadow-sm ms-1">
                                         <i class="bi bi-pencil"></i> Edit
                                     </a>
-                                    <form action="{% url 'production:process_submit' process.pk %}" method="post" class="d-inline m-0">
+                                    <form action="{% url 'production:process_submit' process.pk %}" method="post"
+                                          class="d-inline m-0">
                                         {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-outline-warning shadow-sm ms-1" title="Submit for review">
+                                        <button type="submit" class="btn btn-sm btn-outline-warning shadow-sm ms-1"
+                                                title="Submit for review">
                                             <i class="bi bi-send-check-fill"></i> Submit
                                         </button>
                                     </form>
                                 {% endif %}
 
                                 {% if process.status == 'PENDING' %}
-                                    <form action="{% url 'production:process_validate' process.pk %}" method="post" class="d-inline m-0">
+                                    <form action="{% url 'production:process_validate' process.pk %}" method="post"
+                                          class="d-inline m-0">
                                         {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-success shadow-sm ms-1" title="Approve">
+                                        <button type="submit" class="btn btn-sm btn-success shadow-sm ms-1"
+                                                title="Approve">
                                             <i class="bi bi-check-lg"></i> Accept
                                         </button>
                                     </form>
 
                                     <button type="button" class="btn btn-sm btn-danger shadow-sm ms-1"
-                                            data-bs-toggle="collapse" data-bs-target="#rejectForm-{{ process.pk }}" title="Reject">
+                                            data-bs-toggle="collapse" data-bs-target="#rejectForm-{{ process.pk }}"
+                                            title="Reject">
                                         <i class="bi bi-x-lg"></i> Reject
                                     </button>
                                 {% endif %}
 
                                 {% if process.status == 'VALIDATED' %}
-                                    <form action="{% url 'production:process_versioning' process.pk %}" method="post" class="d-inline m-0">
+                                    <form action="{% url 'production:process_versioning' process.pk %}" method="post"
+                                          class="d-inline m-0">
                                         {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-outline-dark shadow-sm ms-1" title="Create Version v{{ process.version|add:1 }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-dark shadow-sm ms-1"
+                                                title="Create Version v{{ process.version|add:1 }}">
                                             <i class="bi bi-git"></i> New Version
                                         </button>
                                     </form>
                                 {% endif %}
 
-                                <a href="{% url 'production:process_detail' process.pk %}"
-                                   class="btn btn-sm shadow-sm px-2 btn-outline-info ms-1" title="View details & history">
-                                    <i class="bi bi-eye"></i> Detail
-                                </a>
-
-                                <a href="{% url 'production:process_delete' process.pk %}" class="btn btn-sm btn-outline-danger shadow-sm ms-1">
+                                <a href="{% url 'production:process_delete' process.pk %}"
+                                   class="btn btn-sm btn-outline-danger shadow-sm ms-1">
                                     <i class="bi bi-trash"></i>
                                 </a>
 
                                 {% if process.status == 'PENDING' %}
-                                <div class="collapse mt-2 text-start" id="rejectForm-{{ process.pk }}">
-                                    <div class="card card-body border-danger p-2 bg-light">
-                                        <form action="{% url 'production:process_reject' process.pk %}" method="post" class="m-0">
-                                            {% csrf_token %}
-                                            <label class="small fw-bold text-danger">Rejection Reason :</label>
-                                            <div class="input-group input-group-sm mt-1">
-                                                <input type="text" name="rejection_reason" class="form-control" required placeholder="Specify what needs correction...">
-                                                <button class="btn btn-danger" type="submit">Confirm Reject</button>
-                                            </div>
-                                        </form>
+                                    <div class="collapse mt-2 text-start" id="rejectForm-{{ process.pk }}">
+                                        <div class="card card-body border-danger p-2 bg-light">
+                                            <form action="{% url 'production:process_reject' process.pk %}"
+                                                  method="post" class="m-0">
+                                                {% csrf_token %}
+                                                <label class="small fw-bold text-danger">Rejection Reason :</label>
+                                                <div class="input-group input-group-sm mt-1">
+                                                    <input type="text" name="rejection_reason" class="form-control"
+                                                           required placeholder="Specify what needs correction...">
+                                                    <button class="btn btn-danger" type="submit">Confirm Reject</button>
+                                                </div>
+                                            </form>
+                                        </div>
                                     </div>
-                                </div>
                                 {% endif %}
                             {% endif %}
+                            <a href="{% url 'production:process_detail' process.pk %}"
+                               class="btn btn-sm shadow-sm px-2 btn-outline-info ms-1" title="View details & history">
+                                <i class="bi bi-eye"></i> Detail
+                            </a
                         </td>
                     </tr>
                 {% empty %}
@@ -220,22 +232,22 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const rows = document.querySelectorAll(".clickable-row");
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const rows = document.querySelectorAll(".clickable-row");
 
-        rows.forEach(row => {
-            row.addEventListener("click", function(e) {
-                if (e.target.closest('button') || e.target.closest('a') || e.target.closest('form') || e.target.closest('.collapse')) {
-                    return;
-                }
+            rows.forEach(row => {
+                row.addEventListener("click", function (e) {
+                    if (e.target.closest('button') || e.target.closest('a') || e.target.closest('form') || e.target.closest('.collapse')) {
+                        return;
+                    }
 
-                const url = this.dataset.href;
-                if (url) {
-                    window.location.href = url;
-                }
+                    const url = this.dataset.href;
+                    if (url) {
+                        window.location.href = url;
+                    }
+                });
             });
         });
-    });
-</script>
+    </script>
 {% endblock %}

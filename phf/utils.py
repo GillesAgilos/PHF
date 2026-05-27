@@ -13,9 +13,6 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import DeleteView, ListView
 from simple_history.models import HistoricalRecords
-from django.db.models import Max
-from django.db.models.signals import post_save, post_delete
-from django.dispatch import receiver
 
 # =========================================================================
 # BASE MODEL FOR SIMPLE ENTITIES

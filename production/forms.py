@@ -1,7 +1,9 @@
 from django import forms
+from django_select2.forms import Select2Widget
+
 from phf.utils import BaseEntityForm
 from referential.models import AnalyticalMethod
-from .models import Process, UnitOperation, Step, Parameter, Sample
+from .models import Process, UnitOperation, Step, Parameter, Sample, SamplingPlan
 
 
 class ProcessForm(BaseEntityForm):
@@ -33,23 +35,21 @@ class ParameterForm(forms.ModelForm):
             'order'
         ]
 
+
+class SamplingPlanForm(forms.ModelForm):
+    class Meta:
+        model = SamplingPlan
+        fields = ['name']
+
+
 class SampleForm(forms.ModelForm):
     class Meta:
         model = Sample
-        fields = ['sample_name', 'analytical_methods']
+        fields = ['sample_name', 'analytical_method']
         widgets = {
-            'sample_name': forms.TextInput(attrs={
-                'class': 'form-control form-control-sm border-secondary',
-                'maxlength': '25',
-                'required': True
+            'analytical_method': Select2Widget(attrs={
+                'data-placeholder': 'Search an analytical method...',
+                'data-theme': 'bootstrap-5',
+                'class': 'django-select2-custom form-select-sm'
             }),
-            'analytical_methods': forms.CheckboxSelectMultiple(attrs={
-                'class': 'form-check-input'
-            })
         }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['analytical_methods'].queryset = AnalyticalMethod.objects.filter(
-            is_active=True
-        ).order_by('name')

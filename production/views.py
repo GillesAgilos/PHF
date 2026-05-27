@@ -11,8 +11,8 @@ from phf.utils import (
     GenericDeleteView, GenericRestoreView, EntityDetailView,
     EntityValidateView, EntityRejectView
 )
-from .models import Process, UnitOperation, Step, Parameter, Sample
-from .forms import ProcessForm, UnitOperationForm, StepForm, ParameterForm, SampleForm
+from .models import Process, UnitOperation, Step, Parameter, Sample, SamplingPlan
+from .forms import ProcessForm, UnitOperationForm, StepForm, ParameterForm, SampleForm, SamplingPlanForm
 
 
 # =========================================================================
@@ -55,17 +55,15 @@ class ProcessDetailView(EntityDetailView):
     def get_queryset(self):
         return Process.objects.filter(pk=self.kwargs['pk']).prefetch_related(
             'units__steps__parameters',
-            'units__steps__samples__analytical_methods'
+            'units__steps__sampling_plans__samples__analytical_method'  # Correction de la chaîne de relations
         )
 
     def get_context_data(self, **kwargs):
         self.object = get_object_or_404(self.get_queryset())
         self.obj = self.object
         context = super().get_context_data(**kwargs)
-
         context['object'] = self.object
         context['is_process_view'] = True
-
         return context
 
 
@@ -745,30 +743,128 @@ class ParameterUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
 
 
 # =========================================================================
-# 5. SAMPLE VIEWS
+# 5. SAMPLING PLAN VIEWS
+# =========================================================================
+class SamplingPlanStructureView(TemplateView):
+    template_name = 'production/samplingplan_list.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        step = get_object_or_404(Step, pk=self.kwargs['step_pk'])
+        view_mode = self.request.GET.get('view', 'active')
+
+        if view_mode == 'archived':
+            sampling_plans = SamplingPlan.objects.filter(step=step, is_active=False).order_by('created_at')
+        else:
+            sampling_plans = SamplingPlan.objects.filter(step=step, is_active=True).order_by('created_at')
+
+        count_active = SamplingPlan.objects.filter(step=step, is_active=True).count()
+        count_archived = SamplingPlan.objects.filter(step=step, is_active=False).count()
+
+        context.update({
+            'step': step,
+            'unit': step.unit_operation,
+            'process': step.unit_operation.process,
+            'sampling_plans': sampling_plans,
+            'view_mode': view_mode,
+            'count_active': count_active,
+            'count_archived': count_archived,
+            'form': context.get('form') or SamplingPlanForm()
+        })
+        return context
+
+
+class SamplingPlanAddView(View):
+    def post(self, request, step_pk):
+        step = get_object_or_404(Step, pk=step_pk)
+        view_mode = request.GET.get('view', 'active')
+
+        form = SamplingPlanForm(request.POST)
+        form.instance.step = step
+
+        if form.is_valid():
+            try:
+                sampling_plan = form.save(commit=False)
+                sampling_plan.created_by = request.user
+                sampling_plan.updated_by = request.user
+                sampling_plan.save()
+                messages.success(request, f"Sampling Plan '{sampling_plan.Name or ''}' successfully added.")
+            except Exception as e:
+                messages.error(request, f"Error saving sampling plan: {str(e)}")
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"[{field.upper()}] {error}")
+
+        return redirect(f"/production/steps/{step.pk}/samplingplans/?view={view_mode}")
+
+
+class SamplingPlanDeleteView(GenericDeleteView):
+    model = SamplingPlan
+
+    def get_success_url(self):
+        return f"/production/steps/{self.object.step.pk}/samplingplans/?view=active"
+
+    def form_valid(self, form):
+        success_url = self.get_success_url()
+        try:
+            self.object.delete(user=self.request.user)
+            messages.warning(self.request, f"Sampling Plan archived.")
+        except Exception as e:
+            messages.error(self.request, f"Action denied: {str(e)}")
+        return HttpResponseRedirect(success_url)
+
+
+class SamplingPlanRestoreView(View):
+    def post(self, request, pk):
+        sampling_plan = get_object_or_404(SamplingPlan, pk=pk)
+        step_pk = sampling_plan.step.pk
+        try:
+            sampling_plan.restore()
+            messages.success(request, f"Sampling Plan restored successfully.")
+        except Exception as e:
+            messages.error(request, f"Action denied: {str(e)}")
+        return redirect(f"/production/steps/{step_pk}/samplingplans/?view=archived")
+
+
+class SamplingPlanDetailView(EntityDetailView):
+    model = SamplingPlan
+    template_name = 'generic/generic_detail.html'
+
+
+class SamplingPlanUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
+    model = SamplingPlan
+    form_class = SamplingPlanForm
+    template_name = 'generic/generic_form.html'
+
+    def get_success_url(self):
+        return f"/production/steps/{self.object.step.pk}/samplingplans/?view=active"
+
+
+# =========================================================================
+# 6. SAMPLE VIEWS
 # =========================================================================
 class SampleStructureView(TemplateView):
     template_name = 'production/sample_list.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        step = get_object_or_404(Step, pk=self.kwargs['step_pk'])
-        unit = step.unit_operation
-        process = unit.process
+        sampling_plan = get_object_or_404(SamplingPlan, pk=self.kwargs['sampling_plan_pk'])
         view_mode = self.request.GET.get('view', 'active')
 
         if view_mode == 'archived':
-            samples = step.samples.filter(is_active=False).order_by('-deleted_at')
+            samples = Sample.objects.filter(sampling_plan=sampling_plan, is_active=False).order_by('-deleted_at')
         else:
-            samples = step.samples.filter(is_active=True).order_by('created_at')
+            samples = Sample.objects.filter(sampling_plan=sampling_plan, is_active=True).order_by('created_at')
 
-        count_active = step.samples.filter(is_active=True).count()
-        count_archived = step.samples.filter(is_active=False).count()
+        count_active = Sample.objects.filter(sampling_plan=sampling_plan, is_active=True).count()
+        count_archived = Sample.objects.filter(sampling_plan=sampling_plan, is_active=False).count()
 
         context.update({
-            'step': step,
-            'unit': unit,
-            'process': process,
+            'sampling_plan': sampling_plan,
+            'step': sampling_plan.step,
+            'unit': sampling_plan.step.unit_operation,
+            'process': sampling_plan.step.unit_operation.process,
             'samples': samples,
             'view_mode': view_mode,
             'count_active': count_active,
@@ -779,21 +875,19 @@ class SampleStructureView(TemplateView):
 
 
 class SampleAddView(View):
-    def post(self, request, step_pk):
-        step = get_object_or_404(Step, pk=step_pk)
+    def post(self, request, sampling_plan_pk):
+        sampling_plan = get_object_or_404(SamplingPlan, pk=sampling_plan_pk)
         view_mode = request.GET.get('view', 'active')
 
         form = SampleForm(request.POST)
-        form.instance.step = step
+        form.instance.sampling_plan = sampling_plan
 
         if form.is_valid():
             try:
                 sample = form.save(commit=False)
-                sample.step = step
                 sample.created_by = request.user
                 sample.updated_by = request.user
                 sample.save()
-                form.save_m2m()
 
                 messages.success(request, f"Sample '{sample.sample_name}' successfully added.")
             except Exception as e:
@@ -803,14 +897,14 @@ class SampleAddView(View):
                 for error in errors:
                     messages.error(request, f"[{field.upper()}] {error}")
 
-        return redirect(f"/production/steps/{step.pk}/samples/?view={view_mode}")
+        return redirect(f"/production/samplingplans/{sampling_plan.pk}/samples/?view={view_mode}")
 
 
 class SampleDeleteView(GenericDeleteView):
     model = Sample
 
     def get_success_url(self):
-        return f"/production/steps/{self.object.step.pk}/samples/?view=active"
+        return f"/production/samplingplans/{self.object.sampling_plan.pk}/samples/?view=active"
 
     def form_valid(self, form):
         success_url = self.get_success_url()
@@ -825,13 +919,13 @@ class SampleDeleteView(GenericDeleteView):
 class SampleRestoreView(View):
     def post(self, request, pk):
         sample = get_object_or_404(Sample, pk=pk)
-        step_pk = sample.step.pk
+        sampling_plan_pk = sample.sampling_plan.pk
         try:
             sample.restore()
             messages.success(request, f"Sample '{sample.sample_name}' restored successfully.")
         except Exception as e:
             messages.error(request, f"Action denied: {str(e)}")
-        return redirect(f"/production/steps/{step_pk}/samples/?view=archived")
+        return redirect(f"/production/samplingplans/{sampling_plan_pk}/samples/?view=archived")
 
 
 class SampleDetailView(EntityDetailView):
@@ -845,8 +939,4 @@ class SampleUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
     template_name = 'generic/generic_form.html'
 
     def get_success_url(self):
-        return f"/production/steps/{self.object.step.pk}/samples/?view=active"
-
-    def form_valid(self, form):
-        response = super().form_valid(form)
-        return response
+        return f"/production/samplingplans/{self.object.sampling_plan.pk}/samples/?view=active"

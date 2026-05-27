@@ -32,4 +32,4 @@ class MoleculeTypeForm(BaseEntityForm):
 class AnalyticalMethodForm(BaseEntityForm):
     class Meta:
         model = AnalyticalMethod
-        fields = ['name', 'volume_required', 'storage_temp']
+        fields = ['name', 'format', 'unit']

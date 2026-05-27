@@ -144,7 +144,7 @@ class AnalyticalMethodListView(FilterStateMixin, ListView):
     model = AnalyticalMethod
     template_name = 'referential/analytical_method_list.html'
     context_object_name = 'analytical_methods'
-    search_fields = ['name', 'storage_temp']
+    search_fields = ['name']
 
 class AnalyticalMethodCreateView(AuditTrailMixin, CreateView):
     model = AnalyticalMethod
