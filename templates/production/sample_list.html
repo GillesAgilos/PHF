@@ -124,7 +124,7 @@
                         <div class="list-group-item d-flex align-items-center p-3 clickable-row" style="cursor: pointer;" data-href="{% url 'production:sample_detail' pk=sample.pk %}">
                             <div class="me-3 text-center" style="width: 40px;">
                                 {% if sample.is_active %}
-                                    <span class="badge bg-dark rounded-circle py-2 px-2" style="min-width: 32px;">
+                                    <span class="badge bg-dark rounded-circle py-2 px-2" >
                                         <i class="bi bi-vial"></i>
                                     </span>
                                 {% else %}
@@ -156,7 +156,7 @@
                                         <i class="bi bi-eye"></i> Detail
                                     </a>
 
-                                    <a href="{% url 'production:sample_delete' pk=sample.pk %}" class="btn btn-sm btn-outline-danger border-0" title="Archive Sample">
+                                    <a href="{% url 'production:sample_delete' pk=sample.pk %}" class="btn btn-sm btn-outline-danger shadow-sm ms-1" title="Archive Sample">
                                         <i class="bi bi-trash3"></i>
                                     </a>
                                 {% elif not sample.is_active %}

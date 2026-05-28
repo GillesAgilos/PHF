@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Batches Tracking{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-end mb-4">
+        <div class="d-flex flex-column gap-3">
+            <h2 class="text-secondary mb-0">
+                <i class="bi bi-boxes"></i> Batches Tracking
+            </h2>
+
+            <form method="get" class="d-flex border rounded shadow-sm bg-white p-1">
+                <input type="hidden" name="view" value="{{ view_mode }}">
+                <input type="text" name="q" class="form-control form-control-sm border-0 shadow-none"
+                       placeholder="Search batch..." value="{{ search_query }}">
+
+                {% if search_query %}
+                    <a href="?view={{ view_mode }}" class="btn btn-sm btn-link text-muted px-2">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
+                {% endif %}
+
+                <button type="submit" class="btn btn-sm btn-primary px-3">
+                    <i class="bi bi-search"></i>
+                </button>
+            </form>
+        </div>
+
+        <div>
+            <a href="{% url 'batch:batch_add' %}" class="btn btn-primary shadow-sm">
+                <i class="bi bi-plus-lg"></i> Instantiate New Batch
+            </a>
+        </div>
+    </div>
+
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <a class="nav-link {% if view_mode == 'pending' %}active fw-bold text-primary border-bottom-0{% endif %}"
+               href="?view=pending{% if search_query %}&q={{ search_query }}{% endif %}">
+                To Validate
+                {% if count_pending > 0 %}
+                    <span class="badge rounded-pill bg-primary ms-1">{{ count_pending }}</span>
+                {% endif %}
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if view_mode == 'rejected' %}active fw-bold text-danger{% endif %}"
+               href="?view=rejected{% if search_query %}&q={{ search_query }}{% endif %}">
+                Rejected
+                {% if count_rejected > 0 %}
+                    <span class="badge rounded-pill bg-danger ms-1">{{ count_rejected }}</span>
+                {% endif %}
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if view_mode == 'active' %}active fw-bold text-success{% endif %}"
+               href="?view=active{% if search_query %}&q={{ search_query }}{% endif %}">
+                Active and Validated
+                <span class="badge rounded-pill bg-light text-dark border ms-1">{{ count_active }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if view_mode == 'archived' %}active fw-bold text-muted{% endif %}"
+               href="?view=archived{% if search_query %}&q={{ search_query }}{% endif %}">
+                Archived
+                <span class="badge rounded-pill bg-light text-dark border ms-1">{{ count_archived }}</span>
+            </a>
+        </li>
+    </ul>
+
+    <div class="card shadow-sm border-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="{% if view_mode == 'pending' %}table-primary{% elif view_mode == 'rejected' %}table-danger{% elif view_mode == 'active' %}table-dark{% else %}table-secondary{% endif %}">
+                <tr>
+                    <th>QA Status</th>
+                    <th>Project</th>
+                    <th>Process Template</th>
+                    <th>Category / Iteration</th>
+                    <th>Production Status</th>
+                    <th>{% if view_mode == 'archived' %}Archived on{% else %}Last Update{% endif %}</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for batch in batches %}
+                    <tr class="clickable-row {% if batch.status == 'REJECTED' %}table-danger{% endif %}"
+                        data-href="{% url 'batch:batch_detail' batch.pk %}" style="cursor: pointer;">
+                        <td>
+                            {% if not batch.is_active %}
+                                <span class="badge rounded-pill bg-dark text-white">Archived</span>
+                            {% elif batch.status == 'VALIDATED' %}
+                                <span class="badge rounded-pill bg-success text-white">Validated</span>
+                            {% elif batch.status == 'DRAFT' %}
+                                <span class="badge rounded-pill bg-secondary text-white">To validate</span>
+                            {% elif batch.status == 'REJECTED' %}
+                                <span class="badge rounded-pill bg-danger text-white">Rejected</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="fw-semibold text-dark">{{ batch.project.name }}</span></td>
+                        <td class="fw-bold font-monospace text-primary">{{ batch.process.code }}</td>
+                        <td>
+                            <span class="badge bg-light text-dark border font-monospace">{{ batch.get_category_display }}</span>
+                            <span class="text-muted ms-1">Run #{{ batch.iteration_number }}</span>
+                        </td>
+                        <td>
+                            {% if batch.batch_status == 'RUNNING' %}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-play-circle-fill"></i> In Progress</span>
+                            {% elif batch.batch_status == 'COMPLETED' %}
+                                <span class="badge bg-success"><i class="bi bi-check-circle-fill"></i> Completed</span>
+                            {% else %}
+                                <span class="badge bg-secondary"><i class="bi bi-x-circle-fill"></i> Cancelled</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if view_mode == 'archived' %}
+                                {{ batch.deleted_at|date:"d/m/y H:i" }}<br>
+                                <small class="text-muted">by {{ batch.deleted_by.username|default:"sys" }}</small>
+                            {% else %}
+                                {{ batch.updated_at|date:"d/m/y H:i" }}<br>
+                                <small class="text-muted">by {{ batch.updated_by.username|default:"sys" }}</small>
+                            {% endif %}
+                        </td>
+                        <td class="text-end" onclick="event.stopPropagation();">
+                            <!-- LIEN EXCLUSIF SAISIE EN LIGNE (LOGBOOK) -->
+                            {% if batch.is_active %}
+                                <a href="{% url 'batch:batch_logbook' batch.pk %}"
+                                   class="btn btn-sm btn-primary px-2 me-1 shadow-sm" title="Open Production Logbook">
+                                    <i class="bi bi-journal-text"></i> Logbook
+                                </a>
+                            {% endif %}
+
+                            <a href="{% url 'batch:batch_detail' batch.pk %}"
+                               class="btn btn-sm btn-outline-primary px-2 shadow-sm" title="View Global Details & Audit">
+                                <i class="bi bi-eye"></i>
+                            </a>
+
+                            {% if batch.is_active %}
+                                <a href="{% url 'batch:batch_edit' batch.pk %}"
+                                   class="btn btn-sm btn-outline-dark ms-1" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="{% url 'batch:batch_delete' batch.pk %}"
+                                   class="btn btn-sm btn-outline-danger ms-1" title="Archive">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-2"></i><br>
+                            <p class="mt-2 mb-0">No batches tracking recorded in this category.</p>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const rows = document.querySelectorAll(".clickable-row");
+            rows.forEach(row => {
+                row.addEventListener("click", function() {
+                    window.location.href = this.dataset.href;
+                });
+            });
+        });
+    </script>
+
+    <style>
+        .clickable-row:hover { background-color: rgba(0, 0, 0, 0.03) !important; transition: all 0.2s ease; }
+    </style>
+{% endblock %}

@@ -60,6 +60,10 @@ class UnitOperation(BaseComponentEntity):
     def __str__(self):
         return f"{self.name} ({self.unit_type})"
 
+    @property
+    def edit_url(self):
+        return None
+
 
 class Step(BaseComponentEntity):
     unit_operation = models.ForeignKey(
@@ -163,3 +167,4 @@ class Sample(BaseComponentEntity):
 
     def __str__(self):
         return f"{self.sample_name} -> {self.analytical_method.name}"
+

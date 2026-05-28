@@ -1,8 +1,7 @@
 from django import forms
 from django_select2.forms import Select2Widget
-
 from phf.utils import BaseEntityForm
-from referential.models import AnalyticalMethod
+from referential.models import GlobalUnitOperation
 from .models import Process, UnitOperation, Step, Parameter, Sample, SamplingPlan
 
 
@@ -13,9 +12,16 @@ class ProcessForm(BaseEntityForm):
 
 
 class UnitOperationForm(forms.ModelForm):
+    name = forms.ModelChoiceField(
+        queryset=GlobalUnitOperation.objects.filter(status='VALIDATED', is_active=True),
+        to_field_name='name',
+        label="Unit Operation",
+        widget=forms.Select(attrs={'class': 'form-select form-select-sm border-secondary'}),
+    )
+
     class Meta:
         model = UnitOperation
-        fields = ['name', 'unit_type', 'order']
+        fields = ['name', 'order']
 
 
 class StepForm(forms.ModelForm):
@@ -53,3 +59,4 @@ class SampleForm(forms.ModelForm):
                 'class': 'django-select2-custom form-select-sm'
             }),
         }
+

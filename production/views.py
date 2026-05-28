@@ -11,6 +11,7 @@ from phf.utils import (
     GenericDeleteView, GenericRestoreView, EntityDetailView,
     EntityValidateView, EntityRejectView
 )
+from referential.models import GlobalUnitOperation
 from .models import Process, UnitOperation, Step, Parameter, Sample, SamplingPlan
 from .forms import ProcessForm, UnitOperationForm, StepForm, ParameterForm, SampleForm, SamplingPlanForm
 
@@ -52,17 +53,16 @@ class ProcessRestoreView(GenericRestoreView):
 class ProcessDetailView(EntityDetailView):
     model = Process
 
-    def get_queryset(self):
-        return Process.objects.filter(pk=self.kwargs['pk']).prefetch_related(
+    def get_object(self, queryset=None):
+        base_queryset = super().get_queryset()
+        optimized_queryset = base_queryset.prefetch_related(
             'units__steps__parameters',
-            'units__steps__sampling_plans__samples__analytical_method'  # Correction de la chaîne de relations
+            'units__steps__sampling_plans__samples__analytical_method'
         )
+        return get_object_or_404(optimized_queryset, pk=self.kwargs['pk'])
 
     def get_context_data(self, **kwargs):
-        self.object = get_object_or_404(self.get_queryset())
-        self.obj = self.object
         context = super().get_context_data(**kwargs)
-        context['object'] = self.object
         context['is_process_view'] = True
         return context
 
@@ -191,13 +191,12 @@ class UnitOperationStructureView(TemplateView):
             'view_mode': view_mode,
             'count_active': count_active,
             'count_archived': count_archived,
-            'form': context.get('form') or UnitOperationForm()
+            'form': context.get('form') or UnitOperationForm(),
         })
         return context
 
 
 class UnitOperationAddView(View):
-
     def post(self, request, process_pk):
         process = get_object_or_404(Process, pk=process_pk)
         view_mode = request.GET.get('view', 'active')
@@ -208,6 +207,10 @@ class UnitOperationAddView(View):
         if form.is_valid():
             try:
                 unit = form.save(commit=False)
+                catalog_item = form.cleaned_data.get('name')
+
+                unit.unit_type = catalog_item.unit_type
+                unit.name = catalog_item.name
 
                 max_active_order = UnitOperation.objects.filter(
                     process=process,
@@ -217,6 +220,7 @@ class UnitOperationAddView(View):
                 unit.order = max_active_order + 1
                 unit.created_by = request.user
                 unit.updated_by = request.user
+
                 unit.save()
 
                 messages.success(request, f"Operation '{unit.name}' successfully added to flowchart.")

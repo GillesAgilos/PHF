@@ -21,12 +21,14 @@ urlpatterns = [
     # =========================================================================
     # LEVEL 2 : UNIT OPERATIONS
     # =========================================================================
-    path('processes/<uuid:process_pk>/structure/', views.UnitOperationStructureView.as_view(), name='unitoperation_list'),
+    path('processes/<uuid:process_pk>/structure/', views.UnitOperationStructureView.as_view(),
+         name='unitoperation_list'),
     path('processes/<uuid:process_pk>/structure/add/', views.UnitOperationAddView.as_view(), name='unitoperation_add'),
     path('unit-operations/<uuid:pk>/edit/', views.UnitOperationUpdateView.as_view(), name='unitoperation_edit'),
     path('unit-operations/<uuid:pk>/delete/', views.UnitOperationDeleteView.as_view(), name='unitoperation_delete'),
     path('unit-operations/<uuid:pk>/restore/', views.UnitOperationRestoreView.as_view(), name='unitoperation_restore'),
-    path('unit-operations/<uuid:pk>/reorder/<str:direction>/', views.UnitOperationReorderView.as_view(), name='unitoperation_reorder'),
+    path('unit-operations/<uuid:pk>/reorder/<str:direction>/', views.UnitOperationReorderView.as_view(),
+         name='unitoperation_reorder'),
     path('unit-operations/<uuid:pk>/detail/', views.UnitOperationDetailView.as_view(), name='unitoperation_detail'),
 
     # =========================================================================
@@ -48,7 +50,8 @@ urlpatterns = [
     path('parameters/<uuid:pk>/edit/', views.ParameterUpdateView.as_view(), name='parameter_edit'),
     path('parameters/<uuid:pk>/delete/', views.ParameterDeleteView.as_view(), name='parameter_delete'),
     path('parameters/<uuid:pk>/restore/', views.ParameterRestoreView.as_view(), name='parameter_restore'),
-    path('parameters/<uuid:pk>/reorder/<str:direction>/', views.ParameterReorderView.as_view(), name='parameter_reorder'),
+    path('parameters/<uuid:pk>/reorder/<str:direction>/', views.ParameterReorderView.as_view(),
+         name='parameter_reorder'),
     path('parameters/<uuid:pk>/detail/', views.ParameterDetailView.as_view(), name='parameter_detail'),
 
     # =========================================================================

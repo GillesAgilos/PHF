@@ -1,5 +1,5 @@
 from phf.utils import BaseEntityForm
-from .models import Client, Project, MoleculeType, AnalyticalMethod
+from .models import Client, Project, MoleculeType, AnalyticalMethod, GlobalUnitOperation
 
 
 class ClientForm(BaseEntityForm):
@@ -33,3 +33,9 @@ class AnalyticalMethodForm(BaseEntityForm):
     class Meta:
         model = AnalyticalMethod
         fields = ['name', 'format', 'unit']
+
+
+class GlobalUnitOperationForm(BaseEntityForm):
+    class Meta:
+        model = GlobalUnitOperation
+        fields = ['name', 'unit_type']

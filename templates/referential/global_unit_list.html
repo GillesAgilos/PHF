@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}Global Unit Operations Referential{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-end mb-4">
+        <div class="d-flex flex-column gap-3">
+            <h2 class="text-secondary mb-0">
+                <i class="bi bi-diagram-3-fill"></i> Global Unit Operations Referential
+            </h2>
+
+            <form method="get" class="d-flex border rounded shadow-sm bg-white p-1">
+                <input type="hidden" name="view" value="{{ view_mode }}">
+
+                <input type="text" name="q" class="form-control form-control-sm border-0 shadow-none"
+                       placeholder="Search unit name..." value="{{ search_query }}">
+
+                {% if search_query %}
+                    <a href="?view={{ view_mode }}" class="btn btn-sm btn-link text-muted px-2">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
+                {% endif %}
+
+                <button type="submit" class="btn btn-sm btn-primary px-3">
+                    <i class="bi bi-search"></i>
+                </button>
+            </form>
+        </div>
+
+        <div>
+            <a href="{% url 'referential:globalunitoperation_add' %}" class="btn btn-primary shadow-sm">
+                <i class="bi bi-plus-lg"></i> Add New Unit Template
+            </a>
+        </div>
+    </div>
+
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <a class="nav-link {% if view_mode == 'pending' %}active fw-bold text-primary border-bottom-0{% endif %}"
+               href="?view=pending{% if search_query %}&q={{ search_query }}{% endif %}">
+                To Validate
+                {% if count_pending > 0 %}
+                    <span class="badge rounded-pill bg-primary ms-1">{{ count_pending }}</span>
+                {% endif %}
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if view_mode == 'rejected' %}active fw-bold text-danger{% endif %}"
+               href="?view=rejected{% if search_query %}&q={{ search_query }}{% endif %}">
+                Rejected
+                {% if count_rejected > 0 %}
+                    <span class="badge rounded-pill bg-danger ms-1">{{ count_rejected }}</span>
+                {% endif %}
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if view_mode == 'active' %}active fw-bold text-success{% endif %}"
+               href="?view=active{% if search_query %}&q={{ search_query }}{% endif %}">
+                Active and Validated
+                <span class="badge rounded-pill bg-light text-dark border ms-1">{{ count_active }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if view_mode == 'archived' %}active fw-bold text-muted{% endif %}"
+               href="?view=archived{% if search_query %}&q={{ search_query }}{% endif %}">
+                Archived
+                <span class="badge rounded-pill bg-light text-dark border ms-1">{{ count_archived }}</span>
+            </a>
+        </li>
+    </ul>
+
+    <div class="card shadow-sm border-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="{% if view_mode == 'pending' %}table-primary{% elif view_mode == 'rejected' %}table-danger{% elif view_mode == 'active' %}table-dark{% else %}table-secondary{% endif %}">
+                <tr>
+                    <th style="width: 140px;">Status</th>
+                    <th>Unit Operation Name</th>
+                    <th>Process Type</th>
+                    <th>{% if view_mode == 'archived' %}Archived on{% else %}Last Update{% endif %}</th>
+                    <th class="text-end" style="width: 180px;">Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for unit in global_units %}
+                    <tr class="clickable-row {% if unit.status == 'REJECTED' %}table-danger{% endif %}"
+                        data-href="{% url 'referential:globalunitoperation_detail' unit.pk %}" style="cursor: pointer;">
+                        <td>
+                            {% if not unit.is_active %}
+                                <span class="badge rounded-pill bg-dark text-white">Archived</span>
+                            {% elif unit.status == 'VALIDATED' %}
+                                <span class="badge rounded-pill bg-success text-white">Validated</span>
+                            {% elif unit.status == 'DRAFT' %}
+                                <span class="badge rounded-pill bg-secondary text-white">To validate</span>
+                            {% elif unit.status == 'REJECTED' %}
+                                <span class="badge rounded-pill bg-danger text-white">Rejected</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="fw-semibold text-dark">{{ unit.name }}</span>
+                            {% if unit.status == 'REJECTED' %}
+                                <br><small class="text-danger fw-bold"><i class="bi bi-arrow-right"></i> Needs correction</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge {% if unit.unit_type == 'USP' %}bg-info text-dark{% else %}bg-primary text-white{% endif %} font-monospace">
+                                {{ unit.get_unit_type_display }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if view_mode == 'archived' %}
+                                {{ unit.deleted_at|date:"d/m/y H:i" }}<br>
+                                <small class="text-muted">by {{ unit.deleted_by.username|default:"sys" }}</small>
+                            {% else %}
+                                {{ unit.updated_at|date:"d/m/y H:i" }}<br>
+                                <small class="text-muted">by {{ unit.updated_by.username|default:"sys" }}</small>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{% url 'referential:globalunitoperation_detail' unit.pk %}"
+                               class="btn btn-sm btn-outline-primary px-3 shadow-sm">
+                                <i class="bi bi-eye"></i>
+                            </a>
+
+                            {% if unit.is_active %}
+                                <a href="{% url 'referential:globalunitoperation_edit' unit.pk %}"
+                                   class="btn btn-sm btn-outline-dark ms-1" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="{% url 'referential:globalunitoperation_delete' unit.pk %}"
+                                   class="btn btn-sm btn-outline-danger ms-1" title="Archive">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-2"></i><br>
+                            <p class="mt-2 mb-0">No unit operations found in this category.</p>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const rows = document.querySelectorAll(".clickable-row");
+            rows.forEach(row => {
+                row.addEventListener("click", function (e) {
+                    if (e.target.closest('a') || e.target.closest('button') || e.target.closest('form')) {
+                        return;
+                    }
+                    window.location.href = this.dataset.href;
+                });
+            });
+        });
+    </script>
+
+    <style>
+        .clickable-row:hover { background-color: rgba(0, 0, 0, 0.03) !important; transition: all 0.2s ease; }
+    </style>
+{% endblock %}

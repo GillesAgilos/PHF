@@ -52,3 +52,19 @@ class AnalyticalMethod(BaseModel):
 
     def __str__(self):
         return self.name
+
+
+
+class GlobalUnitOperation(BaseModel):
+    TYPE_CHOICES = [
+        ('USP', 'USP'),
+        ('DSP', 'DSP'),
+    ]
+    name = models.CharField(max_length=255, unique=True, verbose_name="Unit Name")
+    unit_type = models.CharField(max_length=10, choices=TYPE_CHOICES, verbose_name="Type")
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} ({self.get_unit_type_display()})"

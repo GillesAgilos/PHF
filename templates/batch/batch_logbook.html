@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}Logbook - {{ batch.project.name }} Run #{{ batch.iteration_number }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <div class="card shadow-sm border-0 mb-4 bg-white">
+        <div class="card-body d-flex justify-content-between align-items-center">
+            <div>
+                <h3 class="mb-1 text-dark fw-bold"><i class="bi bi-journal-text text-primary"></i> Production Logbook: {{ batch.project.name }}</h3>
+                <p class="text-muted mb-0 small">
+                    Process Code: <span class="badge bg-secondary font-monospace">{{ batch.process.code }}</span> |
+                    <a href="{% url 'batch:batch_detail' batch.pk %}" class="text-decoration-none fw-semibold ms-2">
+                        <i class="bi bi-file-earmark-medical"></i> View Master Generic Detail View (Audit Trail)
+                    </a>
+                </p>
+            </div>
+            <div>
+                <span class="badge {% if batch.batch_status == 'RUNNING' %}bg-warning text-dark{% else %}bg-success{% endif %} px-3 py-2">
+                    {{ batch.get_batch_status_display }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="accordion shadow-sm" id="logbookAccordion">
+        {% for unit_node in process_tree %}
+            <div class="accordion-item border-0 mb-3 rounded shadow-sm overflow-hidden">
+                <h2 class="accordion-header" id="heading-{{ unit_node.object.pk }}">
+                    <button class="accordion-button bg-dark text-white fw-bold {% if not forloop.first %}collapsed{% endif %}"
+                            type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ unit_node.object.pk }}">
+                        <i class="bi bi-gear-fill text-primary me-2"></i>
+                        Unit {{ unit_node.object.order }} : {{ unit_node.object.name }}
+                    </button>
+                </h2>
+
+                <div id="collapse-{{ unit_node.object.pk }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" data-bs-parent="#logbookAccordion">
+                    <div class="accordion-body bg-light p-0">
+                        {% for step_node in unit_node.steps %}
+                            <div class="p-3 bg-white border-bottom">
+                                <h6 class="text-primary fw-bold mb-3"><i class="bi bi-arrow-return-right"></i> Step {{ step_node.object.order }} : {{ step_node.object.name }}</h6>
+
+                                <div class="row g-3">
+                                    <div class="col-12 col-lg-6 border-end">
+                                        <table class="table table-sm table-hover align-middle small mb-0">
+                                            <thead class="table-light text-muted">
+                                                <tr>
+                                                    <th class="ps-3">Parameter</th>
+                                                    <th>Recorded Value</th>
+                                                    <th class="text-end pe-3">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for p in step_node.parameters_with_results %}
+                                                    <tr class="position-relative {% if p.result.status == 'VALIDATED' %}border-start border-4 border-success table-success{% elif p.result.status == 'REJECTED' %}border-start border-4 border-danger table-danger{% endif %}">
+
+                                                        <td class="ps-3 fw-semibold text-secondary">
+                                                            {% if p.result %}
+                                                                <a href="{% url 'batch:parameterresult_detail' p.result.pk %}" class="stretched-link text-decoration-none text-secondary">{{ p.parameter.name }}</a>
+                                                            {% else %}
+                                                                {{ p.parameter.name }}
+                                                            {% endif %}
+                                                        </td>
+
+                                                        <td class="custom-z-index">
+                                                            {% if p.result %}
+                                                                <span class="font-monospace fw-bold fs-6">{{ p.result.actual_value }}</span>
+                                                            {% else %}
+                                                                <form action="{% url 'batch:parameterresult_add' %}" method="post" class="d-flex m-0">
+                                                                    {% csrf_token %}
+                                                                    <input type="hidden" name="batch" value="{{ batch.pk }}">
+                                                                    <input type="hidden" name="parameter" value="{{ p.parameter.pk }}">
+                                                                    <input type="text" name="actual_value" class="form-control form-control-sm border-primary font-monospace p-1" style="max-width: 120px;" required placeholder="Enter value...">
+                                                                    <button type="submit" class="btn btn-sm btn-primary ms-1 px-2 py-0"><i class="bi bi-check-lg"></i></button>
+                                                                </form>
+                                                            {% endif %}
+                                                        </td>
+
+                                                        <td class="text-end pe-3 custom-z-index">
+                                                            {% if p.result %}
+                                                                <div class="btn-group btn-group-sm">
+                                                                    {% if p.result.status == 'REJECTED' %}
+                                                                        <a href="{% url 'batch:parameterresult_edit' p.result.pk %}" class="btn btn-outline-primary" title="Edit"><i class="bi bi-pencil-fill"></i> Edit</a>
+                                                                    {% else %}
+                                                                        <a href="{% url 'batch:parameterresult_detail' p.result.pk %}" class="btn btn-outline-secondary" title="Details"><i class="bi bi-eye-fill"></i> View</a>
+                                                                        <a href="{% url 'batch:parameterresult_edit' p.result.pk %}" class="btn btn-outline-primary" title="Edit"><i class="bi bi-pencil-fill"></i> Edit</a>
+
+                                                                        {% if p.result.status != 'VALIDATED' %}
+                                                                            <form action="{% url 'batch:parameterresult_validate' p.result.pk %}" method="post" class="d-inline m-0">
+                                                                                {% csrf_token %}
+                                                                                <button type="submit" class="btn btn-outline-success border-start-0 rounded-0" title="Validate"><i class="bi bi-check-circle-fill"></i> Validate</button>
+                                                                            </form>
+                                                                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectParam-{{ p.result.pk }}" title="Reject"><i class="bi bi-x-circle-fill"></i> Reject</button>
+                                                                        {% endif %}
+                                                                    {% endif %}
+                                                                </div>
+
+                                                                {% if p.result.status != 'REJECTED' %}
+                                                                <div class="modal fade" id="rejectParam-{{ p.result.pk }}" tabindex="-1" aria-hidden="true">
+                                                                    <div class="modal-dialog modal-dialog-centered">
+                                                                        <form action="{% url 'batch:parameterresult_reject' p.result.pk %}" method="post" class="modal-content text-start">
+                                                                            {% csrf_token %}
+                                                                            <div class="modal-header"><h5 class="modal-title text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> Reject Parameter Result</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                                                                            <div class="modal-body">
+                                                                                <label class="form-label small fw-bold">Rejection Reason</label>
+                                                                                <textarea name="rejection_reason" class="form-control" rows="3" required placeholder="Mandatory comment..."></textarea>
+                                                                            </div>
+                                                                            <div class="modal-footer"><button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-sm btn-danger">Confirm Rejection</button></div>
+                                                                        </form>
+                                                                    </div>
+                                                                </div>
+                                                                {% endif %}
+                                                            {% endif %}
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div class="col-12 col-lg-6">
+                                        <table class="table table-sm table-hover align-middle small mb-0">
+                                            <thead class="table-light text-muted">
+                                                <tr>
+                                                    <th class="ps-3">Sample Tag</th>
+                                                    <th>Analysis Result</th>
+                                                    <th class="text-end pe-3">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for s in step_node.samples_with_results %}
+                                                    <tr class="position-relative {% if s.result.status == 'VALIDATED' %}border-start border-4 border-success table-success{% elif s.result.status == 'REJECTED' %}border-start border-4 border-danger table-danger{% endif %}">
+
+                                                        <td class="ps-3 fw-semibold text-secondary">
+                                                            {% if s.result %}
+                                                                <a href="{% url 'batch:sampleresult_detail' s.result.pk %}" class="stretched-link text-decoration-none text-secondary">{{ s.sample.sample_name }}</a>
+                                                            {% else %}
+                                                                {{ s.sample.sample_name }}
+                                                            {% endif %}
+                                                        </td>
+
+                                                        <td class="custom-z-index">
+                                                            {% if s.result %}
+                                                                <span class="font-monospace fw-bold text-info fs-6">{{ s.result.actual_value }}</span>
+                                                            {% else %}
+                                                                <form action="{% url 'batch:sampleresult_add' %}" method="post" class="d-flex m-0">
+                                                                    {% csrf_token %}
+                                                                    <input type="hidden" name="batch" value="{{ batch.pk }}">
+                                                                    <input type="hidden" name="sample" value="{{ s.sample.pk }}">
+                                                                    <input type="text" name="actual_value" class="form-control form-control-sm border-info font-monospace p-1" style="max-width: 120px;" required placeholder="Enter result...">
+                                                                    <button type="submit" class="btn btn-sm btn-info text-white ms-1 px-2 py-0"><i class="bi bi-check-lg"></i></button>
+                                                                </form>
+                                                            {% endif %}
+                                                        </td>
+
+                                                        <td class="text-end pe-3 custom-z-index">
+                                                            {% if s.result %}
+                                                                <div class="btn-group btn-group-sm">
+                                                                    {% if s.result.status == 'REJECTED' %}
+                                                                        <a href="{% url 'batch:sampleresult_edit' s.result.pk %}" class="btn btn-outline-primary" title="Edit"><i class="bi bi-pencil-fill"></i> Edit</a>
+                                                                    {% else %}
+                                                                        <a href="{% url 'batch:sampleresult_detail' s.result.pk %}" class="btn btn-outline-secondary" title="Details"><i class="bi bi-eye-fill"></i> View</a>
+                                                                        <a href="{% url 'batch:sampleresult_edit' s.result.pk %}" class="btn btn-outline-primary" title="Edit"><i class="bi bi-pencil-fill"></i> Edit</a>
+
+                                                                        {% if s.result.status != 'VALIDATED' %}
+                                                                            <form action="{% url 'batch:sampleresult_validate' s.result.pk %}" method="post" class="d-inline m-0">
+                                                                                {% csrf_token %}
+                                                                                <button type="submit" class="btn btn-outline-success border-start-0 rounded-0" title="Validate"><i class="bi bi-check-circle-fill"></i> Validate</button>
+                                                                            </form>
+                                                                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectSample-{{ s.result.pk }}" title="Reject"><i class="bi bi-x-circle-fill"></i> Reject</button>
+                                                                        {% endif %}
+                                                                    {% endif %}
+                                                                </div>
+
+                                                                {% if s.result.status != 'REJECTED' %}
+                                                                <div class="modal fade" id="rejectSample-{{ s.result.pk }}" tabindex="-1" aria-hidden="true">
+                                                                    <div class="modal-dialog modal-dialog-centered">
+                                                                        <form action="{% url 'batch:sampleresult_reject' s.result.pk %}" method="post" class="modal-content text-start">
+                                                                            {% csrf_token %}
+                                                                            <div class="modal-header"><h5 class="modal-title text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> Reject Sample Result</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                                                                            <div class="modal-body">
+                                                                                <label class="form-label small fw-bold">Rejection Reason</label>
+                                                                                <textarea name="rejection_reason" class="form-control" rows="3" required placeholder="Mandatory comment..."></textarea>
+                                                                            </div>
+                                                                            <div class="modal-footer"><button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-sm btn-danger">Confirm Rejection</button></div>
+                                                                        </form>
+                                                                    </div>
+                                                                </div>
+                                                                {% endif %}
+                                                            {% endif %}
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+    .custom-z-index {
+        position: relative;
+        z-index: 5;
+    }
+    .position-relative:has(.stretched-link):hover {
+        background-color: rgba(0, 0, 0, 0.02) !important;
+        transition: all 0.15s ease;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}

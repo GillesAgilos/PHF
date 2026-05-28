@@ -1,7 +1,9 @@
 from django.urls import reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView
-from .models import Client, Project, MoleculeType, AnalyticalMethod
-from .forms import ClientForm, ProjectForm, MoleculeTypeForm, AnalyticalMethodForm
+
+from production.models import UnitOperation, Process
+from .models import Client, Project, MoleculeType, AnalyticalMethod, GlobalUnitOperation
+from .forms import ClientForm, ProjectForm, MoleculeTypeForm, AnalyticalMethodForm, GlobalUnitOperationForm
 from phf.utils import AuditTrailMixin, StatusResetMixin, GenericDeleteView, GenericRestoreView, EntityDetailView, \
     EntityValidateView, EntityRejectView, FilterStateMixin
 
@@ -181,3 +183,66 @@ class AnalyticalMethodValidateView(EntityValidateView):
 class AnalyticalMethodRejectView(EntityRejectView):
     model = AnalyticalMethod
     redirect_url = 'referential:analyticalmethod_list'
+
+
+def get_catalog_process():
+    process, created = Process.objects.get_or_create(
+        code="GLOBAL_CATALOG",
+        defaults={"name": "Global Unit Operation Catalog Repository", "status": "DRAFT"}
+    )
+    return process
+
+# =========================================================================
+# GLOBAL UNIT OPERATION VIEWS
+# =========================================================================
+
+class GlobalUnitOperationListView(FilterStateMixin, ListView):
+    model = GlobalUnitOperation
+    template_name = 'referential/global_unit_list.html'
+    context_object_name = 'global_units'
+    search_fields = ['name']
+
+
+class GlobalUnitOperationCreateView(AuditTrailMixin, CreateView):
+    model = GlobalUnitOperation
+    form_class = GlobalUnitOperationForm
+    template_name = 'generic/generic_form.html'
+    # Correction ici :
+    success_url = reverse_lazy('referential:globalunitoperation_list')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Add New Global Unit Operation"
+        return context
+
+
+class GlobalUnitOperationUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
+    model = GlobalUnitOperation
+    form_class = GlobalUnitOperationForm
+    template_name = 'generic/generic_form.html'
+    success_url = reverse_lazy('referential:globalunitoperation_list')
+
+
+class GlobalUnitOperationDeleteView(GenericDeleteView):
+    model = GlobalUnitOperation
+    success_url = reverse_lazy('referential:globalunitoperation_list')
+
+
+class GlobalUnitOperationRestoreView(GenericRestoreView):
+    model = GlobalUnitOperation
+    redirect_url = 'referential:globalunitoperation_list'
+
+
+class GlobalUnitOperationDetailView(EntityDetailView):
+    model = GlobalUnitOperation
+
+
+class GlobalUnitOperationValidateView(EntityValidateView):
+    model = GlobalUnitOperation
+    # Correction ici :
+    redirect_url = 'referential:globalunitoperation_list'
+
+
+class GlobalUnitOperationRejectView(EntityRejectView):
+    model = GlobalUnitOperation
+    redirect_url = 'referential:globalunitoperation_list'

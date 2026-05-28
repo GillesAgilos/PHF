@@ -57,4 +57,24 @@ urlpatterns = [
     path('analytical-methods/<uuid:pk>/', views.AnalyticalMethodDetailView.as_view(), name='analyticalmethod_detail'),
     path('analytical-methods/<uuid:pk>/reject/', views.AnalyticalMethodRejectView.as_view(),
          name='analyticalmethod_reject'),
+
+    # ==========================================
+    # GLOBAL UNIT OPERATIONS (CATALOG)
+    # ==========================================
+    path('global-units/', views.GlobalUnitOperationListView.as_view(),
+         name='globalunitoperation_list'),
+    path('global-units/add/', views.GlobalUnitOperationCreateView.as_view(),
+         name='globalunitoperation_add'),
+    path('global-units/<uuid:pk>/edit/', views.GlobalUnitOperationUpdateView.as_view(),
+         name='globalunitoperation_edit'),
+    path('global-units/<uuid:pk>/delete/', views.GlobalUnitOperationDeleteView.as_view(),
+         name='globalunitoperation_delete'),
+    path('global-units/<uuid:pk>/restore/', views.GlobalUnitOperationRestoreView.as_view(),
+         name='globalunitoperation_restore'),
+    path('global-units/<uuid:pk>/validate/', views.GlobalUnitOperationValidateView.as_view(),
+         name='globalunitoperation_validate'),
+    path('global-units/<uuid:pk>/', views.GlobalUnitOperationDetailView.as_view(),
+         name='globalunitoperation_detail'),
+    path('global-units/<uuid:pk>/reject/', views.GlobalUnitOperationRejectView.as_view(),
+         name='globalunitoperation_reject'),
 ]

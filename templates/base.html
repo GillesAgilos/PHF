@@ -26,8 +26,8 @@
                         <li><a class="dropdown-item" href="{% url 'referential:client_list' %}">Clients</a></li>
                         <li><a class="dropdown-item" href="{% url 'referential:project_list' %}">Projects</a></li>
                         <li><a class="dropdown-item" href="{% url 'referential:moleculetype_list' %}">Molecule Types</a>
-                        <li><a class="dropdown-item" href="{% url 'referential:analyticalmethod_list' %}">Analytical
-                            Methods</a>
+                        <li><a class="dropdown-item" href="{% url 'referential:analyticalmethod_list' %}">Analytical Methods</a>
+                        <li><a class="dropdown-item" href="{% url 'referential:globalunitoperation_list' %}">Unit Operations Catalogue</a>
                         </li>
                     </ul>
                 </li>
@@ -35,6 +35,11 @@
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'production:process_list' %}">
                         Process Templates
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'batch:batch_list' %}">
+                        Batches
                     </a>
                 </li>
             {% endif %}

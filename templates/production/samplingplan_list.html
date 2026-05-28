@@ -103,7 +103,7 @@
                                         <a href="{% url 'production:sample_list' sampling_plan_pk=plan.pk %}" class="btn btn-sm btn-outline-primary shadow-sm me-2" title="Manage Samples & Methods">
                                             <i class="bi bi-vial"></i> Manage Samples
                                         </a>
-                                        <a href="{% url 'production:samplingplan_delete' pk=plan.pk %}" class="btn btn-sm btn-outline-danger shadow-sm border-0" title="Archive Plan">
+                                        <a href="{% url 'production:samplingplan_delete' pk=plan.pk %}" class="btn btn-sm btn-outline-danger shadow-sm ms-1" title="Archive Plan">
                                             <i class="bi bi-trash3"></i>
                                         </a>
                                     {% elif not plan.is_active %}
