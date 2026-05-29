@@ -15,12 +15,10 @@ urlpatterns = [
     path('batches/<uuid:pk>/validate/', views.BatchValidateView.as_view(), name='batch_validate'),
     path('batches/<uuid:pk>/reject/', views.BatchRejectView.as_view(), name='batch_reject'),
     path('batches/<uuid:pk>/', views.BatchDetailView.as_view(), name='batch_detail'),
-
-    # NOUVELLE ROUTE LOGBOOK GROUPÉ (OUVERT/FERMÉ + ENCODAGE DIRECT)
     path('batches/<uuid:pk>/logbook/', views.BatchLogbookView.as_view(), name='batch_logbook'),
 
     # =========================================================================
-    # PARAMETER RESULTS URLs
+    # PARAMETER RESULTS
     # =========================================================================
     path('parameters-results/', views.ParameterResultListView.as_view(), name='parameterresult_list'),
     path('parameters-results/add/', views.ParameterResultCreateView.as_view(), name='parameterresult_add'),
@@ -32,7 +30,7 @@ urlpatterns = [
     path('parameters-results/<uuid:pk>/', views.ParameterResultDetailView.as_view(), name='parameterresult_detail'),
 
     # =========================================================================
-    # SAMPLE RESULTS URLs
+    # SAMPLE RESULTS
     # =========================================================================
     path('samples-results/', views.SampleResultListView.as_view(), name='sampleresult_list'),
     path('samples-results/add/', views.SampleResultCreateView.as_view(), name='sampleresult_add'),

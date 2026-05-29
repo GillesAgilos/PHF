@@ -59,7 +59,7 @@ urlpatterns = [
          name='analyticalmethod_reject'),
 
     # ==========================================
-    # GLOBAL UNIT OPERATIONS (CATALOG)
+    # GLOBAL UNIT OPERATIONS
     # ==========================================
     path('global-units/', views.GlobalUnitOperationListView.as_view(),
          name='globalunitoperation_list'),

@@ -19,6 +19,12 @@ class BatchForm(BaseEntityForm):
         self.fields['project'].queryset = Project.objects.filter(is_active=True, status='VALIDATED')
         self.fields['process'].queryset = Process.objects.filter(is_active=True, status='VALIDATED')
 
+        if self.instance and self.instance.pk:
+            self.fields['process'].disabled = True
+            self.fields['process'].required = False
+            self.fields['project'].disabled = True
+            self.fields['project'].required = False
+
 
 class ParameterResultForm(BaseEntityForm):
     class Meta:
@@ -29,7 +35,6 @@ class ParameterResultForm(BaseEntityForm):
         super().__init__(*args, **kwargs)
         self.fields['batch'].queryset = Batch.objects.filter(is_active=True)
 
-        # Correction ici : retrait du filtre sur 'status' qui n'existe pas
         self.fields['parameter'].queryset = Parameter.objects.filter(
             is_active=True
         )
@@ -44,8 +49,6 @@ class SampleResultForm(BaseEntityForm):
         super().__init__(*args, **kwargs)
         self.fields['batch'].queryset = Batch.objects.filter(is_active=True)
 
-        # Vérifie ton modèle Sample. Si lui non plus n'a pas de champ 'status',
-        # retire-le comme ceci :
         self.fields['sample'].queryset = Sample.objects.filter(
             is_active=True
         )

@@ -9,7 +9,7 @@ from django.db.models import Max
 from phf.utils import (
     AuditTrailMixin, StatusResetMixin, FilterStateMixin,
     GenericDeleteView, GenericRestoreView, EntityDetailView,
-    EntityValidateView, EntityRejectView
+    EntityValidateView, EntityRejectView, ProcessLockRequiredMixin
 )
 from referential.models import GlobalUnitOperation
 from .models import Process, UnitOperation, Step, Parameter, Sample, SamplingPlan
@@ -33,14 +33,14 @@ class ProcessCreateView(AuditTrailMixin, CreateView):
     success_url = reverse_lazy('production:process_list')
 
 
-class ProcessUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
+class ProcessUpdateView(ProcessLockRequiredMixin,AuditTrailMixin, StatusResetMixin, UpdateView):
     model = Process
     form_class = ProcessForm
     template_name = 'generic/generic_form.html'
     success_url = reverse_lazy('production:process_list')
 
 
-class ProcessDeleteView(GenericDeleteView):
+class ProcessDeleteView(ProcessLockRequiredMixin,GenericDeleteView):
     model = Process
     success_url = reverse_lazy('production:process_list')
 
@@ -64,6 +64,12 @@ class ProcessDetailView(EntityDetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['is_process_view'] = True
+
+        process = context.get('object') or self.get_object()
+
+        context['show_validation_buttons'] = (process.status == Process.Status.PENDING)
+        context['show_submit_button'] = (process.status in [Process.Status.DRAFT, Process.Status.REJECTED])
+
         return context
 
 
@@ -71,11 +77,28 @@ class ProcessValidateView(EntityValidateView):
     model = Process
     redirect_url = 'production:process_list'
 
+    def post(self, request, *args, **kwargs):
+        process = get_object_or_404(self.model, pk=kwargs.get('pk'))
+
+        if process.status != Process.Status.PENDING:
+            messages.error(request, "This process template cannot be validated because it is not pending review.")
+            return redirect(self.redirect_url)
+
+        return super().post(request, *args, **kwargs)
+
 
 class ProcessRejectView(EntityRejectView):
     model = Process
     redirect_url = 'production:process_list'
 
+    def post(self, request, *args, **kwargs):
+        process = get_object_or_404(self.model, pk=kwargs.get('pk'))
+
+        if process.status != Process.Status.PENDING:
+            messages.error(request, "This process template cannot be rejected because it is not pending review.")
+            return redirect(self.redirect_url)
+
+        return super().post(request, *args, **kwargs)
 
 class ProcessSubmitView(View):
 
@@ -94,11 +117,13 @@ class ProcessCreateNewVersionView(View):
     def post(self, request, pk):
         old_process = get_object_or_404(Process, pk=pk)
 
+        # Sécurité : On ne versionne qu'un process validé
         if old_process.status != 'VALIDATED':
             messages.error(request, "Only validated templates can be versioned.")
             return redirect('production:process_list')
 
         with transaction.atomic():
+            # 1. Calcul de la version suivante
             max_version = Process.objects.filter(
                 code=old_process.code
             ).aggregate(Max('version'))['version__max']
@@ -106,6 +131,7 @@ class ProcessCreateNewVersionView(View):
             current_max = max_version if max_version is not None else old_process.version
             next_version = current_max + 1
 
+            # 2. Duplication du Process racine
             new_process = Process.objects.create(
                 name=old_process.name,
                 code=old_process.code,
@@ -117,6 +143,7 @@ class ProcessCreateNewVersionView(View):
                 updated_by=request.user
             )
 
+            # 3. Duplication des UnitOperations
             for u in old_process.units.filter(is_active=True):
                 new_u = UnitOperation.objects.create(
                     process=new_process,
@@ -126,6 +153,8 @@ class ProcessCreateNewVersionView(View):
                     created_by=request.user,
                     updated_by=request.user
                 )
+
+                # 4. Duplication des Steps
                 for s in u.steps.filter(is_active=True):
                     new_s = Step.objects.create(
                         unit_operation=new_u,
@@ -135,6 +164,7 @@ class ProcessCreateNewVersionView(View):
                         updated_by=request.user
                     )
 
+                    # 5. Duplication des Parameters
                     for p in s.parameters.filter(is_active=True):
                         Parameter.objects.create(
                             step=new_s,
@@ -152,15 +182,24 @@ class ProcessCreateNewVersionView(View):
                             updated_by=request.user
                         )
 
-                    for sample in s.samples.filter(is_active=True):
-                        new_sample = Sample.objects.create(
+                    # 6. NOUVEAU : Duplication des SamplingPlans
+                    for plan in s.sampling_plans.filter(is_active=True):
+                        new_plan = SamplingPlan.objects.create(
                             step=new_s,
-                            sample_name=sample.sample_name,
+                            name=plan.name,
                             created_by=request.user,
                             updated_by=request.user
                         )
-                        active_methods = sample.analytical_methods.filter(is_active=True)
-                        new_sample.analytical_methods.set(active_methods)
+
+                        # 7. AJUSTÉ : Duplication des Samples rattachés au plan
+                        for sample in plan.samples.filter(is_active=True):
+                            Sample.objects.create(
+                                sampling_plan=new_plan,  # Lié au nouveau plan
+                                sample_name=sample.sample_name,
+                                analytical_method=sample.analytical_method,  # Relation ForeignKey standard (PROTECT)
+                                created_by=request.user,
+                                updated_by=request.user
+                            )
 
         messages.success(request, f"New version {new_process.version} initialized successfully in Draft.")
         return redirect('production:process_list')

@@ -159,11 +159,9 @@ class BaseComponentEntity(models.Model):
                 raise ValidationError(f"Cannot modify this element because the parent template '{parent}' is archived.")
 
     def save(self, *args, **kwargs):
-        # Sécurité au niveau de l'ORM : déclenche le full_clean() qui exécutera clean()
         if self.is_active:
             self.full_clean()
 
-        # Le bloc qui forçait le statut du parent à repasser en DRAFT a été supprimé ici
         super().save(*args, **kwargs)
 
 
@@ -172,10 +170,6 @@ class BaseComponentEntity(models.Model):
 # =========================================================================
 
 class ProcessLockRequiredMixin:
-    """
-    Bloque les requêtes HTTP (POST, GET de modification) si le Process racine
-    est verrouillé (VALIDATED ou PENDING). Redirige proprement avec un message d'erreur.
-    """
 
     def dispatch(self, request, *args, **kwargs):
         obj = None
@@ -186,7 +180,6 @@ class ProcessLockRequiredMixin:
                 pass
 
         process = None
-        # 1. Extraction du Process depuis l'objet de la vue
         if obj:
             if obj.__class__.__name__ == 'Process':
                 process = obj
@@ -197,7 +190,6 @@ class ProcessLockRequiredMixin:
             elif hasattr(obj, 'step'):
                 process = obj.step.unit_operation.process
 
-        # 2. Extraction du Process depuis les paramètres de l'URL (si ajout)
         if not process:
             if 'process_pk' in self.kwargs:
                 from django.apps import apps
@@ -214,14 +206,12 @@ class ProcessLockRequiredMixin:
                 step = get_object_or_404(StepModel, pk=self.kwargs['step_pk'])
                 process = step.unit_operation.process
 
-        # 3. Vérification du verrouillage
         if process and process.status in ['VALIDATED', 'PENDING']:
             messages.error(
                 request,
                 f"Action denied: The process chart '{process.name}' is locked ({process.get_status_display()})."
             )
 
-            # Redirections intelligentes selon le niveau de profondeur de l'action déniée
             if obj and obj.__class__.__name__ == 'Process':
                 return redirect('production:process_list')
             elif 'step_pk' in self.kwargs or (obj and hasattr(obj, 'step')):

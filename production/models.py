@@ -34,6 +34,12 @@ class Process(BaseModel):
     def __str__(self):
         return f"{self.code} v{self.version} ({self.scale})"
 
+    @property
+    def edit_url(self):
+        if self.status in ['VALIDATED']:
+            return None
+        return super().edit_url
+
 
 class UnitOperation(BaseComponentEntity):
     TYPE_CHOICES = [

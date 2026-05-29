@@ -50,7 +50,6 @@ class BatchRestoreView(GenericRestoreView):
 
 
 class BatchDetailView(EntityDetailView):
-    """Garde STRICTEMENT la logique générique d'audit demandée."""
     model = Batch
 
 
@@ -65,7 +64,6 @@ class BatchRejectView(EntityRejectView):
 
 
 class BatchLogbookView(DetailView):
-    """Nouvelle vue pour l'affichage groupé par Process/Unités/Étapes (Saisie Terrain)."""
     model = Batch
     template_name = 'batch/batch_logbook.html'
     context_object_name = 'batch'
@@ -75,13 +73,11 @@ class BatchLogbookView(DetailView):
         batch = self.object
         process = batch.process
 
-        # Récupération ordonnée de la structure master du process lié au lot
         units = UnitOperation.objects.filter(process=process, is_active=True).order_by('order')
         steps = Step.objects.filter(unit_operation__in=units, is_active=True).order_by('order').prefetch_related(
             'parameters', 'sampling_plans__samples__analytical_method'
         )
 
-        # Map des résultats existants pour éviter les requêtes N+1 en boucle
         param_results = {res.parameter_id: res for res in ParameterResult.objects.filter(batch=batch, is_active=True)}
         sample_results = {res.sample_id: res for res in SampleResult.objects.filter(batch=batch, is_active=True)}
 
@@ -149,7 +145,6 @@ class ParameterResultCreateView(AuditTrailMixin, CreateView):
     template_name = 'generic/generic_form.html'
 
     def get_success_url(self):
-        # Redirection instantanée vers le Logbook groupé du lot concerné
         return reverse('batch:batch_logbook', kwargs={'pk': self.object.batch.pk})
 
 

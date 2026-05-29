@@ -14,8 +14,7 @@
         <div class="alert alert-secondary shadow-sm border-0 d-flex justify-content-between align-items-center p-3 mb-4">
             <div>
                 <h5 class="alert-heading mb-1 text-dark"><i class="bi bi-archive"></i> Record Archived</h5>
-                <p class="mb-0 small text-muted">This record is currently inactive. Restoration is required for any
-                    changes.</p>
+                <p class="mb-0 small text-muted">This record is currently inactive. Restoration is required for any changes.</p>
             </div>
             {% with restore_url=request.resolver_match.namespace|add:':'|add:model_name|add:'_restore' %}
                 <form action="{% url restore_url object.pk %}" method="post" class="m-0">
@@ -32,10 +31,51 @@
                 <h5 class="alert-heading mb-1 fw-bold">Record Rejected</h5>
                 <p class="mb-0"><strong>Reason:</strong> {{ object.rejection_reason }}</p>
             </div>
-            <a href="{{ object.edit_url }}" class="btn btn-danger shadow-sm">
-                <i class="bi bi-pencil-square"></i> Correct Now
-            </a>
+            <div class="d-flex gap-2">
+                {% if is_process_view %}
+                    <form action="{% url 'production:process_submit' object.pk %}" method="post" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary shadow-sm">
+                            <i class="bi bi-paper-plane"></i> Submit for Review
+                        </button>
+                    </form>
+                {% endif %}
+                <a href="{{ object.edit_url }}" class="btn btn-outline-danger shadow-sm">
+                    <i class="bi bi-pencil-square"></i> Correct Now
+                </a>
+            </div>
         </div>
+    {% elif is_process_view %}
+        {% if object.status == 'DRAFT' %}
+            <div class="alert alert-warning shadow-sm border-0 d-flex justify-content-between align-items-center p-3 mb-4">
+                <div>
+                    <h5 class="alert-heading mb-1 fw-bold"><i class="bi bi-pencil-fill"></i> Process Layout (Draft)</h5>
+                    <p class="mb-0 small text-muted">Structure construction ongoing. Submit the architecture once finalized to allow validation.</p>
+                </div>
+                <form action="{% url 'production:process_submit' object.pk %}" method="post" class="m-0">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary shadow-sm px-4">
+                        <i class="bi bi-paper-plane"></i> Submit for Review
+                    </button>
+                </form>
+            </div>
+        {% elif object.status == 'PENDING' %}
+            <div class="alert alert-info shadow-sm border-0 d-flex justify-content-between align-items-center p-3 mb-4">
+                <div>
+                    <h5 class="alert-heading mb-1 fw-bold"><i class="bi bi-shield-check"></i> Process Under Review</h5>
+                    <p class="mb-0 small">Please review the full workflow architecture below before deciding.</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <form action="{{ object.validate_url }}" method="post" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-success shadow-sm px-4">Validate Template</button>
+                    </form>
+                    <button type="button" class="btn btn-outline-danger shadow-sm" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                        Reject
+                    </button>
+                </div>
+            </div>
+        {% endif %}
     {% elif object.status == 'DRAFT' %}
         <div class="alert alert-warning shadow-sm border-0 d-flex justify-content-between align-items-center p-3 mb-4">
             <div>
@@ -47,8 +87,7 @@
                     {% csrf_token %}
                     <button type="submit" class="btn btn-success shadow-sm px-4">Validate</button>
                 </form>
-                <button type="button" class="btn btn-outline-danger shadow-sm" data-bs-toggle="modal"
-                        data-bs-target="#rejectModal">
+                <button type="button" class="btn btn-outline-danger shadow-sm" data-bs-toggle="modal" data-bs-target="#rejectModal">
                     Reject
                 </button>
             </div>
@@ -82,8 +121,7 @@
                     <tbody>
                     {% for field in display_fields %}
                         <tr>
-                            <th class="text-muted small align-middle ps-4"
-                            >{{ field.label|upper }}</th>
+                            <th class="text-muted small align-middle ps-4">{{ field.label|upper }}</th>
                             <td class="fw-bold align-middle py-3">
                                 {% if field.value.hour is not None %}
                                     {{ field.value|date:"d/m/Y H:i" }}
@@ -114,7 +152,6 @@
             {% for unit in object.units.all %}
                 {% if unit.is_active %}
                     <div class="accordion-item border-secondary mb-2 rounded-3 overflow-hidden">
-
                         <h2 class="accordion-header" id="headingUnit{{ unit.pk }}">
                             <button class="accordion-button bg-dark text-white collapsed py-3" type="button"
                                     data-bs-toggle="collapse" data-bs-target="#collapseUnit{{ unit.pk }}"
@@ -133,12 +170,10 @@
                              aria-labelledby="headingUnit{{ unit.pk }}" data-bs-parent="#processAccordion">
                             <div class="accordion-body bg-light p-3">
                                 <div class="list-group shadow-xs">
-
                                     {% for step in unit.steps.all %}
                                         {% if step.is_active %}
                                             <div class="list-group-item bg-white border mb-2 rounded-2 p-3">
                                                 <div class="row g-3">
-
                                                     <div class="col-md-4 border-end">
                                                         <div class="d-flex flex-column h-100 justify-content-between">
                                                             <div>
@@ -182,8 +217,7 @@
                                                                  tabindex="0">
                                                                 <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-1">
                                                                     <small class="text-primary fw-bold text-uppercase"
-                                                                           style="font-size: 0.75rem;">Parameters
-                                                                        Specifications</small>
+                                                                           style="font-size: 0.75rem;">Parameters Specifications</small>
                                                                 </div>
                                                                 <div class="d-flex flex-wrap gap-1">
                                                                     {% for param in step.parameters.all %}
@@ -198,10 +232,7 @@
                                                                             </div>
                                                                         {% endif %}
                                                                     {% empty %}
-                                                                        <div class="text-muted italic small p-2"><i
-                                                                                class="bi bi-info-circle"></i> No
-                                                                            parameters active.
-                                                                        </div>
+                                                                        <div class="text-muted italic small p-2"><i class="bi bi-info-circle"></i> No parameters active.</div>
                                                                     {% endfor %}
                                                                 </div>
                                                             </div>
@@ -212,8 +243,7 @@
                                                                  tabindex="0">
                                                                 <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-1">
                                                                     <small class="text-info-emphasis fw-bold text-uppercase"
-                                                                           style="font-size: 0.75rem;">Sampling
-                                                                        Plans & Samples</small>
+                                                                           style="font-size: 0.75rem;">Sampling Plans & Samples</small>
                                                                 </div>
 
                                                                 {% for plan in step.sampling_plans.all %}
@@ -232,7 +262,6 @@
                                                                                     {% if sample.is_active %}
                                                                                         <div class="bg-light px-2 py-1 mb-1 rounded border-start border-2 border-info d-flex align-items-center"
                                                                                              style="font-size: 0.8rem;">
-
                                                                                             <div class="d-flex align-items-center flex-wrap gap-2 w-100">
                                                                                                 <span class="fw-bold text-dark">
                                                                                                     <i class="bi bi-vial-fill text-info me-1"></i> {{ sample.sample_name }}
@@ -242,7 +271,6 @@
                                                                                                     {{ sample.analytical_method.name }}
                                                                                                 </span>
                                                                                             </div>
-
                                                                                         </div>
                                                                                     {% endif %}
                                                                                 {% empty %}
@@ -255,28 +283,20 @@
                                                                         </div>
                                                                     {% endif %}
                                                                 {% empty %}
-                                                                    <div class="text-muted italic small p-2"> No
-                                                                        sampling plans active.
-                                                                    </div>
+                                                                    <div class="text-muted italic small p-2"> No sampling plans active.</div>
                                                                 {% endfor %}
                                                             </div>
-
                                                         </div>
                                                     </div>
-
                                                 </div>
                                             </div>
                                         {% endif %}
                                     {% empty %}
-                                        <div class="text-muted text-center py-3 italic">No active steps for this unit
-                                            operation.
-                                        </div>
+                                        <div class="text-muted text-center py-3 italic">No active steps for this unit operation.</div>
                                     {% endfor %}
-
                                 </div>
                             </div>
                         </div>
-
                     </div>
                 {% endif %}
             {% empty %}
@@ -287,7 +307,6 @@
             {% endfor %}
         </div>
     {% endif %}
-
 
     <h4 class="text-secondary mb-3"><i class="bi bi-clock-history"></i> Audit Trail</h4>
     <div class="card shadow-sm border-0">
@@ -353,15 +372,13 @@
                 {% csrf_token %}
                 <div class="modal-header bg-danger text-white">
                     <h5 class="modal-title" id="rejectModalLabel">Reject Record</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                            aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <p>Please provide a reason for rejecting <strong>{{ object }}</strong>. </p>
                     <div class="mb-3">
                         <label for="rejection_reason" class="form-label fw-bold">Rejection Reason</label>
-                        <textarea class="form-control" id="rejection_reason" name="rejection_reason" rows="4"
-                                  required></textarea>
+                        <textarea class="form-control" id="rejection_reason" name="rejection_reason" rows="4" required></textarea>
                     </div>
                 </div>
                 <div class="modal-footer bg-light">
@@ -371,5 +388,4 @@
             </form>
         </div>
     </div>
-
 {% endblock %}

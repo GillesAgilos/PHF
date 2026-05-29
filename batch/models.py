@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from phf.utils import BaseModel
 
@@ -60,10 +61,12 @@ class Batch(BaseModel):
     def __str__(self):
         return f"{self.category} Lot (Iter: {self.iteration_number})"
 
+    @property
+    def edit_url(self):
+        if self.status in ['VALIDATED']:
+            return None
+        return super().edit_url
 
-from django.db import models
-from django.core.exceptions import ValidationError
-from phf.utils import BaseModel
 
 
 class ParameterResult(BaseModel):
@@ -119,6 +122,12 @@ class ParameterResult(BaseModel):
     def __str__(self):
         return f"{self.batch.name} - {self.parameter.name}: {self.actual_value or 'No Value'}"
 
+    @property
+    def edit_url(self):
+        if self.status in ['VALIDATED']:
+            return None
+        return super().edit_url
+
 
 class SampleResult(BaseModel):
     batch = models.ForeignKey(
@@ -172,3 +181,9 @@ class SampleResult(BaseModel):
 
     def __str__(self):
         return f"{self.batch.name} - {self.sample.sample_name}: {self.actual_value or 'No Value'}"
+
+    @property
+    def edit_url(self):
+        if self.status in ['VALIDATED']:
+            return None
+        return super().edit_url
