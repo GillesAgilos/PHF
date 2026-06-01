@@ -8,11 +8,6 @@ class Batch(BaseModel):
         MANUFACTURING = 'M-', 'Manufacturing'
         ENGINEERING = 'E-', 'Engineering'
 
-    class BatchStatus(models.TextChoices):
-        RUNNING = 'RUNNING', 'In Progress'
-        COMPLETED = 'COMPLETED', 'Completed'
-        CANCELLED = 'CANCELLED', 'Cancelled'
-
     name = models.CharField(
         max_length=100,
         unique=True,
@@ -48,15 +43,17 @@ class Batch(BaseModel):
         null=True,
         blank=True
     )
-    batch_status = models.CharField(
-        max_length=20,
-        choices=BatchStatus.choices,
-        default=BatchStatus.RUNNING
-    )
 
     class Meta:
         verbose_name = "Batch"
         verbose_name_plural = "Batches"
+        constraints = [
+            models.UniqueConstraint(
+                fields=['project', 'process', 'iteration_number'],
+                condition=models.Q(is_active=True),
+                name='unique_active_iteration_per_project_process'
+            )
+        ]
 
     def __str__(self):
         return f"{self.category} Lot (Iter: {self.iteration_number})"

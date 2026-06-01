@@ -8,7 +8,7 @@ from production.models import Process, Parameter, Sample
 class BatchForm(BaseEntityForm):
     class Meta:
         model = Batch
-        fields = ['name', 'project', 'process', 'category', 'iteration_number', 'start_date', 'end_date', 'batch_status']
+        fields = ['name', 'project', 'process', 'category', 'iteration_number', 'start_date', 'end_date']
         widgets = {
             'start_date': forms.DateTimeInput(attrs={'type': 'date', 'class': 'form-control form-control-sm'}),
             'end_date': forms.DateTimeInput(attrs={'type': 'date', 'class': 'form-control form-control-sm'}),
@@ -19,11 +19,9 @@ class BatchForm(BaseEntityForm):
         self.fields['project'].queryset = Project.objects.filter(is_active=True, status='VALIDATED')
         self.fields['process'].queryset = Process.objects.filter(is_active=True, status='VALIDATED')
 
-        if self.instance and self.instance.pk:
+        if self.instance and self.instance._state.adding is False:
             self.fields['process'].disabled = True
-            self.fields['process'].required = False
             self.fields['project'].disabled = True
-            self.fields['project'].required = False
 
 
 class ParameterResultForm(BaseEntityForm):

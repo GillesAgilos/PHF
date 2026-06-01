@@ -91,6 +91,7 @@ class BatchLogbookView(DetailView):
                 for param in step.parameters.all():
                     step_data['parameters_with_results'].append({
                         'parameter': param,
+                        'unit': param.unit,
                         'result': param_results.get(param.pk)
                     })
 
@@ -98,6 +99,7 @@ class BatchLogbookView(DetailView):
                     for sample in plan.samples.all():
                         step_data['samples_with_results'].append({
                             'sample': sample,
+                            'unit': sample.analytical_method.unit,
                             'result': sample_results.get(sample.pk)
                         })
                 unit_data['steps'].append(step_data)

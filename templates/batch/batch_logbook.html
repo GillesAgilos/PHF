@@ -62,13 +62,27 @@
 
                                                         <td class="custom-z-index">
                                                             {% if p.result %}
-                                                                <span class="font-monospace fw-bold fs-6">{{ p.result.actual_value }}</span>
+                                                                <div class="d-inline-flex align-items-center">
+                                                                    <span class="font-monospace fw-bold fs-6">{{ p.result.actual_value }}</span>
+                                                                    {% if p.unit %}
+                                                                        <span class="badge bg-light text-secondary border ms-2 py-1 px-2 font-monospace" style="font-size: 0.75rem;">
+                                                                            {{ p.unit }}
+                                                                        </span>
+                                                                    {% elif p.parameter.unit %}
+                                                                        <span class="badge bg-light text-secondary border ms-2 py-1 px-2 font-monospace" style="font-size: 0.75rem;">
+                                                                            {{ p.parameter.unit }}
+                                                                        </span>
+                                                                    {% endif %}
+                                                                </div>
                                                             {% else %}
-                                                                <form action="{% url 'batch:parameterresult_add' %}" method="post" class="d-flex m-0">
+                                                                <form action="{% url 'batch:parameterresult_add' %}" method="post" class="d-flex m-0 align-items-center">
                                                                     {% csrf_token %}
                                                                     <input type="hidden" name="batch" value="{{ batch.pk }}">
                                                                     <input type="hidden" name="parameter" value="{{ p.parameter.pk }}">
                                                                     <input type="text" name="actual_value" class="form-control form-control-sm border-primary font-monospace p-1" style="max-width: 120px;" required placeholder="Enter value...">
+                                                                    {% if p.unit or p.parameter.unit %}
+                                                                        <span class="text-muted small font-monospace ms-2 me-1">{{ p.unit|default:p.parameter.unit }}</span>
+                                                                    {% endif %}
                                                                     <button type="submit" class="btn btn-sm btn-primary ms-1 px-2 py-0"><i class="bi bi-check-lg"></i></button>
                                                                 </form>
                                                             {% endif %}
@@ -126,13 +140,27 @@
 
                                                         <td class="custom-z-index">
                                                             {% if s.result %}
-                                                                <span class="font-monospace fw-bold text-info fs-6">{{ s.result.actual_value }}</span>
+                                                                <div class="d-inline-flex align-items-center">
+                                                                    <span class="font-monospace fw-bold text-info fs-6">{{ s.result.actual_value }}</span>
+                                                                    {% if s.sample.analytical_method.unit %}
+                                                                        <span class="badge bg-light text-secondary border ms-2 py-1 px-2 font-monospace" style="font-size: 0.75rem;">
+                                                                            {{ s.sample.analytical_method.unit }}
+                                                                        </span>
+                                                                    {% elif s.unit %}
+                                                                        <span class="badge bg-light text-secondary border ms-2 py-1 px-2 font-monospace" style="font-size: 0.75rem;">
+                                                                            {{ s.unit }}
+                                                                        </span>
+                                                                    {% endif %}
+                                                                </div>
                                                             {% else %}
-                                                                <form action="{% url 'batch:sampleresult_add' %}" method="post" class="d-flex m-0">
+                                                                <form action="{% url 'batch:sampleresult_add' %}" method="post" class="d-flex m-0 align-items-center">
                                                                     {% csrf_token %}
                                                                     <input type="hidden" name="batch" value="{{ batch.pk }}">
                                                                     <input type="hidden" name="sample" value="{{ s.sample.pk }}">
                                                                     <input type="text" name="actual_value" class="form-control form-control-sm border-info font-monospace p-1" style="max-width: 120px;" required placeholder="Enter result...">
+                                                                    {% if s.sample.analytical_method.unit or s.unit %}
+                                                                        <span class="text-muted small font-monospace ms-2 me-1">{{ s.sample.analytical_method.unit|default:s.unit }}</span>
+                                                                    {% endif %}
                                                                     <button type="submit" class="btn btn-sm btn-info text-white ms-1 px-2 py-0"><i class="bi bi-check-lg"></i></button>
                                                                 </form>
                                                             {% endif %}
