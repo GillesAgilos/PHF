@@ -27,11 +27,13 @@
             </form>
         </div>
 
+        {% if user.is_superuser or user.groups.all.0.name == "System_Admin" or user.groups.all.0.name == "Data_Steward" %}
         <div>
             <a href="{% url 'referential:project_add' %}" class="btn btn-primary shadow-sm">
                 <i class="bi bi-plus-lg"></i> Add New Project
             </a>
         </div>
+        {% endif %}
     </div>
 
     <ul class="nav nav-tabs mb-4">
@@ -125,14 +127,16 @@
                             </a>
 
                             {% if project.is_active %}
-                                <a href="{% url 'referential:project_edit' project.pk %}"
-                                   class="btn btn-sm btn-outline-dark ms-1" title="Edit">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <a href="{% url 'referential:project_delete' project.pk %}"
-                                   class="btn btn-sm btn-outline-danger ms-1" title="Archive">
-                                    <i class="bi bi-trash"></i>
-                                </a>
+                                {% if user.is_superuser or user.groups.all.0.name == "System_Admin" or user.groups.all.0.name == "Data_Steward" %}
+                                    <a href="{% url 'referential:project_edit' project.pk %}"
+                                       class="btn btn-sm btn-outline-dark ms-1" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'referential:project_delete' project.pk %}"
+                                       class="btn btn-sm btn-outline-danger ms-1" title="Archive">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                {% endif %}
                             {% endif %}
                         </td>
                     </tr>

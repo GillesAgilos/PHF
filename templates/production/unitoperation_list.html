@@ -36,54 +36,61 @@
                     <i class="bi bi-plus-circle"></i> Add Unit Operation
                 </div>
                 <div class="card-body">
-                    {% if process.status == 'PENDING' or process.status == 'VALIDATED' %}
-                        <div class="alert alert-secondary small mb-0 border-0">
-                            <i class="bi bi-lock-fill text-warning"></i> Process structure is locked because this
-                            process is currently <strong>{{ process.get_status_display }}</strong>.
-                        </div>
-                    {% elif view_mode == 'archived' %}
-                        <div class="alert alert-warning small mb-0 border-0">
-                            <i class="bi bi-exclamation-triangle-fill"></i> Switch to Active view to add new unit
-                            operations.
-                        </div>
-                    {% else %}
-                        <form id="unitOperationForm"
-                              action="{% url 'production:unitoperation_add' process_pk=process.pk %}?view={{ view_mode|default:'active' }}"
-                              method="post">
-                            {% csrf_token %}
-
-                            {% if form.non_field_errors %}
-                                <div class="alert alert-danger small p-2 shadow-sm mb-3">
-                                    {% for error in form.non_field_errors %}
-                                        <i class="bi bi-exclamation-triangle-fill"></i> {{ error }}
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-
-                            <div class="mb-3">
-                                <label class="form-label small fw-bold text-muted">Select Operation</label>
-                                {{ form.name }}
-                                {% if form.name.errors %}
-                                    <div class="text-danger small">{{ form.name.errors.0 }}</div>
-                                {% endif %}
+                    {# SÉCURISÉ : Utilisation directe de request.user #}
+                    {% if request.user.is_superuser or request.user.groups.all.0.name == "System_Admin" or request.user.groups.all.0.name == "Data_Steward" %}
+                        {% if process.status == 'PENDING' or process.status == 'VALIDATED' %}
+                            <div class="alert alert-secondary small mb-0 border-0">
+                                <i class="bi bi-lock-fill text-warning"></i> Process structure is locked because this
+                                process is currently <strong>{{ process.get_status_display }}</strong>.
                             </div>
+                        {% elif view_mode == 'archived' %}
+                            <div class="alert alert-warning small mb-0 border-0">
+                                <i class="bi bi-exclamation-triangle-fill"></i> Switch to Active view to add new unit
+                                operations.
+                            </div>
+                        {% else %}
+                            <form id="unitOperationForm"
+                                  action="{% url 'production:unitoperation_add' process_pk=process.pk %}?view={{ view_mode|default:'active' }}"
+                                  method="post">
+                                {% csrf_token %}
 
-                            <div class="row mb-3">
-                                <div class="col-12">
-                                    <label class="form-label small fw-bold text-muted">ORDER (#)</label>
-                                    <input type="number" name="order" min="1"
-                                           class="form-control form-control-sm border-secondary"
-                                           value="{{ units|length|add:1 }}">
-                                    {% if form.order.errors %}
-                                        <div class="text-danger small">{{ form.order.errors.0 }}</div>
+                                {% if form.non_field_errors %}
+                                    <div class="alert alert-danger small p-2 shadow-sm mb-3">
+                                        {% for error in form.non_field_errors %}
+                                            <i class="bi bi-exclamation-triangle-fill"></i> {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-muted">Select Operation</label>
+                                    {{ form.name }}
+                                    {% if form.name.errors %}
+                                        <div class="text-danger small">{{ form.name.errors.0 }}</div>
                                     {% endif %}
                                 </div>
-                            </div>
 
-                            <button type="submit" class="btn btn-dark w-100 fw-bold shadow-sm py-2">
-                                <i class="bi bi-plus-lg"></i> Add to Structure
-                            </button>
-                        </form>
+                                <div class="row mb-3">
+                                    <div class="col-12">
+                                        <label class="form-label small fw-bold text-muted">ORDER (#)</label>
+                                        <input type="number" name="order" min="1"
+                                               class="form-control form-control-sm border-secondary"
+                                               value="{{ units|length|add:1 }}">
+                                        {% if form.order.errors %}
+                                            <div class="text-danger small">{{ form.order.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-dark w-100 fw-bold shadow-sm py-2">
+                                    <i class="bi bi-plus-lg"></i> Add to Structure
+                                </button>
+                            </form>
+                        {% endif %}
+                    {% else %}
+                        <div class="alert alert-info small mb-0 border-0">
+                            <i class="bi bi-shield-lock-fill"></i> Read-only mode. You do not have permissions to alter this technical flowchart structure.
+                        </div>
                     {% endif %}
                 </div>
             </div>
@@ -140,23 +147,25 @@
 
                                 <div class="text-end d-flex align-items-center">
                                     <div class="btn-group-vertical btn-group-sm me-3" style="min-width: 20px;">
-                                        {% if unit.is_active and process.status != 'VALIDATED' and process.status != 'PENDING' %}
-                                            {% if not forloop.first %}
-                                                <a href="{% url 'production:unitoperation_reorder' pk=unit.pk direction='up' %}"
-                                                   class="btn btn-link text-muted p-0">
-                                                    <i class="bi bi-chevron-up"></i>
-                                                </a>
-                                            {% else %}
-                                                <div style="height:16px"></div>
-                                            {% endif %}
+                                        {% if request.user.is_superuser or request.user.groups.all.0.name == "System_Admin" or request.user.groups.all.0.name == "Data_Steward" %}
+                                            {% if unit.is_active and process.status != 'VALIDATED' and process.status != 'PENDING' %}
+                                                {% if not forloop.first %}
+                                                    <a href="{% url 'production:unitoperation_reorder' pk=unit.pk direction='up' %}"
+                                                       class="btn btn-link text-muted p-0">
+                                                        <i class="bi bi-chevron-up"></i>
+                                                    </a>
+                                                {% else %}
+                                                    <div style="height:16px"></div>
+                                                {% endif %}
 
-                                            {% if not forloop.last %}
-                                                <a href="{% url 'production:unitoperation_reorder' pk=unit.pk direction='down' %}"
-                                                   class="btn btn-link text-muted p-0">
-                                                    <i class="bi bi-chevron-down"></i>
-                                                </a>
-                                            {% else %}
-                                                <div style="height:16px"></div>
+                                                {% if not forloop.last %}
+                                                    <a href="{% url 'production:unitoperation_reorder' pk=unit.pk direction='down' %}"
+                                                       class="btn btn-link text-muted p-0">
+                                                        <i class="bi bi-chevron-down"></i>
+                                                    </a>
+                                                {% else %}
+                                                    <div style="height:16px"></div>
+                                                {% endif %}
                                             {% endif %}
                                         {% endif %}
                                     </div>
@@ -167,18 +176,23 @@
                                             <i class="bi bi-list-check"></i> Steps
                                         </a>
 
-                                        <a href="{% url 'production:unitoperation_delete' pk=unit.pk %}"
-                                           class="btn btn-sm btn-outline-danger shadow-sm ms-1" title="Archive Operation">
-                                            <i class="bi bi-trash3"></i>
-                                        </a>
+                                        {% if request.user.is_superuser or request.user.groups.all.0.name == "System_Admin" or request.user.groups.all.0.name == "Data_Steward" %}
+                                            <a href="{% url 'production:unitoperation_delete' pk=unit.pk %}"
+                                               class="btn btn-sm btn-outline-danger shadow-sm ms-1" title="Archive Operation">
+                                                <i class="bi bi-trash3"></i>
+                                            </a>
+                                        {% endif %}
+
                                     {% elif not unit.is_active %}
-                                        <form action="{% url 'production:unitoperation_restore' pk=unit.pk %}"
-                                              method="post" class="d-inline m-0">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-success py-1">
-                                                <i class="bi bi-arrow-counterclockwise"></i> Restore
-                                            </button>
-                                        </form>
+                                        {% if request.user.is_superuser or request.user.groups.all.0.name == "System_Admin" or request.user.groups.all.0.name == "Data_Steward" %}
+                                            <form action="{% url 'production:unitoperation_restore' pk=unit.pk %}"
+                                                  method="post" class="d-inline m-0">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-success py-1">
+                                                    <i class="bi bi-arrow-counterclockwise"></i> Restore
+                                                </button>
+                                            </form>
+                                        {% endif %}
                                     {% else %}
                                         <a href="{% url 'production:step_list' unit_pk=unit.pk %}"
                                            class="btn btn-sm btn-outline-secondary me-2 shadow-sm"

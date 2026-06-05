@@ -45,52 +45,58 @@
                 <i class="bi bi-plus-circle"></i> Define New Sample
             </div>
             <div class="card-body">
-                {% if process.status == 'PENDING' or process.status == 'VALIDATED' %}
-                    <div class="alert alert-secondary small mb-0 border-0">
-                        <i class="bi bi-lock-fill text-warning"></i>
-                        Sample structure is locked because this process is currently <strong>{{ process.get_status_display }}</strong>.
-                    </div>
-                {% elif view_mode == 'archived' %}
-                    <div class="alert alert-warning small mb-0 border-0">
-                        <i class="bi bi-exclamation-triangle-fill"></i>
-                        Switch to Active view to add new samples.
-                    </div>
+                {% if request.user.is_superuser or user_group == "System_Admin" or user_group == "Data_Steward" or request.user.groups.all.0.name == "System_Admin" or request.user.groups.all.0.name == "Data_Steward" %}
+                    {% if process.status == 'PENDING' or process.status == 'VALIDATED' %}
+                        <div class="alert alert-secondary small mb-0 border-0">
+                            <i class="bi bi-lock-fill text-warning"></i>
+                            Sample structure is locked because this process is currently <strong>{{ process.get_status_display }}</strong>.
+                        </div>
+                    {% elif view_mode == 'archived' %}
+                        <div class="alert alert-warning small mb-0 border-0">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                            Switch to Active view to add new samples.
+                        </div>
+                    {% else %}
+                        <form id="sampleForm"
+                              action="{% url 'production:sample_add' sampling_plan_pk=sampling_plan.pk %}?view={{ view_mode|default:'active' }}"
+                              method="post">
+                            {% csrf_token %}
+
+                            {% if form.non_field_errors %}
+                                <div class="alert alert-danger small p-2 shadow-sm mb-3">
+                                    {% for error in form.non_field_errors %}
+                                        <i class="bi bi-exclamation-triangle-fill"></i> {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-muted">SAMPLE NAME</label>
+                                <input type="text" name="sample_name" class="form-control form-control-sm border-secondary" required value="{{ form.sample_name.value|default_if_none:'' }}">
+                                {% if form.sample_name.errors %}
+                                    <div class="text-danger small">{{ form.sample_name.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-muted">ANALYTICAL METHOD</label>
+                                <div class="select2-blue-theme select2-sm">
+                                    {{ form.analytical_method }}
+                                </div>
+                                {% if form.analytical_method.errors %}
+                                    <div class="text-danger small">{{ form.analytical_method.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+
+                            <button type="submit" class="btn btn-dark w-100 fw-bold shadow-sm py-2">
+                                <i class="bi bi-plus-lg"></i> Add Sample
+                            </button>
+                        </form>
+                    {% endif %}
                 {% else %}
-                    <form id="sampleForm"
-                          action="{% url 'production:sample_add' sampling_plan_pk=sampling_plan.pk %}?view={{ view_mode|default:'active' }}"
-                          method="post">
-                        {% csrf_token %}
-
-                        {% if form.non_field_errors %}
-                            <div class="alert alert-danger small p-2 shadow-sm mb-3">
-                                {% for error in form.non_field_errors %}
-                                    <i class="bi bi-exclamation-triangle-fill"></i> {{ error }}
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold text-muted">SAMPLE NAME</label>
-                            <input type="text" name="sample_name" class="form-control form-control-sm border-secondary" required value="{{ form.sample_name.value|default_if_none:'' }}">
-                            {% if form.sample_name.errors %}
-                                <div class="text-danger small">{{ form.sample_name.errors.0 }}</div>
-                            {% endif %}
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold text-muted">ANALYTICAL METHOD</label>
-                            <div class="select2-blue-theme select2-sm">
-                                {{ form.analytical_method }}
-                            </div>
-                            {% if form.analytical_method.errors %}
-                                <div class="text-danger small">{{ form.analytical_method.errors.0 }}</div>
-                            {% endif %}
-                        </div>
-
-                        <button type="submit" class="btn btn-dark w-100 fw-bold shadow-sm py-2">
-                            <i class="bi bi-plus-lg"></i> Add Sample
-                        </button>
-                    </form>
+                    <div class="alert alert-info small mb-0 border-0">
+                        <i class="bi bi-shield-lock-fill"></i> Read-only mode. You do not have permissions to register new process samples.
+                    </div>
                 {% endif %}
             </div>
         </div>
@@ -148,24 +154,34 @@
 
                             <div class="text-end d-flex align-items-center">
                                 {% if sample.is_active and process.status != 'VALIDATED' and process.status != 'PENDING' %}
-                                    <a href="{% url 'production:sample_edit' pk=sample.pk %}" class="btn btn-sm btn-outline-warning me-2 shadow-sm" title="Edit Sample Specifications">
-                                        <i class="bi bi-pencil"></i> Edit
-                                    </a>
+
+                                    {% if request.user.is_superuser or user_group == "System_Admin" or user_group == "Data_Steward" or request.user.groups.all.0.name == "System_Admin" or request.user.groups.all.0.name == "Data_Steward" %}
+                                        <a href="{% url 'production:sample_edit' pk=sample.pk %}" class="btn btn-sm btn-outline-warning me-2 shadow-sm" title="Edit Sample Specifications">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </a>
+                                    {% endif %}
 
                                     <a href="{% url 'production:sample_detail' pk=sample.pk %}" class="btn btn-sm btn-outline-info shadow-sm me-2" title="View details & history">
                                         <i class="bi bi-eye"></i> Detail
                                     </a>
 
-                                    <a href="{% url 'production:sample_delete' pk=sample.pk %}" class="btn btn-sm btn-outline-danger shadow-sm ms-1" title="Archive Sample">
-                                        <i class="bi bi-trash3"></i>
-                                    </a>
+                                    {% if request.user.is_superuser or user_group == "System_Admin" or user_group == "Data_Steward" or request.user.groups.all.0.name == "System_Admin" or request.user.groups.all.0.name == "Data_Steward" %}
+                                        <a href="{% url 'production:sample_delete' pk=sample.pk %}" class="btn btn-sm btn-outline-danger shadow-sm ms-1" title="Archive Sample">
+                                            <i class="bi bi-trash3"></i>
+                                        </a>
+                                    {% endif %}
+
                                 {% elif not sample.is_active %}
-                                    <form action="{% url 'production:sample_restore' pk=sample.pk %}" method="post" class="d-inline m-0">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-success py-1 me-2 shadow-sm">
-                                            <i class="bi bi-arrow-counterclockwise"></i> Restore
-                                        </button>
-                                    </form>
+
+                                    {% if request.user.is_superuser or user_group == "System_Admin" or user_group == "Data_Steward" or request.user.groups.all.0.name == "System_Admin" or request.user.groups.all.0.name == "Data_Steward" %}
+                                        <form action="{% url 'production:sample_restore' pk=sample.pk %}" method="post" class="d-inline m-0">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-success py-1 me-2 shadow-sm">
+                                                <i class="bi bi-arrow-counterclockwise"></i> Restore
+                                            </button>
+                                        </form>
+                                    {% endif %}
+
                                     <a href="{% url 'production:sample_detail' pk=sample.pk %}" class="btn btn-sm btn-outline-secondary me-2 shadow-sm" title="View Details (Read Only)">
                                         <i class="bi bi-eye"></i> Detail
                                     </a>

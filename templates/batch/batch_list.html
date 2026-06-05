@@ -77,7 +77,6 @@
                     <th>Project</th>
                     <th>Process Template</th>
                     <th>Category / Iteration</th>
-                    <th>Production Status</th>
                     <th>{% if view_mode == 'archived' %}Archived on{% else %}Last Update{% endif %}</th>
                     <th class="text-end">Actions</th>
                 </tr>
@@ -102,15 +101,6 @@
                         <td>
                             <span class="badge bg-light text-dark border font-monospace">{{ batch.get_category_display }}</span>
                             <span class="text-muted ms-1">Run #{{ batch.iteration_number }}</span>
-                        </td>
-                        <td>
-                            {% if batch.batch_status == 'RUNNING' %}
-                                <span class="badge bg-warning text-dark"><i class="bi bi-play-circle-fill"></i> In Progress</span>
-                            {% elif batch.batch_status == 'COMPLETED' %}
-                                <span class="badge bg-success"><i class="bi bi-check-circle-fill"></i> Completed</span>
-                            {% else %}
-                                <span class="badge bg-secondary"><i class="bi bi-x-circle-fill"></i> Cancelled</span>
-                            {% endif %}
                         </td>
                         <td>
                             {% if view_mode == 'archived' %}

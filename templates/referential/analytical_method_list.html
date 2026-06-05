@@ -27,11 +27,13 @@
             </form>
         </div>
 
-        <div>
-            <a href="{% url 'referential:analyticalmethod_add' %}" class="btn btn-primary shadow-sm">
-                <i class="bi bi-plus-lg"></i> Add New Method
-            </a>
-        </div>
+        {% if request.user.is_superuser or user_group == "System_Admin" or user_group == "Data_Steward" %}
+            <div>
+                <a href="{% url 'referential:analyticalmethod_add' %}" class="btn btn-primary shadow-sm">
+                    <i class="bi bi-plus-lg"></i> Add New Method
+                </a>
+            </div>
+        {% endif %}
     </div>
 
     <ul class="nav nav-tabs mb-4">
@@ -76,7 +78,7 @@
                 <tr>
                     <th>Status</th>
                     <th>Method Name</th>
-                    <th>Format</th>
+                    <th>Format / Volume</th>
                     <th>Unit</th>
                     <th>{% if view_mode == 'archived' %}Archived on{% else %}Last Update{% endif %}</th>
                     <th class="text-end">Actions</th>
@@ -98,7 +100,7 @@
                             {% endif %}
                         </td>
                         <td>
-                            <span class="fw-semibold text-dark">{{ method.format }}</span>
+                            <span class="fw-semibold text-dark">{{ method.name }}</span>
                             {% if method.status == 'REJECTED' %}
                                 <br><small class="text-danger fw-bold"><i class="bi bi-arrow-right"></i> Needs correction</small>
                             {% endif %}
@@ -120,26 +122,28 @@
                         </td>
                         <td class="text-end">
                             <a href="{% url 'referential:analyticalmethod_detail' method.pk %}"
-                               class="btn btn-sm btn-outline-primary px-3 shadow-sm">
+                               class="btn btn-sm btn-outline-primary px-3 shadow-sm" title="View Details">
                                 <i class="bi bi-eye"></i>
                             </a>
 
-                            {% if method.is_active %}
-                                <a href="{% url 'referential:analyticalmethod_edit' method.pk %}"
-                                   class="btn btn-sm btn-outline-dark ms-1" title="Edit">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <a href="{% url 'referential:analyticalmethod_delete' method.pk %}"
-                                   class="btn btn-sm btn-outline-danger ms-1" title="Archive">
-                                    <i class="bi bi-trash"></i>
-                                </a>
-                            {% else %}
-                                <form action="{% url 'referential:analyticalmethod_restore' method.pk %}" method="post" class="d-inline m-0">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-outline-success ms-1" title="Restore">
-                                        <i class="bi bi-arrow-counterclockwise"></i>
-                                    </button>
-                                </form>
+                            {% if request.user.is_superuser or user_group == "System_Admin" or user_group == "Data_Steward" %}
+                                {% if method.is_active %}
+                                    <a href="{% url 'referential:analyticalmethod_edit' method.pk %}"
+                                       class="btn btn-sm btn-outline-dark ms-1" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'referential:analyticalmethod_delete' method.pk %}"
+                                       class="btn btn-sm btn-outline-danger ms-1" title="Archive">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                {% else %}
+                                    <form action="{% url 'referential:analyticalmethod_restore' method.pk %}" method="post" class="d-inline m-0">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-success ms-1" title="Restore">
+                                            <i class="bi bi-arrow-counterclockwise"></i>
+                                        </button>
+                                    </form>
+                                {% endif %}
                             {% endif %}
                         </td>
                     </tr>

@@ -1,23 +1,23 @@
 from django.urls import reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView
-
-from production.models import UnitOperation, Process
+from production.models import Process
 from .models import Client, Project, MoleculeType, AnalyticalMethod, GlobalUnitOperation
 from .forms import ClientForm, ProjectForm, MoleculeTypeForm, AnalyticalMethodForm, GlobalUnitOperationForm
 from phf.utils import AuditTrailMixin, StatusResetMixin, GenericDeleteView, GenericRestoreView, EntityDetailView, \
     EntityValidateView, EntityRejectView, FilterStateMixin
+from.security import ReferentialRoleRequiredMixin
 
 
 # ==========================================
 # MOLECULE TYPE VIEWS
 # ==========================================
-class MoleculeTypeListView(FilterStateMixin, ListView):
+class MoleculeTypeListView(ReferentialRoleRequiredMixin, FilterStateMixin, ListView):
     model = MoleculeType
     template_name = 'referential/molecule_type_list.html'
     context_object_name = 'molecule_types'
     search_fields = ['name']
 
-class MoleculeTypeCreateView(AuditTrailMixin, CreateView):
+class MoleculeTypeCreateView(ReferentialRoleRequiredMixin, AuditTrailMixin, CreateView):
     model = MoleculeType
     form_class = MoleculeTypeForm
     template_name = 'generic/generic_form.html'
@@ -28,77 +28,77 @@ class MoleculeTypeCreateView(AuditTrailMixin, CreateView):
         context['title'] = "Add New Molecule Type"
         return context
 
-class MoleculeTypeUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
+class MoleculeTypeUpdateView(ReferentialRoleRequiredMixin, AuditTrailMixin, StatusResetMixin, UpdateView):
     model = MoleculeType
     form_class = MoleculeTypeForm
     template_name = 'generic/generic_form.html'
     success_url = reverse_lazy('referential:moleculetype_list')
 
-class MoleculeTypeDeleteView(GenericDeleteView):
+class MoleculeTypeDeleteView(ReferentialRoleRequiredMixin, GenericDeleteView):
     model = MoleculeType
     success_url = reverse_lazy('referential:moleculetype_list')
 
-class MoleculeTypeRestoreView(GenericRestoreView):
+class MoleculeTypeRestoreView(ReferentialRoleRequiredMixin, GenericRestoreView):
     model = MoleculeType
     redirect_url = 'referential:moleculetype_list'
 
-class MoleculeTypeDetailView(EntityDetailView):
+class MoleculeTypeDetailView(ReferentialRoleRequiredMixin, EntityDetailView):
     model = MoleculeType
 
 
-class MoleculeTypeValidateView(EntityValidateView):
+class MoleculeTypeValidateView(ReferentialRoleRequiredMixin, EntityValidateView):
     model = MoleculeType
     redirect_url = 'referential:moleculetype_list'
 
-class MoleculeTypeRejectView(EntityRejectView):
+class MoleculeTypeRejectView(ReferentialRoleRequiredMixin, EntityRejectView):
     model = MoleculeType
     redirect_url = 'referential:moleculetype_list'
 
 # ==========================================
 # CLIENT VIEWS
 # ==========================================
-class ClientListView(FilterStateMixin, ListView):
+class ClientListView(ReferentialRoleRequiredMixin, FilterStateMixin, ListView):
     model = Client
     template_name = 'referential/client_list.html'
     context_object_name = 'clients'
     search_fields = ['name', 'code']
 
-class ClientCreateView(AuditTrailMixin, CreateView):
+class ClientCreateView(ReferentialRoleRequiredMixin, AuditTrailMixin, CreateView):
     model = Client
     form_class = ClientForm
     template_name = 'generic/generic_form.html'
     success_url = reverse_lazy('referential:client_list')
 
-class ClientUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
+class ClientUpdateView(ReferentialRoleRequiredMixin, AuditTrailMixin, StatusResetMixin, UpdateView):
     model = Client
     form_class = ClientForm
     template_name = 'generic/generic_form.html'
     success_url = reverse_lazy('referential:client_list')
 
-class ClientDeleteView(GenericDeleteView):
+class ClientDeleteView(ReferentialRoleRequiredMixin, GenericDeleteView):
     model = Client
     success_url = reverse_lazy('referential:client_list')
 
 
-class ClientRestoreView(GenericRestoreView):
+class ClientRestoreView(ReferentialRoleRequiredMixin, GenericRestoreView):
     model = Client
     redirect_url = 'referential:client_list'
 
-class ClientDetailView(EntityDetailView):
+class ClientDetailView(ReferentialRoleRequiredMixin, EntityDetailView):
     model = Client
 
-class ClientValidateView(EntityValidateView):
+class ClientValidateView(ReferentialRoleRequiredMixin, EntityValidateView):
     model = Client
     redirect_url = 'referential:client_list'
 
-class ClientRejectView(EntityRejectView):
+class ClientRejectView(ReferentialRoleRequiredMixin, EntityRejectView):
     model = Client
     redirect_url = 'referential:client_list'
 
 # ==========================================
 # PROJECT VIEWS
 # ==========================================
-class ProjectListView(FilterStateMixin, ListView):
+class ProjectListView(ReferentialRoleRequiredMixin, FilterStateMixin, ListView):
     model = Project
     template_name = 'referential/project_list.html'
     context_object_name = 'projects'
@@ -108,47 +108,47 @@ class ProjectListView(FilterStateMixin, ListView):
         return super().get_queryset().select_related('client', 'molecule_type')
 
 
-class ProjectCreateView(AuditTrailMixin, CreateView):
+class ProjectCreateView(ReferentialRoleRequiredMixin, AuditTrailMixin, CreateView):
     model = Project
     form_class = ProjectForm
     template_name = 'generic/generic_form.html'
     success_url = reverse_lazy('referential:project_list')
 
-class ProjectUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
+class ProjectUpdateView(ReferentialRoleRequiredMixin, AuditTrailMixin, StatusResetMixin, UpdateView):
     model = Project
     form_class = ProjectForm
     template_name = 'generic/generic_form.html'
     success_url = reverse_lazy('referential:project_list')
 
-class ProjectDeleteView(GenericDeleteView):
+class ProjectDeleteView(ReferentialRoleRequiredMixin, GenericDeleteView):
     model = Project
     success_url = reverse_lazy('referential:project_list')
 
-class ProjectRestoreView(GenericRestoreView):
+class ProjectRestoreView(ReferentialRoleRequiredMixin, GenericRestoreView):
     model = Project
     redirect_url = 'referential:project_list'
 
-class ProjectDetailView(EntityDetailView):
+class ProjectDetailView(ReferentialRoleRequiredMixin, EntityDetailView):
     model = Project
 
-class ProjectValidateView(EntityValidateView):
+class ProjectValidateView(ReferentialRoleRequiredMixin, EntityValidateView):
     model = Project
     redirect_url = 'referential:project_list'
 
-class ProjectRejectView(EntityRejectView):
+class ProjectRejectView(ReferentialRoleRequiredMixin, EntityRejectView):
     model = Project
     redirect_url = 'referential:project_list'
 
 # ==========================================
 # ANALYTICAL METHOD VIEWS
 # ==========================================
-class AnalyticalMethodListView(FilterStateMixin, ListView):
+class AnalyticalMethodListView(ReferentialRoleRequiredMixin, FilterStateMixin, ListView):
     model = AnalyticalMethod
     template_name = 'referential/analytical_method_list.html'
     context_object_name = 'analytical_methods'
     search_fields = ['name']
 
-class AnalyticalMethodCreateView(AuditTrailMixin, CreateView):
+class AnalyticalMethodCreateView(ReferentialRoleRequiredMixin, AuditTrailMixin, CreateView):
     model = AnalyticalMethod
     form_class = AnalyticalMethodForm
     template_name = 'generic/generic_form.html'
@@ -159,28 +159,28 @@ class AnalyticalMethodCreateView(AuditTrailMixin, CreateView):
         context['title'] = "Add New Analytical Method"
         return context
 
-class AnalyticalMethodUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
+class AnalyticalMethodUpdateView(ReferentialRoleRequiredMixin, AuditTrailMixin, StatusResetMixin, UpdateView):
     model = AnalyticalMethod
     form_class = AnalyticalMethodForm
     template_name = 'generic/generic_form.html'
     success_url = reverse_lazy('referential:analyticalmethod_list')
 
-class AnalyticalMethodDeleteView(GenericDeleteView):
+class AnalyticalMethodDeleteView(ReferentialRoleRequiredMixin, GenericDeleteView):
     model = AnalyticalMethod
     success_url = reverse_lazy('referential:analyticalmethod_list')
 
-class AnalyticalMethodRestoreView(GenericRestoreView):
+class AnalyticalMethodRestoreView(ReferentialRoleRequiredMixin, GenericRestoreView):
     model = AnalyticalMethod
     redirect_url = 'referential:analyticalmethod_list'
 
-class AnalyticalMethodDetailView(EntityDetailView):
+class AnalyticalMethodDetailView(ReferentialRoleRequiredMixin, EntityDetailView):
     model = AnalyticalMethod
 
-class AnalyticalMethodValidateView(EntityValidateView):
+class AnalyticalMethodValidateView(ReferentialRoleRequiredMixin, EntityValidateView):
     model = AnalyticalMethod
     redirect_url = 'referential:analyticalmethod_list'
 
-class AnalyticalMethodRejectView(EntityRejectView):
+class AnalyticalMethodRejectView(ReferentialRoleRequiredMixin, EntityRejectView):
     model = AnalyticalMethod
     redirect_url = 'referential:analyticalmethod_list'
 
@@ -196,18 +196,17 @@ def get_catalog_process():
 # GLOBAL UNIT OPERATION VIEWS
 # =========================================================================
 
-class GlobalUnitOperationListView(FilterStateMixin, ListView):
+class GlobalUnitOperationListView(ReferentialRoleRequiredMixin, FilterStateMixin, ListView):
     model = GlobalUnitOperation
     template_name = 'referential/global_unit_list.html'
     context_object_name = 'global_units'
     search_fields = ['name']
 
 
-class GlobalUnitOperationCreateView(AuditTrailMixin, CreateView):
+class GlobalUnitOperationCreateView(ReferentialRoleRequiredMixin, AuditTrailMixin, CreateView):
     model = GlobalUnitOperation
     form_class = GlobalUnitOperationForm
     template_name = 'generic/generic_form.html'
-    # Correction ici :
     success_url = reverse_lazy('referential:globalunitoperation_list')
 
     def get_context_data(self, **kwargs):
@@ -216,33 +215,32 @@ class GlobalUnitOperationCreateView(AuditTrailMixin, CreateView):
         return context
 
 
-class GlobalUnitOperationUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
+class GlobalUnitOperationUpdateView(ReferentialRoleRequiredMixin, AuditTrailMixin, StatusResetMixin, UpdateView):
     model = GlobalUnitOperation
     form_class = GlobalUnitOperationForm
     template_name = 'generic/generic_form.html'
     success_url = reverse_lazy('referential:globalunitoperation_list')
 
 
-class GlobalUnitOperationDeleteView(GenericDeleteView):
+class GlobalUnitOperationDeleteView(ReferentialRoleRequiredMixin, GenericDeleteView):
     model = GlobalUnitOperation
     success_url = reverse_lazy('referential:globalunitoperation_list')
 
 
-class GlobalUnitOperationRestoreView(GenericRestoreView):
+class GlobalUnitOperationRestoreView(ReferentialRoleRequiredMixin, GenericRestoreView):
     model = GlobalUnitOperation
     redirect_url = 'referential:globalunitoperation_list'
 
 
-class GlobalUnitOperationDetailView(EntityDetailView):
+class GlobalUnitOperationDetailView(ReferentialRoleRequiredMixin, EntityDetailView):
     model = GlobalUnitOperation
 
 
-class GlobalUnitOperationValidateView(EntityValidateView):
+class GlobalUnitOperationValidateView(ReferentialRoleRequiredMixin, EntityValidateView):
     model = GlobalUnitOperation
-    # Correction ici :
     redirect_url = 'referential:globalunitoperation_list'
 
 
-class GlobalUnitOperationRejectView(EntityRejectView):
+class GlobalUnitOperationRejectView(ReferentialRoleRequiredMixin, EntityRejectView):
     model = GlobalUnitOperation
     redirect_url = 'referential:globalunitoperation_list'

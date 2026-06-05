@@ -1,0 +1,56 @@
+from django.core.exceptions import PermissionDenied
+from django.contrib.auth.mixins import LoginRequiredMixin
+from phf.utils import (
+    EntityValidateView,
+    EntityRejectView,
+    GenericDeleteView,
+    GenericRestoreView,
+)
+
+
+class ProductionRoleRequiredMixin(LoginRequiredMixin):
+    """
+    Global security Mixin for the Production application.
+    Rights Matrix:
+    - System_Admin       : Full Access (Bypass)
+    - Data_Steward       : Read-Only (List/Detail/Structure) + Write (Create/Update/Delete/Restore)
+    - QA_Representative  : Read-Only (List/Detail/Structure) + Decision (Validate/Reject)
+    """
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return super().dispatch(request, *args, **kwargs)
+
+        # Superuser bypass: System_Admin
+        if request.user.is_superuser or request.user.groups.filter(name='System_Admin').exists():
+            return super().dispatch(request, *args, **kwargs)
+
+        # Extract user groups synchronized from Entra ID
+        user_groups = request.user.groups.values_list('name', flat=True)
+        current_view = self
+        view_class_name = current_view.__class__.__name__.lower()
+
+
+        if 'Data_Steward' in user_groups:
+            if isinstance(current_view, EntityValidateView) or isinstance(current_view,
+                                                                          EntityRejectView) or 'validate' in view_class_name or 'reject' in view_class_name:
+                raise PermissionDenied("Data Stewards are not allowed to validate or reject production data.")
+
+            return super().dispatch(request, *args, **kwargs)
+
+        if 'QA_Representative' in user_groups:
+            is_mutation_action = (
+                    'create' in view_class_name or
+                    'edit' in view_class_name or
+                    'update' in view_class_name or
+                    'delete' in view_class_name or
+                    'restore' in view_class_name or
+                    isinstance(current_view, GenericDeleteView) or
+                    isinstance(current_view, GenericRestoreView)
+            )
+            if is_mutation_action:
+                raise PermissionDenied("QA Representatives are not allowed to create or modify production data.")
+
+            return super().dispatch(request, *args, **kwargs)
+
+        raise PermissionDenied("Access denied. You do not have the required role to access this module.")

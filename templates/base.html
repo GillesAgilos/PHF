@@ -53,7 +53,7 @@
                     {{ user.first_name }} {{ user.last_name }}
                 {% else %}
                     {{ user.username }}
-                {% endif %}
+                {% endif %} - {{ user.groups.all|first }}
             </span>
                 <form action="{% url 'logout' %}" method="post" class="d-inline">
                     {% csrf_token %}

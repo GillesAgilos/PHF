@@ -9,31 +9,33 @@ def map_azure_groups_to_django_permissions(sender, user, claims, **kwargs):
     azure_groups = claims.get('groups', [])
 
     mapping_env = {
-        os.getenv('AZURE_GROUP_ADMIN'): 'System_Admin',
-        os.getenv('AZURE_GROUP_CUSTODIAN'): 'Data_Custodian',
-        os.getenv('AZURE_GROUP_STEWARD'): 'Data_Steward',
-        os.getenv('AZURE_GROUP_QA'): 'QA_Representative',
-        os.getenv('AZURE_GROUP_INVESTIGATOR'): 'Data_Investigator',
+        'System_Admin': os.getenv('AZURE_GROUP_ADMIN'),
+        'Data_Custodian': os.getenv('AZURE_GROUP_CUSTODIAN'),
+        'Data_Steward': os.getenv('AZURE_GROUP_STEWARD'),
+        'QA_Representative': os.getenv('AZURE_GROUP_QA'),
+        'Data_Investigator': os.getenv('AZURE_GROUP_INVESTIGATOR'),
     }
+
     user.groups.clear()
     user.is_staff = False
     user.is_superuser = False
 
-    user_has_mapped_group = False
+    matched_roles = []
 
-    for azure_id, django_group_name in mapping_env.items():
+    for django_group_name, azure_id in mapping_env.items():
         if azure_id and azure_id in azure_groups:
-            group, _ = Group.objects.get_or_create(name=django_group_name)
-            user.groups.add(group)
-            user_has_mapped_group = True
+            matched_roles.append(django_group_name)
 
-            if django_group_name == 'System_Admin':
-                user.is_staff = True
-                user.is_superuser = True
-
-    if not user_has_mapped_group:
-        user.is_active = False
-    else:
+    if len(matched_roles) == 1:
+        django_group_name = matched_roles[0]
+        group, _ = Group.objects.get_or_create(name=django_group_name)
+        user.groups.add(group)
         user.is_active = True
+
+        if django_group_name == 'System_Admin':
+            user.is_staff = True
+            user.is_superuser = True
+    else:
+        user.is_active = False
 
     user.save()

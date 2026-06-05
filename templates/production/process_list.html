@@ -27,11 +27,13 @@
             </form>
         </div>
 
-        <div>
-            <a href="{% url 'production:process_add' %}" class="btn btn-primary shadow-sm">
-                <i class="bi bi-plus-lg"></i> Add New Process Template
-            </a>
-        </div>
+        {% if user.is_superuser or user.groups.all.0.name == "System_Admin" or user.groups.all.0.name == "Data_Steward" %}
+            <div>
+                <a href="{% url 'production:process_add' %}" class="btn btn-primary shadow-sm">
+                    <i class="bi bi-plus-lg"></i> Add New Process Template
+                </a>
+            </div>
+        {% endif %}
     </div>
 
     <ul class="nav nav-tabs mb-4">
@@ -113,8 +115,7 @@
                         <td>
                             <span class="fw-semibold">{{ process.name }}</span>
                             {% if process.status == 'REJECTED' and process.rejection_reason %}
-                                <br><small class="text-danger fw-bold"><i class="bi bi-arrow-right"></i> Needs
-                                correction</small>
+                                <br><small class="text-danger fw-bold"><i class="bi bi-arrow-right"></i> Needs correction</small>
                             {% endif %}
                         </td>
                         <td>
@@ -133,89 +134,84 @@
                         </td>
                         <td class="text-end text-nowrap">
                             {% if view_mode == 'archived' %}
-                                <form action="{% url 'production:process_restore' process.pk %}" method="post"
-                                      class="d-inline m-0">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-outline-success shadow-sm"
-                                            title="Restore Process">
-                                        <i class="bi bi-arrow-counterclockwise"></i> Restore
-                                    </button>
-                                </form>
+                                {% if user.is_superuser or user.groups.all.0.name == "System_Admin" or user.groups.all.0.name == "Data_Steward" %}
+                                    <form action="{% url 'production:process_restore' process.pk %}" method="post" class="d-inline m-0">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-success shadow-sm" title="Restore Process">
+                                            <i class="bi bi-arrow-counterclockwise"></i> Restore
+                                        </button>
+                                    </form>
+                                {% endif %}
                             {% else %}
                                 <a href="{% url 'production:unitoperation_list' process.pk %}"
                                    class="btn btn-sm btn-primary shadow-sm" title="Manage Flowchart Structure">
                                     <i class="bi bi-diagram-2"></i> Structure
                                 </a>
 
-                                {% if process.status == 'DRAFT' or process.status == 'REJECTED' %}
-                                    <a href="{% url 'production:process_edit' process.pk %}"
-                                       class="btn btn-sm btn-outline-secondary shadow-sm ms-1">
-                                        <i class="bi bi-pencil"></i> Edit
-                                    </a>
-                                    <form action="{% url 'production:process_submit' process.pk %}" method="post"
-                                          class="d-inline m-0">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-outline-warning shadow-sm ms-1"
-                                                title="Submit for review">
-                                            <i class="bi bi-send-check-fill"></i> Submit
-                                        </button>
-                                    </form>
+                                {% if user.is_superuser or user.groups.all.0.name == "System_Admin" or user.groups.all.0.name == "Data_Steward" %}
+
+                                    {% if process.status == 'DRAFT' or process.status == 'REJECTED' %}
+                                        <a href="{% url 'production:process_edit' process.pk %}"
+                                           class="btn btn-sm btn-outline-secondary shadow-sm ms-1">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </a>
+                                        <form action="{% url 'production:process_submit' process.pk %}" method="post" class="d-inline m-0">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-warning shadow-sm ms-1" title="Submit for review">
+                                                <i class="bi bi-send-check-fill"></i> Submit
+                                            </button>
+                                        </form>
+                                    {% endif %}
+
+                                    {% if process.status == 'VALIDATED' %}
+                                        <form action="{% url 'production:process_versioning' process.pk %}" method="post" class="d-inline m-0">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-dark shadow-sm ms-1" title="Create Version v{{ process.version|add:1 }}">
+                                                <i class="bi bi-git"></i> New Version
+                                            </button>
+                                        </form>
+                                    {% endif %}
+
+                                    {% if process.status == 'DRAFT' or process.status == 'REJECTED' %}
+                                        <a href="{% url 'production:process_delete' process.pk %}" class="btn btn-sm btn-outline-danger shadow-sm ms-1" title="Delete Draft">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                    {% endif %}
                                 {% endif %}
+                                {% if user.is_superuser or user.groups.all.0.name == "System_Admin" or user.groups.all.0.name == "QA_Representative" %}
+                                    {% if process.status == 'PENDING' %}
+                                        <form action="{% url 'production:process_validate' process.pk %}" method="post" class="d-inline m-0">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-success shadow-sm ms-1" title="Approve">
+                                                <i class="bi bi-check-lg"></i> Accept
+                                            </button>
+                                        </form>
 
-                                {% if process.status == 'PENDING' %}
-                                    <form action="{% url 'production:process_validate' process.pk %}" method="post"
-                                          class="d-inline m-0">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-success shadow-sm ms-1"
-                                                title="Approve">
-                                            <i class="bi bi-check-lg"></i> Accept
+                                        <button type="button" class="btn btn-sm btn-danger shadow-sm ms-1"
+                                                data-bs-toggle="collapse" data-bs-target="#rejectForm-{{ process.pk }}" title="Reject">
+                                            <i class="bi bi-x-lg"></i> Reject
                                         </button>
-                                    </form>
 
-                                    <button type="button" class="btn btn-sm btn-danger shadow-sm ms-1"
-                                            data-bs-toggle="collapse" data-bs-target="#rejectForm-{{ process.pk }}"
-                                            title="Reject">
-                                        <i class="bi bi-x-lg"></i> Reject
-                                    </button>
-                                {% endif %}
-
-                                {% if process.status == 'VALIDATED' %}
-                                    <form action="{% url 'production:process_versioning' process.pk %}" method="post"
-                                          class="d-inline m-0">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-outline-dark shadow-sm ms-1"
-                                                title="Create Version v{{ process.version|add:1 }}">
-                                            <i class="bi bi-git"></i> New Version
-                                        </button>
-                                    </form>
-                                {% endif %}
-
-                                <a href="{% url 'production:process_delete' process.pk %}"
-                                   class="btn btn-sm btn-outline-danger shadow-sm ms-1">
-                                    <i class="bi bi-trash"></i>
-                                </a>
-
-                                {% if process.status == 'PENDING' %}
-                                    <div class="collapse mt-2 text-start" id="rejectForm-{{ process.pk }}">
-                                        <div class="card card-body border-danger p-2 bg-light">
-                                            <form action="{% url 'production:process_reject' process.pk %}"
-                                                  method="post" class="m-0">
-                                                {% csrf_token %}
-                                                <label class="small fw-bold text-danger">Rejection Reason :</label>
-                                                <div class="input-group input-group-sm mt-1">
-                                                    <input type="text" name="rejection_reason" class="form-control"
-                                                           required placeholder="Specify what needs correction...">
-                                                    <button class="btn btn-danger" type="submit">Confirm Reject</button>
-                                                </div>
-                                            </form>
+                                        <div class="collapse mt-2 text-start" id="rejectForm-{{ process.pk }}">
+                                            <div class="card card-body border-danger p-2 bg-light">
+                                                <form action="{% url 'production:process_reject' process.pk %}" method="post" class="m-0">
+                                                    {% csrf_token %}
+                                                    <label class="small fw-bold text-danger">Rejection Reason :</label>
+                                                    <div class="input-group input-group-sm mt-1">
+                                                        <input type="text" name="rejection_reason" class="form-control" required placeholder="Specify what needs correction...">
+                                                        <button class="btn btn-danger" type="submit">Confirm Reject</button>
+                                                    </div>
+                                                </form>
+                                            </div>
                                         </div>
-                                    </div>
+                                    {% endif %}
                                 {% endif %}
+
                             {% endif %}
-                            <a href="{% url 'production:process_detail' process.pk %}"
-                               class="btn btn-sm shadow-sm px-2 btn-outline-info ms-1" title="View details & history">
+
+                            <a href="{% url 'production:process_detail' process.pk %}" class="btn btn-sm shadow-sm px-2 btn-outline-info ms-1" title="View details & history">
                                 <i class="bi bi-eye"></i> Detail
-                            </a
+                            </a>
                         </td>
                     </tr>
                 {% empty %}

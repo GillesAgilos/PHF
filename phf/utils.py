@@ -107,6 +107,65 @@ class BaseModel(models.Model):
     def _history_change_reason(self, value):
         self._change_reason = value
 
+    def get_authorized_actions(self, user):
+        """
+        Calculates authorized actions for Referential entities based on their lifecycle status.
+        """
+        actions = []
+        if not user.is_authenticated:
+            return actions
+
+        # Resolve role with a fallback if a Super User has no groups assigned
+        is_admin = user.is_superuser
+        user_group = None
+
+        if user.groups.exists():
+            user_group = user.groups.all()[0].name
+            if user_group == "System_Admin":
+                is_admin = True
+
+        #  ARCHIVAL CASE (Record is inactive/soft-deleted)
+        if not self.is_active:
+            if is_admin or user_group == "Data_Steward":
+                actions.append({
+                    'label': 'Restore Record',
+                    'url': reverse(f"{self._meta.app_label}:{self._meta.model_name}_restore", kwargs={'pk': self.pk}),
+                    'class': 'btn-info shadow-sm',
+                    'icon': 'bi-arrow-counterclockwise',
+                    'method': 'POST'
+                })
+            return actions
+
+        # DATA STEWARD RIGHTS (Always allowed to edit active records)
+        if is_admin or user_group == "Data_Steward":
+            actions.append({
+                'label': 'Edit Record',
+                'url': self.edit_url,
+                'class': 'btn-outline-primary',
+                'icon': 'bi-pencil',
+                'method': 'GET'
+            })
+
+        # QA REPRESENTATIVE RIGHTS (Allowed to Validate/Reject when status is DRAFT)
+        if is_admin or user_group == "QA_Representative":
+            if self.status == 'DRAFT':
+                actions.append({
+                    'label': 'Validate',
+                    'url': self.validate_url,
+                    'class': 'btn-success shadow-sm px-4',
+                    'icon': 'bi-check-circle',
+                    'method': 'POST'
+                })
+                actions.append({
+                    'label': 'Reject',
+                    'url': self.reject_url,
+                    'class': 'btn-outline-danger shadow-sm',
+                    'icon': 'bi-x-circle',
+                    'method': 'MODAL',
+                    'target': '#rejectModal'
+                })
+
+        return actions
 
 # =========================================================================
 # BASE COMPONENT MODEL (FOR DEPENDENT MODELS)
@@ -391,6 +450,8 @@ class EntityDetailView(AuditTrailMixin, ListView):
         context['object'] = self.obj
         context['title'] = f"Details & History: {self.obj}"
         context['model_name'] = self.model._meta.model_name
+
+        context['dynamic_actions'] = self.obj.get_authorized_actions(self.request.user)
 
         history_list = []
         records = list(context['history_records'])

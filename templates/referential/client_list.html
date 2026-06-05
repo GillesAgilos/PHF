@@ -12,7 +12,7 @@
             <form method="get" class="d-flex border rounded shadow-sm bg-white p-1">
                 <input type="hidden" name="view" value="{{ view_mode }}">
 
-                <input text="text" name="q" class="form-control form-control-sm border-0 shadow-none"
+                <input type="text" name="q" class="form-control form-control-sm border-0 shadow-none"
                        placeholder="Search..." value="{{ search_query }}">
 
                 {% if search_query %}
@@ -27,11 +27,13 @@
             </form>
         </div>
 
+        {% if user.is_superuser or user.groups.all.0.name == "System_Admin" or user.groups.all.0.name == "Data_Steward" %}
         <div>
             <a href="{% url 'referential:client_add' %}" class="btn btn-primary shadow-sm">
                 <i class="bi bi-plus-lg"></i> Add New Client
             </a>
         </div>
+        {% endif %}
     </div>
 
     <ul class="nav nav-tabs mb-4">
@@ -120,14 +122,16 @@
                             </a>
 
                             {% if client.is_active %}
-                                <a href="{% url 'referential:client_edit' client.pk %}"
-                                   class="btn btn-sm btn-outline-dark ms-1" title="Edit">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <a href="{% url 'referential:client_delete' client.pk %}"
-                                   class="btn btn-sm btn-outline-danger ms-1" title="Archive">
-                                    <i class="bi bi-trash"></i>
-                                </a>
+                                {% if user.is_superuser or user.groups.all.0.name == "System_Admin" or user.groups.all.0.name == "Data_Steward" %}
+                                    <a href="{% url 'referential:client_edit' client.pk %}"
+                                       class="btn btn-sm btn-outline-dark ms-1" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'referential:client_delete' client.pk %}"
+                                       class="btn btn-sm btn-outline-danger ms-1" title="Archive">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                {% endif %}
                             {% endif %}
                         </td>
                     </tr>

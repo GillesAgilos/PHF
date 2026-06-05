@@ -11,46 +11,46 @@ from phf.utils import (
     GenericDeleteView, GenericRestoreView, EntityDetailView,
     EntityValidateView, EntityRejectView, ProcessLockRequiredMixin
 )
-from referential.models import GlobalUnitOperation
 from .models import Process, UnitOperation, Step, Parameter, Sample, SamplingPlan
 from .forms import ProcessForm, UnitOperationForm, StepForm, ParameterForm, SampleForm, SamplingPlanForm
+from .security import ProductionRoleRequiredMixin
 
 
 # =========================================================================
 # 1. PROCESS VIEWS
 # =========================================================================
-class ProcessListView(FilterStateMixin, ListView):
+class ProcessListView(ProductionRoleRequiredMixin, FilterStateMixin, ListView):
     model = Process
     template_name = 'production/process_list.html'
     context_object_name = 'processes'
     search_fields = ['name', 'code']
 
 
-class ProcessCreateView(AuditTrailMixin, CreateView):
+class ProcessCreateView(ProductionRoleRequiredMixin, AuditTrailMixin, CreateView):
     model = Process
     form_class = ProcessForm
     template_name = 'generic/generic_form.html'
     success_url = reverse_lazy('production:process_list')
 
 
-class ProcessUpdateView(ProcessLockRequiredMixin,AuditTrailMixin, StatusResetMixin, UpdateView):
+class ProcessUpdateView(ProductionRoleRequiredMixin, ProcessLockRequiredMixin,AuditTrailMixin, StatusResetMixin, UpdateView):
     model = Process
     form_class = ProcessForm
     template_name = 'generic/generic_form.html'
     success_url = reverse_lazy('production:process_list')
 
 
-class ProcessDeleteView(ProcessLockRequiredMixin,GenericDeleteView):
+class ProcessDeleteView(ProductionRoleRequiredMixin, ProcessLockRequiredMixin,GenericDeleteView):
     model = Process
     success_url = reverse_lazy('production:process_list')
 
 
-class ProcessRestoreView(GenericRestoreView):
+class ProcessRestoreView(ProductionRoleRequiredMixin, GenericRestoreView):
     model = Process
     redirect_url = 'production:process_list'
 
 
-class ProcessDetailView(EntityDetailView):
+class ProcessDetailView(ProductionRoleRequiredMixin, EntityDetailView):
     model = Process
 
     def get_object(self, queryset=None):
@@ -69,11 +69,17 @@ class ProcessDetailView(EntityDetailView):
 
         context['show_validation_buttons'] = (process.status == Process.Status.PENDING)
         context['show_submit_button'] = (process.status in [Process.Status.DRAFT, Process.Status.REJECTED])
+        
+        if 'dynamic_actions' in context and process.status in [Process.Status.VALIDATED, Process.Status.PENDING]:
+            context['dynamic_actions'] = [
+                action for action in context['dynamic_actions']
+                if action.get('label') != 'Edit Record'
+            ]
 
         return context
 
 
-class ProcessValidateView(EntityValidateView):
+class ProcessValidateView(ProductionRoleRequiredMixin, EntityValidateView):
     model = Process
     redirect_url = 'production:process_list'
 
@@ -87,7 +93,7 @@ class ProcessValidateView(EntityValidateView):
         return super().post(request, *args, **kwargs)
 
 
-class ProcessRejectView(EntityRejectView):
+class ProcessRejectView(ProductionRoleRequiredMixin, EntityRejectView):
     model = Process
     redirect_url = 'production:process_list'
 
@@ -100,7 +106,7 @@ class ProcessRejectView(EntityRejectView):
 
         return super().post(request, *args, **kwargs)
 
-class ProcessSubmitView(View):
+class ProcessSubmitView(ProductionRoleRequiredMixin, View):
 
     def post(self, request, pk):
         process = get_object_or_404(Process, pk=pk)
@@ -112,18 +118,16 @@ class ProcessSubmitView(View):
         return redirect('production:process_list')
 
 
-class ProcessCreateNewVersionView(View):
+class ProcessCreateNewVersionView(ProductionRoleRequiredMixin, View):
 
     def post(self, request, pk):
         old_process = get_object_or_404(Process, pk=pk)
 
-        # Sécurité : On ne versionne qu'un process validé
         if old_process.status != 'VALIDATED':
             messages.error(request, "Only validated templates can be versioned.")
             return redirect('production:process_list')
 
         with transaction.atomic():
-            # 1. Calcul de la version suivante
             max_version = Process.objects.filter(
                 code=old_process.code
             ).aggregate(Max('version'))['version__max']
@@ -131,7 +135,6 @@ class ProcessCreateNewVersionView(View):
             current_max = max_version if max_version is not None else old_process.version
             next_version = current_max + 1
 
-            # 2. Duplication du Process racine
             new_process = Process.objects.create(
                 name=old_process.name,
                 code=old_process.code,
@@ -143,7 +146,6 @@ class ProcessCreateNewVersionView(View):
                 updated_by=request.user
             )
 
-            # 3. Duplication des UnitOperations
             for u in old_process.units.filter(is_active=True):
                 new_u = UnitOperation.objects.create(
                     process=new_process,
@@ -154,7 +156,6 @@ class ProcessCreateNewVersionView(View):
                     updated_by=request.user
                 )
 
-                # 4. Duplication des Steps
                 for s in u.steps.filter(is_active=True):
                     new_s = Step.objects.create(
                         unit_operation=new_u,
@@ -164,7 +165,6 @@ class ProcessCreateNewVersionView(View):
                         updated_by=request.user
                     )
 
-                    # 5. Duplication des Parameters
                     for p in s.parameters.filter(is_active=True):
                         Parameter.objects.create(
                             step=new_s,
@@ -182,7 +182,6 @@ class ProcessCreateNewVersionView(View):
                             updated_by=request.user
                         )
 
-                    # 6. NOUVEAU : Duplication des SamplingPlans
                     for plan in s.sampling_plans.filter(is_active=True):
                         new_plan = SamplingPlan.objects.create(
                             step=new_s,
@@ -191,12 +190,11 @@ class ProcessCreateNewVersionView(View):
                             updated_by=request.user
                         )
 
-                        # 7. AJUSTÉ : Duplication des Samples rattachés au plan
                         for sample in plan.samples.filter(is_active=True):
                             Sample.objects.create(
-                                sampling_plan=new_plan,  # Lié au nouveau plan
+                                sampling_plan=new_plan,
                                 sample_name=sample.sample_name,
-                                analytical_method=sample.analytical_method,  # Relation ForeignKey standard (PROTECT)
+                                analytical_method=sample.analytical_method,
                                 created_by=request.user,
                                 updated_by=request.user
                             )
@@ -208,7 +206,7 @@ class ProcessCreateNewVersionView(View):
 # =========================================================================
 # 2. UNIT OPERATION VIEWS
 # =========================================================================
-class UnitOperationStructureView(TemplateView):
+class UnitOperationStructureView(ProductionRoleRequiredMixin, TemplateView):
     template_name = 'production/unitoperation_list.html'
 
     def get_context_data(self, **kwargs):
@@ -224,18 +222,23 @@ class UnitOperationStructureView(TemplateView):
         count_active = UnitOperation.objects.filter(process=process, is_active=True).count()
         count_archived = UnitOperation.objects.filter(process=process, is_active=False).count()
 
+        user_group = None
+        if self.request.user.is_authenticated and self.request.user.groups.exists():
+            user_group = self.request.user.groups.all()[0].name
+
         context.update({
             'process': process,
             'units': units,
             'view_mode': view_mode,
             'count_active': count_active,
             'count_archived': count_archived,
+            'user_group': user_group,
             'form': context.get('form') or UnitOperationForm(),
         })
         return context
 
 
-class UnitOperationAddView(View):
+class UnitOperationAddView(ProductionRoleRequiredMixin, View):
     def post(self, request, process_pk):
         process = get_object_or_404(Process, pk=process_pk)
         view_mode = request.GET.get('view', 'active')
@@ -273,7 +276,7 @@ class UnitOperationAddView(View):
         return redirect(f"/production/processes/{process.pk}/structure/?view={view_mode}")
 
 
-class UnitOperationRestoreView(View):
+class UnitOperationRestoreView(ProductionRoleRequiredMixin, View):
 
     def post(self, request, pk):
         unit = get_object_or_404(UnitOperation, pk=pk)
@@ -305,7 +308,7 @@ class UnitOperationRestoreView(View):
         return redirect(f"/production/processes/{process_pk}/structure/?view=archived")
 
 
-class UnitOperationReorderView(View):
+class UnitOperationReorderView(ProductionRoleRequiredMixin, View):
 
     def get(self, request, pk, direction):
         unit = get_object_or_404(UnitOperation, pk=pk)
@@ -346,12 +349,29 @@ class UnitOperationReorderView(View):
         return redirect(f"/production/processes/{process.pk}/structure/")
 
 
-class UnitOperationDetailView(EntityDetailView):
+class UnitOperationDetailView(ProductionRoleRequiredMixin, EntityDetailView):
     model = UnitOperation
     template_name = 'generic/generic_detail.html'
 
+    def get_context_data(self, **kwargs):
+        if not hasattr(self.model, 'get_authorized_actions'):
+            self.model.get_authorized_actions = lambda instance, user: []
 
-class UnitOperationUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
+        context = super().get_context_data(**kwargs)
+
+        unit = context.get('object')
+
+        if unit and unit.process and 'dynamic_actions' in context:
+            if unit.process.status in ['VALIDATED', 'PENDING']:
+                context['dynamic_actions'] = [
+                    action for action in context['dynamic_actions']
+                    if action.get('label') != 'Edit Record'
+                ]
+
+        return context
+
+
+class UnitOperationUpdateView(ProductionRoleRequiredMixin, AuditTrailMixin, StatusResetMixin, UpdateView):
     model = UnitOperation
     form_class = UnitOperationForm
     template_name = 'generic/generic_form.html'
@@ -360,7 +380,7 @@ class UnitOperationUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
         return f"/production/processes/{self.object.process.pk}/structure/?view=active"
 
 
-class UnitOperationDeleteView(GenericDeleteView):
+class UnitOperationDeleteView(ProductionRoleRequiredMixin, GenericDeleteView):
     model = UnitOperation
 
     def get_success_url(self):
@@ -406,7 +426,7 @@ class UnitOperationDeleteView(GenericDeleteView):
 # =========================================================================
 # 3. STEP VIEWS
 # =========================================================================
-class StepStructureView(TemplateView):
+class StepStructureView(ProductionRoleRequiredMixin, TemplateView):
     template_name = 'production/step_list.html'
 
     def get_context_data(self, **kwargs):
@@ -422,6 +442,10 @@ class StepStructureView(TemplateView):
         count_active = Step.objects.filter(unit_operation=unit, is_active=True).count()
         count_archived = Step.objects.filter(unit_operation=unit, is_active=False).count()
 
+        user_group = None
+        if self.request.user.is_authenticated and self.request.user.groups.exists():
+            user_group = self.request.user.groups.all()[0].name
+
         context.update({
             'unit': unit,
             'process': unit.process,
@@ -429,12 +453,13 @@ class StepStructureView(TemplateView):
             'view_mode': view_mode,
             'count_active': count_active,
             'count_archived': count_archived,
+            'user_group': user_group,
             'form': context.get('form') or StepForm()
         })
         return context
 
 
-class StepAddView(View):
+class StepAddView(ProductionRoleRequiredMixin, View):
 
     def post(self, request, unit_pk):
         unit = get_object_or_404(UnitOperation, pk=unit_pk)
@@ -466,7 +491,7 @@ class StepAddView(View):
 
         return redirect(f"/production/unit-operations/{unit.pk}/manage/?view={view_mode}")
 
-class StepDeleteView(GenericDeleteView):
+class StepDeleteView(ProductionRoleRequiredMixin, GenericDeleteView):
     model = Step
 
     def get_success_url(self):
@@ -509,7 +534,7 @@ class StepDeleteView(GenericDeleteView):
 
         return HttpResponseRedirect(success_url)
 
-class StepRestoreView(View):
+class StepRestoreView(ProductionRoleRequiredMixin, View):
 
     def post(self, request, pk):
         step = get_object_or_404(Step, pk=pk)
@@ -540,7 +565,7 @@ class StepRestoreView(View):
         return redirect(f"/production/unit-operations/{unit_pk}/manage/?view=archived")
 
 
-class StepReorderView(View):
+class StepReorderView(ProductionRoleRequiredMixin, View):
 
     def get(self, request, pk, direction):
         step = get_object_or_404(Step, pk=pk)
@@ -582,12 +607,29 @@ class StepReorderView(View):
         return redirect(f"/production/unit-operations/{unit.pk}/manage/")
 
 
-class StepDetailView(EntityDetailView):
+class StepDetailView(ProductionRoleRequiredMixin, EntityDetailView):
     model = Step
     template_name = 'generic/generic_detail.html'
 
+    def get_context_data(self, **kwargs):
+        if not hasattr(self.model, 'get_authorized_actions'):
+            self.model.get_authorized_actions = lambda instance, user: []
 
-class StepUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
+        context = super().get_context_data(**kwargs)
+        step = context.get('object')
+
+        if step and step.unit_operation and step.unit_operation.process and 'dynamic_actions' in context:
+            process_status = step.unit_operation.process.status
+            if process_status in ['VALIDATED', 'PENDING']:
+                context['dynamic_actions'] = [
+                    action for action in context['dynamic_actions']
+                    if action.get('label') != 'Edit Record'
+                ]
+
+        return context
+
+
+class StepUpdateView(ProductionRoleRequiredMixin, AuditTrailMixin, StatusResetMixin, UpdateView):
     model = Step
     form_class = StepForm
     template_name = 'generic/generic_form.html'
@@ -599,7 +641,7 @@ class StepUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
 # =========================================================================
 # 4. PARAMETER VIEWS
 # =========================================================================
-class ParameterStructureView(TemplateView):
+class ParameterStructureView(ProductionRoleRequiredMixin, TemplateView):
     template_name = 'production/parameter_list.html'
 
     def get_context_data(self, **kwargs):
@@ -615,6 +657,11 @@ class ParameterStructureView(TemplateView):
         count_active = Parameter.objects.filter(step=step, is_active=True).count()
         count_archived = Parameter.objects.filter(step=step, is_active=False).count()
 
+
+        user_group = None
+        if self.request.user.is_authenticated and self.request.user.groups.exists():
+            user_group = self.request.user.groups.all()[0].name
+
         context.update({
             'step': step,
             'unit': step.unit_operation,
@@ -623,12 +670,13 @@ class ParameterStructureView(TemplateView):
             'view_mode': view_mode,
             'count_active': count_active,
             'count_archived': count_archived,
+            'user_group': user_group,
             'form': context.get('form') or ParameterForm()
         })
         return context
 
 
-class ParameterAddView(View):
+class ParameterAddView(ProductionRoleRequiredMixin, View):
     def post(self, request, step_pk):
         step = get_object_or_404(Step, pk=step_pk)
         view_mode = request.GET.get('view', 'active')
@@ -660,7 +708,7 @@ class ParameterAddView(View):
         return redirect(f"/production/steps/{step.pk}/parameters/?view={view_mode}")
 
 
-class ParameterDeleteView(GenericDeleteView):
+class ParameterDeleteView(ProductionRoleRequiredMixin, GenericDeleteView):
     model = Parameter
 
     def get_success_url(self):
@@ -702,7 +750,7 @@ class ParameterDeleteView(GenericDeleteView):
         return HttpResponseRedirect(success_url)
 
 
-class ParameterRestoreView(View):
+class ParameterRestoreView(ProductionRoleRequiredMixin, View):
     def post(self, request, pk):
         param = get_object_or_404(Parameter, pk=pk)
         step_pk = param.step.pk
@@ -732,7 +780,7 @@ class ParameterRestoreView(View):
         return redirect(f"/production/steps/{step_pk}/parameters/?view=archived")
 
 
-class ParameterReorderView(View):
+class ParameterReorderView(ProductionRoleRequiredMixin, View):
     def get(self, request, pk, direction):
         param = get_object_or_404(Parameter, pk=pk)
         step = param.step
@@ -771,12 +819,30 @@ class ParameterReorderView(View):
         return redirect(f"/production/steps/{step.pk}/parameters/")
 
 
-class ParameterDetailView(EntityDetailView):
+class ParameterDetailView(ProductionRoleRequiredMixin, EntityDetailView):
     model = Parameter
     template_name = 'generic/generic_detail.html'
 
+    def get_context_data(self, **kwargs):
+        if not hasattr(self.model, 'get_authorized_actions'):
+            self.model.get_authorized_actions = lambda instance, user: []
 
-class ParameterUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
+        context = super().get_context_data(**kwargs)
+
+        param = context.get('object')
+
+        if param and param.step and param.step.unit_operation and param.step.unit_operation.process and 'dynamic_actions' in context:
+            process_status = param.step.unit_operation.process.status
+            if process_status in ['VALIDATED', 'PENDING']:
+                context['dynamic_actions'] = [
+                    action for action in context['dynamic_actions']
+                    if action.get('label') != 'Edit Record'
+                ]
+
+        return context
+
+
+class ParameterUpdateView(ProductionRoleRequiredMixin, AuditTrailMixin, StatusResetMixin, UpdateView):
     model = Parameter
     form_class = ParameterForm
     template_name = 'generic/generic_form.html'
@@ -788,7 +854,7 @@ class ParameterUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
 # =========================================================================
 # 5. SAMPLING PLAN VIEWS
 # =========================================================================
-class SamplingPlanStructureView(TemplateView):
+class SamplingPlanStructureView(ProductionRoleRequiredMixin, TemplateView):
     template_name = 'production/samplingplan_list.html'
 
     def get_context_data(self, **kwargs):
@@ -804,6 +870,10 @@ class SamplingPlanStructureView(TemplateView):
         count_active = SamplingPlan.objects.filter(step=step, is_active=True).count()
         count_archived = SamplingPlan.objects.filter(step=step, is_active=False).count()
 
+        user_group = None
+        if self.request.user.is_authenticated and self.request.user.groups.exists():
+            user_group = self.request.user.groups.all()[0].name
+
         context.update({
             'step': step,
             'unit': step.unit_operation,
@@ -812,12 +882,13 @@ class SamplingPlanStructureView(TemplateView):
             'view_mode': view_mode,
             'count_active': count_active,
             'count_archived': count_archived,
+            'user_group': user_group,
             'form': context.get('form') or SamplingPlanForm()
         })
         return context
 
 
-class SamplingPlanAddView(View):
+class SamplingPlanAddView(ProductionRoleRequiredMixin, View):
     def post(self, request, step_pk):
         step = get_object_or_404(Step, pk=step_pk)
         view_mode = request.GET.get('view', 'active')
@@ -842,7 +913,7 @@ class SamplingPlanAddView(View):
         return redirect(f"/production/steps/{step.pk}/samplingplans/?view={view_mode}")
 
 
-class SamplingPlanDeleteView(GenericDeleteView):
+class SamplingPlanDeleteView(ProductionRoleRequiredMixin, GenericDeleteView):
     model = SamplingPlan
 
     def get_success_url(self):
@@ -858,7 +929,7 @@ class SamplingPlanDeleteView(GenericDeleteView):
         return HttpResponseRedirect(success_url)
 
 
-class SamplingPlanRestoreView(View):
+class SamplingPlanRestoreView(ProductionRoleRequiredMixin, View):
     def post(self, request, pk):
         sampling_plan = get_object_or_404(SamplingPlan, pk=pk)
         step_pk = sampling_plan.step.pk
@@ -870,12 +941,29 @@ class SamplingPlanRestoreView(View):
         return redirect(f"/production/steps/{step_pk}/samplingplans/?view=archived")
 
 
-class SamplingPlanDetailView(EntityDetailView):
+class SamplingPlanDetailView(ProductionRoleRequiredMixin, EntityDetailView):
     model = SamplingPlan
     template_name = 'generic/generic_detail.html'
 
+    def get_context_data(self, **kwargs):
+        if not hasattr(self.model, 'get_authorized_actions'):
+            self.model.get_authorized_actions = lambda instance, user: []
 
-class SamplingPlanUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
+        context = super().get_context_data(**kwargs)
+        plan = context.get('object')
+
+        if plan and plan.step and plan.step.unit_operation and plan.step.unit_operation.process and 'dynamic_actions' in context:
+            process_status = plan.step.unit_operation.process.status
+            if process_status in ['VALIDATED', 'PENDING']:
+                context['dynamic_actions'] = [
+                    action for action in context['dynamic_actions']
+                    if action.get('label') != 'Edit Record'
+                ]
+
+        return context
+
+
+class SamplingPlanUpdateView(ProductionRoleRequiredMixin, AuditTrailMixin, StatusResetMixin, UpdateView):
     model = SamplingPlan
     form_class = SamplingPlanForm
     template_name = 'generic/generic_form.html'
@@ -887,7 +975,7 @@ class SamplingPlanUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
 # =========================================================================
 # 6. SAMPLE VIEWS
 # =========================================================================
-class SampleStructureView(TemplateView):
+class SampleStructureView(ProductionRoleRequiredMixin, TemplateView):
     template_name = 'production/sample_list.html'
 
     def get_context_data(self, **kwargs):
@@ -903,6 +991,10 @@ class SampleStructureView(TemplateView):
         count_active = Sample.objects.filter(sampling_plan=sampling_plan, is_active=True).count()
         count_archived = Sample.objects.filter(sampling_plan=sampling_plan, is_active=False).count()
 
+        user_group = None
+        if self.request.user.is_authenticated and self.request.user.groups.exists():
+            user_group = self.request.user.groups.all()[0].name
+
         context.update({
             'sampling_plan': sampling_plan,
             'step': sampling_plan.step,
@@ -912,12 +1004,13 @@ class SampleStructureView(TemplateView):
             'view_mode': view_mode,
             'count_active': count_active,
             'count_archived': count_archived,
+            'user_group': user_group,
             'form': context.get('form') or SampleForm()
         })
         return context
 
 
-class SampleAddView(View):
+class SampleAddView(ProductionRoleRequiredMixin, View):
     def post(self, request, sampling_plan_pk):
         sampling_plan = get_object_or_404(SamplingPlan, pk=sampling_plan_pk)
         view_mode = request.GET.get('view', 'active')
@@ -943,7 +1036,7 @@ class SampleAddView(View):
         return redirect(f"/production/samplingplans/{sampling_plan.pk}/samples/?view={view_mode}")
 
 
-class SampleDeleteView(GenericDeleteView):
+class SampleDeleteView(ProductionRoleRequiredMixin, GenericDeleteView):
     model = Sample
 
     def get_success_url(self):
@@ -959,7 +1052,7 @@ class SampleDeleteView(GenericDeleteView):
         return HttpResponseRedirect(success_url)
 
 
-class SampleRestoreView(View):
+class SampleRestoreView(ProductionRoleRequiredMixin, View):
     def post(self, request, pk):
         sample = get_object_or_404(Sample, pk=pk)
         sampling_plan_pk = sample.sampling_plan.pk
@@ -971,12 +1064,30 @@ class SampleRestoreView(View):
         return redirect(f"/production/samplingplans/{sampling_plan_pk}/samples/?view=archived")
 
 
-class SampleDetailView(EntityDetailView):
+class SampleDetailView(ProductionRoleRequiredMixin, EntityDetailView):
     model = Sample
     template_name = 'generic/generic_detail.html'
 
+    def get_context_data(self, **kwargs):
+        if not hasattr(self.model, 'get_authorized_actions'):
+            self.model.get_authorized_actions = lambda instance, user: []
 
-class SampleUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
+        context = super().get_context_data(**kwargs)
+
+        sample = context.get('object')
+
+        if sample and sample.sampling_plan and sample.sampling_plan.step and sample.sampling_plan.step.unit_operation and sample.sampling_plan.step.unit_operation.process and 'dynamic_actions' in context:
+            process_status = sample.sampling_plan.step.unit_operation.process.status
+            if process_status in ['VALIDATED', 'PENDING']:
+                context['dynamic_actions'] = [
+                    action for action in context['dynamic_actions']
+                    if action.get('label') != 'Edit Record'
+                ]
+
+        return context
+
+
+class SampleUpdateView(ProductionRoleRequiredMixin, AuditTrailMixin, StatusResetMixin, UpdateView):
     model = Sample
     form_class = SampleForm
     template_name = 'generic/generic_form.html'

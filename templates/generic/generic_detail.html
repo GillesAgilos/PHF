@@ -10,109 +10,72 @@
         <h2 class="text-secondary mb-0">{{ title }}</h2>
     </div>
 
-    {% if not object.is_active %}
-        <div class="alert alert-secondary shadow-sm border-0 d-flex justify-content-between align-items-center p-3 mb-4">
-            <div>
-                <h5 class="alert-heading mb-1 text-dark"><i class="bi bi-archive"></i> Record Archived</h5>
-                <p class="mb-0 small text-muted">This record is currently inactive. Restoration is required for any changes.</p>
-            </div>
-            {% with restore_url=request.resolver_match.namespace|add:':'|add:model_name|add:'_restore' %}
-                <form action="{% url restore_url object.pk %}" method="post" class="m-0">
+    {% for action in dynamic_actions %}
+        {% if action.label == 'Restore Record' %}
+            <div class="alert alert-secondary shadow-sm border-0 d-flex justify-content-between align-items-center p-3 mb-4">
+                <div>
+                    <h5 class="alert-heading mb-1 text-dark"><i class="bi bi-archive"></i> Record Archived</h5>
+                    <p class="mb-0 small text-muted">This record is currently inactive. Restoration is required for any changes.</p>
+                </div>
+                <form action="{{ action.url }}" method="post" class="m-0">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-info shadow-sm">
-                        <i class="bi bi-arrow-counterclockwise"></i> Restore Record
+                    <button type="submit" class="btn {{ action.class }}">
+                        <i class="{{ action.icon }}"></i> {{ action.label }}
                     </button>
                 </form>
-            {% endwith %}
-        </div>
-    {% elif object.status == 'REJECTED' %}
-        <div class="alert alert-danger shadow-sm border-start border-4 border-danger p-3 mb-4 d-flex justify-content-between align-items-center">
-            <div>
-                <h5 class="alert-heading mb-1 fw-bold">Record Rejected</h5>
-                <p class="mb-0"><strong>Reason:</strong> {{ object.rejection_reason }}</p>
-            </div>
-            <div class="d-flex gap-2">
-                {% if is_process_view %}
-                    <form action="{% url 'production:process_submit' object.pk %}" method="post" class="m-0">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-primary shadow-sm">
-                            <i class="bi bi-paper-plane"></i> Submit for Review
-                        </button>
-                    </form>
-                {% endif %}
-                <a href="{{ object.edit_url }}" class="btn btn-outline-danger shadow-sm">
-                    <i class="bi bi-pencil-square"></i> Correct Now
-                </a>
-            </div>
-        </div>
-    {% elif is_process_view %}
-        {% if object.status == 'DRAFT' %}
-            <div class="alert alert-warning shadow-sm border-0 d-flex justify-content-between align-items-center p-3 mb-4">
-                <div>
-                    <h5 class="alert-heading mb-1 fw-bold"><i class="bi bi-pencil-fill"></i> Process Layout (Draft)</h5>
-                    <p class="mb-0 small text-muted">Structure construction ongoing. Submit the architecture once finalized to allow validation.</p>
-                </div>
-                <form action="{% url 'production:process_submit' object.pk %}" method="post" class="m-0">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-primary shadow-sm px-4">
-                        <i class="bi bi-paper-plane"></i> Submit for Review
-                    </button>
-                </form>
-            </div>
-        {% elif object.status == 'PENDING' %}
-            <div class="alert alert-info shadow-sm border-0 d-flex justify-content-between align-items-center p-3 mb-4">
-                <div>
-                    <h5 class="alert-heading mb-1 fw-bold"><i class="bi bi-shield-check"></i> Process Under Review</h5>
-                    <p class="mb-0 small">Please review the full workflow architecture below before deciding.</p>
-                </div>
-                <div class="d-flex gap-2">
-                    <form action="{{ object.validate_url }}" method="post" class="m-0">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-success shadow-sm px-4">Validate Template</button>
-                    </form>
-                    <button type="button" class="btn btn-outline-danger shadow-sm" data-bs-toggle="modal" data-bs-target="#rejectModal">
-                        Reject
-                    </button>
-                </div>
             </div>
         {% endif %}
-    {% elif object.status == 'DRAFT' %}
+    {% endfor %}
+
+    {% if object.is_active and object.status == 'DRAFT' %}
         <div class="alert alert-warning shadow-sm border-0 d-flex justify-content-between align-items-center p-3 mb-4">
             <div>
-                <h5 class="alert-heading mb-1 fw-bold"><i class="bi bi-shield-check"></i> Pending Validation</h5>
-                <p class="mb-0 small">Please review the audit trail and details below before deciding.</p>
+                <h5 class="alert-heading mb-1 fw-bold"><i class="bi bi-shield-check"></i> Pending Review</h5>
+                <p class="mb-0 small text-muted">Please review the audit trail and details below before taking a regulatory decision.</p>
             </div>
             <div class="d-flex gap-2">
-                <form action="{{ object.validate_url }}" method="post" class="m-0">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-success shadow-sm px-4">Validate</button>
-                </form>
-                <button type="button" class="btn btn-outline-danger shadow-sm" data-bs-toggle="modal" data-bs-target="#rejectModal">
-                    Reject
-                </button>
+                {% for action in dynamic_actions %}
+                    {% if action.label == 'Validate' %}
+                        <form action="{{ action.url }}" method="post" class="m-0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn {{ action.class }}">
+                                <i class="{{ action.icon }}"></i> {{ action.label }}
+                            </button>
+                        </form>
+                    {% elif action.label == 'Reject' %}
+                        <button type="button" class="btn {{ action.class }}" data-bs-toggle="modal" data-bs-target="{{ action.target }}">
+                            <i class="{{ action.icon }}"></i> {{ action.label }}
+                        </button>
+                    {% endif %}
+                {% endfor %}
             </div>
         </div>
     {% endif %}
 
-    {% if object.is_active and object.edit_url %}
-        <div class="card-footer bg-light text-end">
-            <a href="{{ object.edit_url }}" class="btn btn-sm btn-outline-primary px-3">
-                <i class="bi bi-pencil"></i> Edit Record
-            </a>
+    {% if object.is_active and object.status == 'REJECTED' %}
+        <div class="alert alert-danger shadow-sm border-start border-4 border-danger p-3 mb-4">
+            <h5 class="alert-heading mb-1 fw-bold"><i class="bi bi-exclamation-octagon"></i> Record Rejected</h5>
+            <p class="mb-0"><strong>Reason for rejection:</strong> {{ object.rejection_reason }}</p>
         </div>
     {% endif %}
-    <br>
 
-    <div class="card shadow-sm mb-5 border-0">
+    <div class="card shadow-sm mb-4 border-0">
         <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
             <h5 class="mb-0">Current Record State</h5>
-            <div>
-                <span class="badge {% if object.is_active %}bg-success{% else %}bg-secondary{% endif %} me-2">
+            <div class="d-flex gap-2 align-items-center">
+                <span class="badge {% if object.is_active %}bg-success{% else %}bg-secondary{% endif %}">
                     {% if object.is_active %}Active{% else %}Archived{% endif %}
                 </span>
                 <span class="badge rounded-pill {% if object.status == 'VALIDATED' %}bg-info text-dark{% elif object.status == 'REJECTED' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
                     {{ object.get_status_display }}
                 </span>
+                {% for action in dynamic_actions %}
+                    {% if action.label == 'Edit Record' %}
+                        <a href="{{ action.url }}" class="btn btn-sm {{ action.class }} ms-2 bg-white">
+                            <i class="{{ action.icon }}"></i> {{ action.label }}
+                        </a>
+                    {% endif %}
+                {% endfor %}
             </div>
         </div>
         <div class="card-body p-0">
@@ -121,16 +84,16 @@
                     <tbody>
                     {% for field in display_fields %}
                         <tr>
-                            <th class="text-muted small align-middle ps-4">{{ field.label|upper }}</th>
+                            <th class="text-muted small align-middle ps-4" style="width: 25%;">{{ field.label|upper }}</th>
                             <td class="fw-bold align-middle py-3">
                                 {% if field.value.hour is not None %}
                                     {{ field.value|date:"d/m/Y H:i" }}
                                 {% elif field.value.year %}
                                     {{ field.value|date:"d/m/Y" }}
                                 {% elif field.value is True %}
-                                    Yes
+                                    <span class="text-success"><i class="bi bi-check-lg"></i> Yes</span>
                                 {% elif field.value is False %}
-                                    No
+                                    <span class="text-danger"><i class="bi bi-x-lg"></i> No</span>
                                 {% else %}
                                     {{ field.value|default:"---" }}
                                 {% endif %}
@@ -148,7 +111,7 @@
             <i class="bi bi-diagram-3-fill"></i> Process Architecture
         </h4>
 
-        <div class="accordion shadow-sm" id="processAccordion">
+        <div class="accordion shadow-sm mb-5" id="processAccordion">
             {% for unit in object.units.all %}
                 {% if unit.is_active %}
                     <div class="accordion-item border-secondary mb-2 rounded-3 overflow-hidden">
@@ -160,8 +123,8 @@
                                 <strong class="fs-5">{{ unit.name }}</strong>
                                 <span class="badge {% if unit.unit_type == 'USP' %}bg-info text-dark{% else %}bg-primary{% endif %} ms-2 text-uppercase"
                                       style="font-size: 0.75rem;">
-                                {{ unit.unit_type }}
-                            </span>
+                                    {{ unit.unit_type }}
+                                </span>
                                 <span class="badge bg-secondary ms-auto me-3 small">{{ unit.steps.all|length }} Step(s)</span>
                             </button>
                         </h2>
@@ -177,9 +140,9 @@
                                                     <div class="col-md-4 border-end">
                                                         <div class="d-flex flex-column h-100 justify-content-between">
                                                             <div>
-                                                            <span class="fw-bold text-dark d-block mb-2">
-                                                                Step {{ step.order }} : {{ step.name }}
-                                                            </span>
+                                                                <span class="fw-bold text-dark d-block mb-2">
+                                                                    Step {{ step.order }} : {{ step.name }}
+                                                                </span>
                                                             </div>
                                                             <ul class="nav nav-pills flex-column gap-1 small"
                                                                 id="stepTab{{ step.pk }}" role="tablist">
@@ -189,8 +152,7 @@
                                                                             data-bs-toggle="tab"
                                                                             data-bs-target="#params-pane-{{ step.pk }}"
                                                                             type="button" role="tab">
-                                                                        Parameters
-                                                                        ({{ step.parameters.all|length }})
+                                                                        Parameters ({{ step.parameters.all|length }})
                                                                     </button>
                                                                 </li>
                                                                 <li class="nav-item" role="presentation">
@@ -198,8 +160,8 @@
                                                                             id="samples-tab-{{ step.pk }}"
                                                                             data-bs-toggle="tab"
                                                                             data-bs-target="#samples-pane-{{ step.pk }}"
-                                                                            type="button" role="tab">Sampling Plans
-                                                                        ({{ step.sampling_plans.all|length }})
+                                                                            type="button" role="tab">
+                                                                        Sampling Plans ({{ step.sampling_plans.all|length }})
                                                                     </button>
                                                                 </li>
                                                             </ul>
@@ -211,24 +173,17 @@
                                                              id="stepTabContent{{ step.pk }}"
                                                              style="min-height: 110px; max-height: 250px; overflow-y: auto;">
 
-                                                            <div class="tab-pane fade show active"
-                                                                 id="params-pane-{{ step.pk }}" role="tabpanel"
-                                                                 aria-labelledby="params-tab-{{ step.pk }}"
-                                                                 tabindex="0">
+                                                            <div class="tab-pane fade show active" id="params-pane-{{ step.pk }}" role="tabpanel" aria-labelledby="params-tab-{{ step.pk }}" tabindex="0">
                                                                 <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-1">
-                                                                    <small class="text-primary fw-bold text-uppercase"
-                                                                           style="font-size: 0.75rem;">Parameters Specifications</small>
+                                                                    <small class="text-primary fw-bold text-uppercase" style="font-size: 0.75rem;">Parameters Specifications</small>
                                                                 </div>
                                                                 <div class="d-flex flex-wrap gap-1">
                                                                     {% for param in step.parameters.all %}
                                                                         {% if param.is_active %}
-                                                                            <div class="p-1 px-2 bg-white border rounded d-flex align-items-center"
-                                                                                 style="font-size: 0.8rem;">
+                                                                            <div class="p-1 px-2 bg-white border rounded d-flex align-items-center" style="font-size: 0.8rem;">
                                                                                 <span class="fw-bold text-dark me-1">{{ param.name }}</span>
-                                                                                {% if param.unit %}
-                                                                                    <span class="badge bg-light text-secondary border me-1 py-0 px-1">{{ param.unit }}</span>{% endif %}
-                                                                                <span class="text-muted"
-                                                                                      style="font-size: 0.7rem;">({{ param.get_format_type_display }})</span>
+                                                                                {% if param.unit %}<span class="badge bg-light text-secondary border me-1 py-0 px-1">{{ param.unit }}</span>{% endif %}
+                                                                                <span class="text-muted" style="font-size: 0.7rem;">({{ param.get_format_type_display }})</span>
                                                                             </div>
                                                                         {% endif %}
                                                                     {% empty %}
@@ -237,53 +192,35 @@
                                                                 </div>
                                                             </div>
 
-                                                            <div class="tab-pane fade" id="samples-pane-{{ step.pk }}"
-                                                                 role="tabpanel"
-                                                                 aria-labelledby="samples-tab-{{ step.pk }}"
-                                                                 tabindex="0">
+                                                            <div class="tab-pane fade" id="samples-pane-{{ step.pk }}" role="tabpanel" aria-labelledby="samples-tab-{{ step.pk }}" tabindex="0">
                                                                 <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-1">
-                                                                    <small class="text-info-emphasis fw-bold text-uppercase"
-                                                                           style="font-size: 0.75rem;">Sampling Plans & Samples</small>
+                                                                    <small class="text-info-emphasis fw-bold text-uppercase" style="font-size: 0.75rem;">Sampling Plans & Samples</small>
                                                                 </div>
-
                                                                 {% for plan in step.sampling_plans.all %}
                                                                     {% if plan.is_active %}
                                                                         <div class="bg-white border rounded p-2 mb-2 shadow-sm">
-                                                                            <div class="fw-bold text-secondary border-bottom pb-1 mb-2 d-flex justify-content-between align-items-center"
-                                                                                 style="font-size: 0.75rem;">
+                                                                            <div class="fw-bold text-secondary border-bottom pb-1 mb-2 d-flex justify-content-between align-items-center" style="font-size: 0.75rem;">
                                                                                 <span>{{ plan.name }}</span>
-                                                                                <span class="badge bg-secondary text-white border-0 py-1 px-2 rounded-pill">
-                                                                                    {{ plan.samples.all|length }}
-                                                                                </span>
+                                                                                <span class="badge bg-secondary text-white border-0 py-1 px-2 rounded-pill">{{ plan.samples.all|length }}</span>
                                                                             </div>
-
                                                                             <div class="ps-1">
                                                                                 {% for sample in plan.samples.all %}
                                                                                     {% if sample.is_active %}
-                                                                                        <div class="bg-light px-2 py-1 mb-1 rounded border-start border-2 border-info d-flex align-items-center"
-                                                                                             style="font-size: 0.8rem;">
+                                                                                        <div class="bg-light px-2 py-1 mb-1 rounded border-start border-2 border-info d-flex align-items-center" style="font-size: 0.8rem;">
                                                                                             <div class="d-flex align-items-center flex-wrap gap-2 w-100">
-                                                                                                <span class="fw-bold text-dark">
-                                                                                                    <i class="bi bi-vial-fill text-info me-1"></i> {{ sample.sample_name }}
-                                                                                                </span>
-                                                                                                <span class="badge bg-dark font-monospace text-uppercase"
-                                                                                                      style="font-size: 0.65rem; padding: 2px 6px;">
-                                                                                                    {{ sample.analytical_method.name }}
-                                                                                                </span>
+                                                                                                    <span class="fw-bold text-dark"><i class="bi bi-vial-fill text-info me-1"></i> {{ sample.sample_name }}</span>
+                                                                                                    <span class="badge bg-dark font-monospace text-uppercase" style="font-size: 0.65rem; padding: 2px 6px;">{{ sample.analytical_method.name }}</span>
                                                                                             </div>
                                                                                         </div>
                                                                                     {% endif %}
                                                                                 {% empty %}
-                                                                                    <small class="text-muted italic d-block ps-2"
-                                                                                           style="font-size: 0.75rem;">
-                                                                                        No samples defined.
-                                                                                    </small>
+                                                                                    <small class="text-muted italic d-block ps-2" style="font-size: 0.75rem;">No samples defined.</small>
                                                                                 {% endfor %}
                                                                             </div>
                                                                         </div>
                                                                     {% endif %}
                                                                 {% empty %}
-                                                                    <div class="text-muted italic small p-2"> No sampling plans active.</div>
+                                                                    <div class="text-muted italic small p-2">No sampling plans active.</div>
                                                                 {% endfor %}
                                                             </div>
                                                         </div>
@@ -309,7 +246,7 @@
     {% endif %}
 
     <h4 class="text-secondary mb-3"><i class="bi bi-clock-history"></i> Audit Trail</h4>
-    <div class="card shadow-sm border-0">
+    <div class="card shadow-sm border-0 mb-5">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
@@ -324,9 +261,7 @@
                 {% for item in history_list %}
                     <tr>
                         <td class="text-nowrap small fw-bold">{{ item.record.history_date|date:"d/m/Y H:i:s" }}</td>
-                        <td class="small text-muted">
-                            {{ item.record.history_user.username|default:"System" }}
-                        </td>
+                        <td class="small text-muted">{{ item.record.history_user.username|default:"System" }}</td>
                         <td>
                             {% if item.record.history_type == '+' %}
                                 <span class="badge bg-success w-100">Created</span>
@@ -368,24 +303,28 @@
 
     <div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <form action="{{ object.reject_url }}" method="post" class="modal-content">
-                {% csrf_token %}
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title" id="rejectModalLabel">Reject Record</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Please provide a reason for rejecting <strong>{{ object }}</strong>. </p>
-                    <div class="mb-3">
-                        <label for="rejection_reason" class="form-label fw-bold">Rejection Reason</label>
-                        <textarea class="form-control" id="rejection_reason" name="rejection_reason" rows="4" required></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger px-4 shadow-sm">Confirm Rejection</button>
-                </div>
-            </form>
+            {% for action in dynamic_actions %}
+                {% if action.label == 'Reject' %}
+                    <form action="{{ action.url }}" method="post" class="modal-content">
+                        {% csrf_token %}
+                        <div class="modal-header bg-danger text-white">
+                            <h5 class="modal-title" id="rejectModalLabel">Reject Record</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Please provide a reason for rejecting <strong>{{ object }}</strong>.</p>
+                            <div class="mb-3">
+                                <label for="rejection_reason" class="form-label fw-bold">Rejection Reason</label>
+                                <textarea class="form-control" id="rejection_reason" name="rejection_reason" rows="4" required></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-danger px-4 shadow-sm">Confirm Rejection</button>
+                        </div>
+                    </form>
+                {% endif %}
+            {% endfor %}
         </div>
     </div>
 {% endblock %}
