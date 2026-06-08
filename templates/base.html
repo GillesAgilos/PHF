@@ -17,31 +17,42 @@
 
         <div class="navbar-nav me-auto">
             {% if user.is_authenticated %}
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navRef" role="button" data-bs-toggle="dropdown"
-                       aria-expanded="false">
-                        Referential
-                    </a>
-                    <ul class="dropdown-menu shadow" aria-labelledby="navRef">
-                        <li><a class="dropdown-item" href="{% url 'referential:client_list' %}">Clients</a></li>
-                        <li><a class="dropdown-item" href="{% url 'referential:project_list' %}">Projects</a></li>
-                        <li><a class="dropdown-item" href="{% url 'referential:moleculetype_list' %}">Molecule Types</a>
-                        <li><a class="dropdown-item" href="{% url 'referential:analyticalmethod_list' %}">Analytical Methods</a>
-                        <li><a class="dropdown-item" href="{% url 'referential:globalunitoperation_list' %}">Unit Operations Catalogue</a>
-                        </li>
-                    </ul>
-                </li>
 
-                <li class="nav-item">
-                    <a class="nav-link" href="{% url 'production:process_list' %}">
-                        Process Templates
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{% url 'batch:batch_list' %}">
-                        Batches
-                    </a>
-                </li>
+                {% with user.groups.all.0.name as user_role %}
+
+                    {% if user.is_superuser or user_role == "System_Admin" or user_role == "Data_Steward" or user_role == "QA_Representative" %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navRef" role="button" data-bs-toggle="dropdown"
+                               aria-expanded="false">
+                                Referential
+                            </a>
+                            <ul class="dropdown-menu shadow" aria-labelledby="navRef">
+                                <li><a class="dropdown-item" href="{% url 'referential:client_list' %}">Clients</a></li>
+                                <li><a class="dropdown-item" href="{% url 'referential:project_list' %}">Projects</a></li>
+                                <li><a class="dropdown-item" href="{% url 'referential:moleculetype_list' %}">Molecule Types</a></li>
+                                <li><a class="dropdown-item" href="{% url 'referential:analyticalmethod_list' %}">Analytical Methods</a></li>
+                                <li><a class="dropdown-item" href="{% url 'referential:globalunitoperation_list' %}">Unit Operations Catalogue</a></li>
+                            </ul>
+                        </li>
+                    {% endif %}
+
+                    {% if user.is_superuser or user_role == "System_Admin" or user_role == "Data_Steward" or user_role == "QA_Representative" %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'production:process_list' %}">
+                                Process Templates
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    {% if user.is_superuser or user_role == "System_Admin" or user_role == "Data_Custodian" or user_role == "Data_Steward" or user_role == "QA" or user_role == "QA_Representative" %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'batch:batch_list' %}">
+                                Batches
+                            </a>
+                        </li>
+                    {% endif %}
+
+                {% endwith %}
             {% endif %}
         </div>
 
@@ -53,7 +64,12 @@
                     {{ user.first_name }} {{ user.last_name }}
                 {% else %}
                     {{ user.username }}
-                {% endif %} - {{ user.groups.all|first }}
+                {% endif %}
+                {% if user.groups.all %}
+                    - <span class="badge bg-light text-dark font-monospace">{{ user.groups.all.0.name }}</span>
+                {% elif user.is_superuser %}
+                    - <span class="badge bg-danger text-white font-monospace">Superuser</span>
+                {% endif %}
             </span>
                 <form action="{% url 'logout' %}" method="post" class="d-inline">
                     {% csrf_token %}

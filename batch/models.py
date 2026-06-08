@@ -64,6 +64,49 @@ class Batch(BaseModel):
             return None
         return super().edit_url
 
+    def clean(self):
+        super().clean()
+
+        if hasattr(self, 'status') and self.status == 'VALIDATED':
+            process = self.process
+
+            if not process:
+                raise ValidationError("Cannot validate batch: No associated process found.")
+
+            from production.models import UnitOperation
+
+            active_units = UnitOperation.objects.filter(process=process, is_active=True)
+            expected_param_count = 0
+            expected_sample_count = 0
+
+            for unit in active_units:
+                active_steps = unit.steps.filter(is_active=True)
+                for step in active_steps:
+                    expected_param_count += step.parameters.filter(is_active=True).count()
+
+                    for plan in step.sampling_plans.all():
+                        expected_sample_count += plan.samples.filter(is_active=True).count()
+
+            recorded_param_count = self.parameter_results.filter(is_active=True).count()
+            recorded_sample_count = self.sample_results.filter(is_active=True).count()
+
+            if recorded_param_count < expected_param_count:
+                raise ValidationError(
+                    f"Cannot validate batch: Missing parameter results. "
+                    f"Recorded: {recorded_param_count}/{expected_param_count}."
+                )
+
+            if recorded_sample_count < expected_sample_count:
+                raise ValidationError(
+                    f"Cannot validate batch: Missing analytical sample results. "
+                    f"Recorded: {recorded_sample_count}/{expected_sample_count}."
+                )
+
+    def save(self, *args, **kwargs):
+        if self.is_active:
+            self.full_clean()
+        super().save(*args, **kwargs)
+
 
 
 class ParameterResult(BaseModel):
@@ -97,6 +140,11 @@ class ParameterResult(BaseModel):
         verbose_name_plural = "Parameter Results"
 
     def clean(self):
+        if self.batch and hasattr(self.batch, 'status') and self.batch.status == 'VALIDATED':
+            raise ValidationError({
+                'batch': "Batch is validated, no modification allowed."
+            })
+
         if self.parameter:
             if hasattr(self.parameter, 'status') and self.parameter.status != 'VALIDATED':
                 raise ValidationError({'parameter': f"Selected parameter ({self.parameter}) must be validated."})
@@ -157,6 +205,11 @@ class SampleResult(BaseModel):
         verbose_name_plural = "Sample Results"
 
     def clean(self):
+        if self.batch and hasattr(self.batch, 'status') and self.batch.status == 'VALIDATED':
+            raise ValidationError({
+                'batch': "Batch is validated. No modification allowed."
+            })
+
         if self.sample:
             if hasattr(self.sample, 'status') and self.sample.status != 'VALIDATED':
                 raise ValidationError({'sample': f"Selected sample ({self.sample}) must be validated."})

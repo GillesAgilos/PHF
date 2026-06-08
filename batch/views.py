@@ -1,3 +1,6 @@
+from django.contrib import messages
+from django.core.exceptions import ValidationError
+from django.db.models import Prefetch
 from django.urls import reverse_lazy, reverse
 from django.shortcuts import get_object_or_404, redirect
 from django.views.generic import CreateView, UpdateView, ListView, DetailView
@@ -8,62 +11,129 @@ from phf.utils import (
 )
 from .models import Batch, SampleResult, ParameterResult
 from .forms import BatchForm, ParameterResultForm, SampleResultForm
-from production.models import UnitOperation, Step
+from production.models import UnitOperation, Step, Sample
+from .security import BatchRoleRequiredMixin
 
 
 # ==========================================
 # BATCH VIEWS
 # ==========================================
-class BatchListView(FilterStateMixin, ListView):
+class BatchListView(BatchRoleRequiredMixin, FilterStateMixin, ListView):
     model = Batch
     template_name = 'batch/batch_list.html'
     context_object_name = 'batches'
-    search_fields = ['project__name', 'process__code', 'batch_status']
+    search_fields = ['project__name', 'process__code']
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        return queryset.order_by('-created_at').select_related('project', 'process')
+        return queryset.select_related('project', 'process').order_by('-created_at')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        context['view_mode'] = self.request.GET.get('view', 'active') or 'active'
+
+        context['count_active'] = Batch.objects.filter(is_active=True, status='VALIDATED').count()
+        context['count_archived'] = Batch.objects.filter(is_active=False).count()
+        context['count_rejected'] = Batch.objects.filter(is_active=True, status='REJECTED').count()
+        context['count_draft'] = Batch.objects.filter(is_active=True, status='DRAFT').count()
+
+        user_group = None
+        if self.request.user.is_authenticated and self.request.user.groups.exists():
+            user_group = self.request.user.groups.all()[0].name
+        context['user_group'] = user_group
+
+        return context
 
 
-class BatchCreateView(AuditTrailMixin, CreateView):
+class BatchCreateView(BatchRoleRequiredMixin, AuditTrailMixin, CreateView):
     model = Batch
     form_class = BatchForm
     template_name = 'generic/generic_form.html'
     success_url = reverse_lazy('batch:batch_list')
 
 
-class BatchUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
+class BatchUpdateView(BatchRoleRequiredMixin, AuditTrailMixin, StatusResetMixin, UpdateView):
     model = Batch
     form_class = BatchForm
     template_name = 'generic/generic_form.html'
     success_url = reverse_lazy('batch:batch_list')
 
 
-class BatchDeleteView(GenericDeleteView):
+class BatchDeleteView(BatchRoleRequiredMixin, GenericDeleteView):
     model = Batch
     success_url = reverse_lazy('batch:batch_list')
 
 
-class BatchRestoreView(GenericRestoreView):
+class BatchRestoreView(BatchRoleRequiredMixin, GenericRestoreView):
     model = Batch
     redirect_url = 'batch:batch_list'
 
 
-class BatchDetailView(EntityDetailView):
+class BatchDetailView(BatchRoleRequiredMixin, EntityDetailView):
     model = Batch
 
+    def get_context_data(self, **kwargs):
+        if not hasattr(self.model, 'get_authorized_actions'):
+            self.model.get_authorized_actions = lambda instance, user: []
 
-class BatchValidateView(EntityValidateView):
+        context = super().get_context_data(**kwargs)
+        batch = context.get('object') or self.get_object()
+
+        user_groups = self.request.user.groups.values_list('name',
+                                                           flat=True) if self.request.user.is_authenticated else []
+
+        if batch and 'dynamic_actions' in context:
+            if batch.status == 'VALIDATED':
+                context['dynamic_actions'] = [
+                    action for action in context['dynamic_actions']
+                    if action.get('label') != 'Edit Record'
+                ]
+
+            if 'Data_Steward' in user_groups and batch.status == 'DRAFT' and batch.is_active:
+                context['dynamic_actions'].extend([
+                    {
+                        'label': 'Validate',
+                        'url': reverse('batch:batch_validate', kwargs={'pk': batch.pk}),
+                        'class': 'btn-success btn-sm',
+                        'icon': 'bi bi-check-circle'
+                    },
+                    {
+                        'label': 'Reject',
+                        'url': reverse('batch:batch_reject', kwargs={'pk': batch.pk}),
+                        'class': 'btn-danger btn-sm',
+                        'icon': 'bi bi-x-circle',
+                        'target': '#rejectModal'
+                    }
+                ])
+        return context
+
+
+class BatchValidateView(BatchRoleRequiredMixin, EntityValidateView):
+    model = Batch
+    redirect_url = 'batch:batch_list'
+
+    def post(self, request, pk, *args, **kwargs):
+        obj = get_object_or_404(self.model, pk=pk)
+
+        try:
+            obj.validate_entity(user=request.user)
+            messages.success(request, f"{self.model.__name__} '{obj}' has been validated.")
+
+        except ValidationError as e:
+            error_msg = e.messages[0] if hasattr(e, 'messages') else str(e)
+            messages.error(request, error_msg)
+            return redirect('batch:batch_logbook', pk=obj.pk)
+
+        return redirect(self.redirect_url)
+
+
+class BatchRejectView(BatchRoleRequiredMixin, EntityRejectView):
     model = Batch
     redirect_url = 'batch:batch_list'
 
 
-class BatchRejectView(EntityRejectView):
-    model = Batch
-    redirect_url = 'batch:batch_list'
-
-
-class BatchLogbookView(DetailView):
+class BatchLogbookView(BatchRoleRequiredMixin, DetailView):
     model = Batch
     template_name = 'batch/batch_logbook.html'
     context_object_name = 'batch'
@@ -73,9 +143,18 @@ class BatchLogbookView(DetailView):
         batch = self.object
         process = batch.process
 
+        user_group = None
+        if self.request.user.is_authenticated and self.request.user.groups.exists():
+            user_group = self.request.user.groups.all()[0].name
+        context['user_group'] = user_group
+
         units = UnitOperation.objects.filter(process=process, is_active=True).order_by('order')
+
+        samples_with_methods = Sample.objects.filter(is_active=True).select_related('analytical_method')
+
         steps = Step.objects.filter(unit_operation__in=units, is_active=True).order_by('order').prefetch_related(
-            'parameters', 'sampling_plans__samples__analytical_method'
+            'parameters',
+            Prefetch('sampling_plans__samples', queryset=samples_with_methods)
         )
 
         param_results = {res.parameter_id: res for res in ParameterResult.objects.filter(batch=batch, is_active=True)}
@@ -85,6 +164,7 @@ class BatchLogbookView(DetailView):
         for unit in units:
             unit_data = {'object': unit, 'steps': []}
             unit_steps = [s for s in steps if s.unit_operation_id == unit.pk]
+
             for step in unit_steps:
                 step_data = {'object': step, 'parameters_with_results': [], 'samples_with_results': []}
 
@@ -99,7 +179,7 @@ class BatchLogbookView(DetailView):
                     for sample in plan.samples.all():
                         step_data['samples_with_results'].append({
                             'sample': sample,
-                            'unit': sample.analytical_method.unit,
+                            'unit': sample.analytical_method.unit if sample.analytical_method else None,
                             'result': sample_results.get(sample.pk)
                         })
                 unit_data['steps'].append(step_data)
@@ -108,11 +188,10 @@ class BatchLogbookView(DetailView):
         context['process_tree'] = process_tree
         return context
 
-
 # ==========================================
 # PARAMETER RESULT VIEWS
 # ==========================================
-class ParameterResultListView(FilterStateMixin, ListView):
+class ParameterResultListView(BatchRoleRequiredMixin, FilterStateMixin, ListView):
     model = ParameterResult
     template_name = 'batch/parameter_result_list.html'
     context_object_name = 'parameter_results'
@@ -140,8 +219,25 @@ class ParameterResultListView(FilterStateMixin, ListView):
 
         return queryset.select_related('batch', 'parameter')
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
 
-class ParameterResultCreateView(AuditTrailMixin, CreateView):
+        context['view_mode'] = self.request.GET.get('view', 'active') or 'active'
+
+        context['count_active'] = ParameterResult.objects.filter(is_active=True, status='VALIDATED').count()
+        context['count_archived'] = ParameterResult.objects.filter(is_active=False).count()
+        context['count_rejected'] = ParameterResult.objects.filter(is_active=True, status='REJECTED').count()
+        context['count_draft'] = ParameterResult.objects.filter(is_active=True, status='DRAFT').count()
+
+        user_group = None
+        if self.request.user.is_authenticated and self.request.user.groups.exists():
+            user_group = self.request.user.groups.all()[0].name
+        context['user_group'] = user_group
+
+        return context
+
+
+class ParameterResultCreateView(BatchRoleRequiredMixin, AuditTrailMixin, CreateView):
     model = ParameterResult
     form_class = ParameterResultForm
     template_name = 'generic/generic_form.html'
@@ -150,7 +246,7 @@ class ParameterResultCreateView(AuditTrailMixin, CreateView):
         return reverse('batch:batch_logbook', kwargs={'pk': self.object.batch.pk})
 
 
-class ParameterResultUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
+class ParameterResultUpdateView(BatchRoleRequiredMixin, AuditTrailMixin, StatusResetMixin, UpdateView):
     model = ParameterResult
     form_class = ParameterResultForm
     template_name = 'generic/generic_form.html'
@@ -159,14 +255,14 @@ class ParameterResultUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
         return reverse('batch:batch_logbook', kwargs={'pk': self.object.batch.pk})
 
 
-class ParameterResultDeleteView(GenericDeleteView):
+class ParameterResultDeleteView(BatchRoleRequiredMixin, GenericDeleteView):
     model = ParameterResult
 
     def get_success_url(self):
         return reverse('batch:batch_logbook', kwargs={'pk': self.object.batch.pk})
 
 
-class ParameterResultRestoreView(GenericRestoreView):
+class ParameterResultRestoreView(BatchRoleRequiredMixin, GenericRestoreView):
     model = ParameterResult
 
     def post(self, request, *args, **kwargs):
@@ -175,11 +271,45 @@ class ParameterResultRestoreView(GenericRestoreView):
         return redirect('batch:batch_logbook', pk=obj.batch.pk)
 
 
-class ParameterResultDetailView(EntityDetailView):
+class ParameterResultDetailView(BatchRoleRequiredMixin, EntityDetailView):
     model = ParameterResult
 
+    def get_context_data(self, **kwargs):
+        if not hasattr(self.model, 'get_authorized_actions'):
+            self.model.get_authorized_actions = lambda instance, user: []
 
-class ParameterResultValidateView(EntityValidateView):
+        context = super().get_context_data(**kwargs)
+        result = context.get('object') or self.get_object()
+        user_groups = self.request.user.groups.values_list('name',
+                                                           flat=True) if self.request.user.is_authenticated else []
+
+        if result and 'dynamic_actions' in context:
+            if result.status == 'VALIDATED':
+                context['dynamic_actions'] = [
+                    action for action in context['dynamic_actions']
+                    if action.get('label') != 'Edit Record'
+                ]
+
+            if 'Data_Steward' in user_groups and result.status == 'DRAFT' and result.is_active:
+                context['dynamic_actions'].extend([
+                    {
+                        'label': 'Validate',
+                        'url': reverse('batch:parameter_result_validate', kwargs={'pk': result.pk}),
+                        'class': 'btn-success btn-sm',
+                        'icon': 'bi bi-check-circle'
+                    },
+                    {
+                        'label': 'Reject',
+                        'url': reverse('batch:parameter_result_reject', kwargs={'pk': result.pk}),
+                        'class': 'btn-danger btn-sm',
+                        'icon': 'bi bi-x-circle',
+                        'target': '#rejectModal'
+                    }
+                ])
+        return context
+
+
+class ParameterResultValidateView(BatchRoleRequiredMixin, EntityValidateView):
     model = ParameterResult
 
     def post(self, request, pk):
@@ -188,7 +318,7 @@ class ParameterResultValidateView(EntityValidateView):
         return redirect('batch:batch_logbook', pk=obj.batch.pk)
 
 
-class ParameterResultRejectView(EntityRejectView):
+class ParameterResultRejectView(BatchRoleRequiredMixin, EntityRejectView):
     model = ParameterResult
 
     def post(self, request, pk):
@@ -205,7 +335,7 @@ class ParameterResultRejectView(EntityRejectView):
 # ==========================================
 # SAMPLE RESULT VIEWS
 # ==========================================
-class SampleResultListView(FilterStateMixin, ListView):
+class SampleResultListView(BatchRoleRequiredMixin, FilterStateMixin, ListView):
     model = SampleResult
     template_name = 'batch/sample_result_list.html'
     context_object_name = 'sample_results'
@@ -233,8 +363,26 @@ class SampleResultListView(FilterStateMixin, ListView):
 
         return queryset.select_related('batch', 'sample')
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
 
-class SampleResultCreateView(AuditTrailMixin, CreateView):
+        context['view_mode'] = self.request.GET.get('view', 'active') or 'active'
+
+        # Compteurs dédiés aux onglets SampleResult
+        context['count_active'] = SampleResult.objects.filter(is_active=True, status='VALIDATED').count()
+        context['count_archived'] = SampleResult.objects.filter(is_active=False).count()
+        context['count_rejected'] = SampleResult.objects.filter(is_active=True, status='REJECTED').count()
+        context['count_draft'] = SampleResult.objects.filter(is_active=True, status='DRAFT').count()
+
+        user_group = None
+        if self.request.user.is_authenticated and self.request.user.groups.exists():
+            user_group = self.request.user.groups.all()[0].name
+        context['user_group'] = user_group
+
+        return context
+
+
+class SampleResultCreateView(BatchRoleRequiredMixin, AuditTrailMixin, CreateView):
     model = SampleResult
     form_class = SampleResultForm
     template_name = 'generic/generic_form.html'
@@ -243,7 +391,7 @@ class SampleResultCreateView(AuditTrailMixin, CreateView):
         return reverse('batch:batch_logbook', kwargs={'pk': self.object.batch.pk})
 
 
-class SampleResultUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
+class SampleResultUpdateView(BatchRoleRequiredMixin, AuditTrailMixin, StatusResetMixin, UpdateView):
     model = SampleResult
     form_class = SampleResultForm
     template_name = 'generic/generic_form.html'
@@ -252,14 +400,14 @@ class SampleResultUpdateView(AuditTrailMixin, StatusResetMixin, UpdateView):
         return reverse('batch:batch_logbook', kwargs={'pk': self.object.batch.pk})
 
 
-class SampleResultDeleteView(GenericDeleteView):
+class SampleResultDeleteView(BatchRoleRequiredMixin, GenericDeleteView):
     model = SampleResult
 
     def get_success_url(self):
         return reverse('batch:batch_logbook', kwargs={'pk': self.object.batch.pk})
 
 
-class SampleResultRestoreView(GenericRestoreView):
+class SampleResultRestoreView(BatchRoleRequiredMixin, GenericRestoreView):
     model = SampleResult
 
     def post(self, request, *args, **kwargs):
@@ -268,11 +416,45 @@ class SampleResultRestoreView(GenericRestoreView):
         return redirect('batch:batch_logbook', pk=obj.batch.pk)
 
 
-class SampleResultDetailView(EntityDetailView):
+class SampleResultDetailView(BatchRoleRequiredMixin, EntityDetailView):
     model = SampleResult
 
+    def get_context_data(self, **kwargs):
+        if not hasattr(self.model, 'get_authorized_actions'):
+            self.model.get_authorized_actions = lambda instance, user: []
 
-class SampleResultValidateView(EntityValidateView):
+        context = super().get_context_data(**kwargs)
+        result = context.get('object') or self.get_object()
+        user_groups = self.request.user.groups.values_list('name',
+                                                           flat=True) if self.request.user.is_authenticated else []
+
+        if result and 'dynamic_actions' in context:
+            if result.status == 'VALIDATED':
+                context['dynamic_actions'] = [
+                    action for action in context['dynamic_actions']
+                    if action.get('label') != 'Edit Record'
+                ]
+
+            if 'Data_Steward' in user_groups and result.status == 'DRAFT' and result.is_active:
+                context['dynamic_actions'].extend([
+                    {
+                        'label': 'Validate',
+                        'url': reverse('batch:sample_result_validate', kwargs={'pk': result.pk}),
+                        'class': 'btn-success btn-sm',
+                        'icon': 'bi bi-check-circle'
+                    },
+                    {
+                        'label': 'Reject',
+                        'url': reverse('batch:sample_result_reject', kwargs={'pk': result.pk}),
+                        'class': 'btn-danger btn-sm',
+                        'icon': 'bi bi-x-circle',
+                        'target': '#rejectModal'
+                    }
+                ])
+        return context
+
+
+class SampleResultValidateView(BatchRoleRequiredMixin, EntityValidateView):
     model = SampleResult
 
     def post(self, request, pk):
@@ -281,7 +463,7 @@ class SampleResultValidateView(EntityValidateView):
         return redirect('batch:batch_logbook', pk=obj.batch.pk)
 
 
-class SampleResultRejectView(EntityRejectView):
+class SampleResultRejectView(BatchRoleRequiredMixin, EntityRejectView):
     model = SampleResult
 
     def post(self, request, pk):

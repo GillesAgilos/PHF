@@ -27,19 +27,21 @@
         </div>
 
         <div>
-            <a href="{% url 'batch:batch_add' %}" class="btn btn-primary shadow-sm">
-                <i class="bi bi-plus-lg"></i> Instantiate New Batch
-            </a>
+            {% if user_group == 'Data_Custodian' or user.is_superuser or user_group == 'System_Admin' %}
+                <a href="{% url 'batch:batch_add' %}" class="btn btn-primary shadow-sm">
+                    <i class="bi bi-plus-lg"></i> Instantiate New Batch
+                </a>
+            {% endif %}
         </div>
     </div>
 
     <ul class="nav nav-tabs mb-4">
         <li class="nav-item">
-            <a class="nav-link {% if view_mode == 'pending' %}active fw-bold text-primary border-bottom-0{% endif %}"
-               href="?view=pending{% if search_query %}&q={{ search_query }}{% endif %}">
+            <a class="nav-link {% if view_mode == 'draft' %}active fw-bold text-primary border-bottom-0{% endif %}"
+               href="?view=draft{% if search_query %}&q={{ search_query }}{% endif %}">
                 To Validate
-                {% if count_pending > 0 %}
-                    <span class="badge rounded-pill bg-primary ms-1">{{ count_pending }}</span>
+                {% if count_draft > 0 %}
+                    <span class="badge rounded-pill bg-primary ms-1">{{ count_draft }}</span>
                 {% endif %}
             </a>
         </li>
@@ -71,7 +73,7 @@
     <div class="card shadow-sm border-0">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
-                <thead class="{% if view_mode == 'pending' %}table-primary{% elif view_mode == 'rejected' %}table-danger{% elif view_mode == 'active' %}table-dark{% else %}table-secondary{% endif %}">
+                <thead class="{% if view_mode == 'draft' %}table-primary{% elif view_mode == 'rejected' %}table-danger{% elif view_mode == 'active' %}table-dark{% else %}table-secondary{% endif %}">
                 <tr>
                     <th>QA Status</th>
                     <th>Project</th>
@@ -112,7 +114,6 @@
                             {% endif %}
                         </td>
                         <td class="text-end" onclick="event.stopPropagation();">
-                            <!-- LIEN EXCLUSIF SAISIE EN LIGNE (LOGBOOK) -->
                             {% if batch.is_active %}
                                 <a href="{% url 'batch:batch_logbook' batch.pk %}"
                                    class="btn btn-sm btn-primary px-2 me-1 shadow-sm" title="Open Production Logbook">
@@ -125,21 +126,34 @@
                                 <i class="bi bi-eye"></i>
                             </a>
 
-                            {% if batch.is_active %}
-                                <a href="{% url 'batch:batch_edit' batch.pk %}"
-                                   class="btn btn-sm btn-outline-dark ms-1" title="Edit">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <a href="{% url 'batch:batch_delete' batch.pk %}"
-                                   class="btn btn-sm btn-outline-danger ms-1" title="Archive">
-                                    <i class="bi bi-trash"></i>
-                                </a>
+                            {% if batch.is_active and batch.status == 'DRAFT' %}
+                                {% if user_group == 'Data_Custodian' or user.is_superuser or user_group == 'System_Admin' %}
+                                    <a href="{% url 'batch:batch_edit' batch.pk %}"
+                                       class="btn btn-sm btn-outline-dark ms-1" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'batch:batch_delete' batch.pk %}"
+                                       class="btn btn-sm btn-outline-danger ms-1" title="Archive">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                {% endif %}
+                            {% endif %}
+
+                            {% if not batch.is_active %}
+                                {% if user_group == 'Data_Custodian' or user.is_superuser or user_group == 'System_Admin' %}
+                                    <form action="{% url 'batch:batch_restore' batch.pk %}" method="post" class="d-inline ms-1">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Restore">
+                                            <i class="bi bi-arrow-counterclockwise"></i>
+                                        </button>
+                                    </form>
+                                {% endif %}
                             {% endif %}
                         </td>
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="7" class="text-center py-5 text-muted">
+                        <td colspan="6" class="text-center py-5 text-muted">
                             <i class="bi bi-inbox fs-2"></i><br>
                             <p class="mt-2 mb-0">No batches tracking recorded in this category.</p>
                         </td>
