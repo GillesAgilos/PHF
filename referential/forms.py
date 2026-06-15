@@ -32,7 +32,7 @@ class MoleculeTypeForm(BaseEntityForm):
 class AnalyticalMethodForm(BaseEntityForm):
     class Meta:
         model = AnalyticalMethod
-        fields = ['name', 'format', 'unit']
+        fields = ['name', 'unit', 'sop_code', 'sop_version']
 
 
 class GlobalUnitOperationForm(BaseEntityForm):

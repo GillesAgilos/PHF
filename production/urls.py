@@ -21,14 +21,12 @@ urlpatterns = [
     # =========================================================================
     # LEVEL 2 : UNIT OPERATIONS
     # =========================================================================
-    path('processes/<uuid:process_pk>/structure/', views.UnitOperationStructureView.as_view(),
-         name='unitoperation_list'),
+    path('processes/<uuid:process_pk>/structure/', views.UnitOperationStructureView.as_view(), name='unitoperation_list'),
     path('processes/<uuid:process_pk>/structure/add/', views.UnitOperationAddView.as_view(), name='unitoperation_add'),
     path('unit-operations/<uuid:pk>/edit/', views.UnitOperationUpdateView.as_view(), name='unitoperation_edit'),
     path('unit-operations/<uuid:pk>/delete/', views.UnitOperationDeleteView.as_view(), name='unitoperation_delete'),
     path('unit-operations/<uuid:pk>/restore/', views.UnitOperationRestoreView.as_view(), name='unitoperation_restore'),
-    path('unit-operations/<uuid:pk>/reorder/<str:direction>/', views.UnitOperationReorderView.as_view(),
-         name='unitoperation_reorder'),
+    path('unit-operations/<uuid:pk>/reorder/<str:direction>/', views.UnitOperationReorderView.as_view(), name='unitoperation_reorder'),
     path('unit-operations/<uuid:pk>/detail/', views.UnitOperationDetailView.as_view(), name='unitoperation_detail'),
 
     # =========================================================================
@@ -50,27 +48,26 @@ urlpatterns = [
     path('parameters/<uuid:pk>/edit/', views.ParameterUpdateView.as_view(), name='parameter_edit'),
     path('parameters/<uuid:pk>/delete/', views.ParameterDeleteView.as_view(), name='parameter_delete'),
     path('parameters/<uuid:pk>/restore/', views.ParameterRestoreView.as_view(), name='parameter_restore'),
-    path('parameters/<uuid:pk>/reorder/<str:direction>/', views.ParameterReorderView.as_view(),
-         name='parameter_reorder'),
+    path('parameters/<uuid:pk>/reorder/<str:direction>/', views.ParameterReorderView.as_view(), name='parameter_reorder'),
     path('parameters/<uuid:pk>/detail/', views.ParameterDetailView.as_view(), name='parameter_detail'),
 
     # =========================================================================
-    # LEVEL 4.2 : SAMPLING PLANS
+    # LEVEL 4.2 : SAMPLES
     # =========================================================================
-    path('steps/<uuid:step_pk>/samplingplans/', views.SamplingPlanStructureView.as_view(), name='samplingplan_list'),
-    path('steps/<uuid:step_pk>/samplingplans/add/', views.SamplingPlanAddView.as_view(), name='samplingplan_add'),
-    path('samplingplans/<uuid:pk>/edit/', views.SamplingPlanUpdateView.as_view(), name='samplingplan_edit'),
-    path('samplingplans/<uuid:pk>/delete/', views.SamplingPlanDeleteView.as_view(), name='samplingplan_delete'),
-    path('samplingplans/<uuid:pk>/restore/', views.SamplingPlanRestoreView.as_view(), name='samplingplan_restore'),
-    path('samplingplans/<uuid:pk>/detail/', views.SamplingPlanDetailView.as_view(), name='samplingplan_detail'),
-
-    # =========================================================================
-    # LEVEL 4.3 : SAMPLES
-    # =========================================================================
-    path('samplingplans/<uuid:sampling_plan_pk>/samples/', views.SampleStructureView.as_view(), name='sample_list'),
-    path('samplingplans/<uuid:sampling_plan_pk>/samples/add/', views.SampleAddView.as_view(), name='sample_add'),
+    path('steps/<uuid:step_pk>/samples/', views.SampleStructureView.as_view(), name='sample_list'),
+    path('steps/<uuid:step_pk>/samples/add/', views.SampleAddView.as_view(), name='sample_add'),
     path('samples/<uuid:pk>/edit/', views.SampleUpdateView.as_view(), name='sample_edit'),
     path('samples/<uuid:pk>/delete/', views.SampleDeleteView.as_view(), name='sample_delete'),
     path('samples/<uuid:pk>/restore/', views.SampleRestoreView.as_view(), name='sample_restore'),
     path('samples/<uuid:pk>/detail/', views.SampleDetailView.as_view(), name='sample_detail'),
+
+    # =========================================================================
+    # LEVEL 4.3 : ANALYSES
+    # =========================================================================
+    path('samples/<uuid:sample_pk>/analyses/', views.AnalysisStructureView.as_view(), name='analysis_list'),
+    path('samples/<uuid:sample_pk>/analyses/add/', views.AnalysisAddView.as_view(), name='analysis_add'),
+    path('analyses/<uuid:pk>/edit/', views.AnalysisUpdateView.as_view(), name='analysis_edit'),
+    path('analyses/<uuid:pk>/delete/', views.AnalysisDeleteView.as_view(), name='analysis_delete'),
+    path('analyses/<uuid:pk>/restore/', views.AnalysisRestoreView.as_view(), name='analysis_restore'),
+    path('analyses/<uuid:pk>/detail/', views.AnalysisDetailView.as_view(), name='analysis_detail'),
 ]

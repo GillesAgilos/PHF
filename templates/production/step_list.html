@@ -183,10 +183,10 @@
                                                 <i class="bi bi-sliders"></i> Parameters
                                             </a>
 
-                                            <a href="{% url 'production:samplingplan_list' step_pk=step.pk %}"
+                                            <a href="{% url 'production:sample_list' step_pk=step.pk %}"
                                                class="btn btn-sm btn-outline-info me-2 shadow-sm"
                                                title="Configure Samples">
-                                                <i class="bi-eyedropper"></i> Sample Plan
+                                                <i class="bi bi-eyedropper"></i> Samples
                                             </a>
 
                                             {% if request.user.is_superuser or user_group == "System_Admin" or user_group == "Data_Steward" or request.user.groups.all.0.name == "System_Admin" or request.user.groups.all.0.name == "Data_Steward" %}
@@ -214,16 +214,16 @@
                                                 <i class="bi bi-sliders me-1"></i> Params
                                             </a>
 
-                                            {% with step.sampling_plans.first as plan %}
-                                                {% if plan %}
-                                                    <a href="{% url 'production:sample_list' sampling_plan_pk=plan.pk %}"
+                                            {% with step.samples.first as sample_obj %}
+                                                {% if sample_obj %}
+                                                    <a href="{% url 'production:analysis_list' sample_pk=sample_obj.pk %}"
                                                        class="btn btn-sm btn-outline-secondary shadow-sm me-2"
-                                                       title="View Samples">
-                                                        <i class="bi bi-vial me-1"></i> Samples
+                                                       title="View Analyses">
+                                                        <i class="bi bi-vial me-1"></i> Analyses
                                                     </a>
                                                 {% else %}
                                                     <a class="btn btn-sm btn-outline-secondary shadow-sm text-muted disabled me-2" style="opacity: 0.6; pointer-events: none;">
-                                                        <i class="bi bi-vial me-1"></i> No Samples
+                                                        <i class="bi bi-vial me-1"></i> No Analyses
                                                     </a>
                                                 {% endif %}
                                             {% endwith %}

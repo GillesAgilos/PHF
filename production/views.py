@@ -11,8 +11,8 @@ from phf.utils import (
     GenericDeleteView, GenericRestoreView, EntityDetailView,
     EntityValidateView, EntityRejectView, ProcessLockRequiredMixin
 )
-from .models import Process, UnitOperation, Step, Parameter, Sample, SamplingPlan
-from .forms import ProcessForm, UnitOperationForm, StepForm, ParameterForm, SampleForm, SamplingPlanForm
+from .models import Process, UnitOperation, Step, Parameter, Analysis, Sample
+from .forms import ProcessForm, UnitOperationForm, StepForm, ParameterForm, SampleForm, AnalysisForm
 from .security import ProductionRoleRequiredMixin
 
 
@@ -182,18 +182,19 @@ class ProcessCreateNewVersionView(ProductionRoleRequiredMixin, View):
                             updated_by=request.user
                         )
 
-                    for plan in s.sampling_plans.filter(is_active=True):
-                        new_plan = SamplingPlan.objects.create(
+                    for plan in s.samples.filter(is_active=True):
+                        new_plan = Sample.objects.create(
                             step=new_s,
                             name=plan.name,
                             created_by=request.user,
                             updated_by=request.user
                         )
 
-                        for sample in plan.samples.filter(is_active=True):
-                            Sample.objects.create(
-                                sampling_plan=new_plan,
-                                sample_name=sample.sample_name,
+                        for sample in plan.analyses.filter(is_active=True):
+                            Analysis.objects.create(
+
+                                sample=new_plan,
+                                analysis_name=sample.analysis_name,
                                 analytical_method=sample.analytical_method,
                                 created_by=request.user,
                                 updated_by=request.user
@@ -850,12 +851,11 @@ class ParameterUpdateView(ProductionRoleRequiredMixin, AuditTrailMixin, StatusRe
     def get_success_url(self):
         return f"/production/steps/{self.object.step.pk}/parameters/?view=active"
 
-
 # =========================================================================
-# 5. SAMPLING PLAN VIEWS
+# 5. SAMPLE VIEWS
 # =========================================================================
-class SamplingPlanStructureView(ProductionRoleRequiredMixin, TemplateView):
-    template_name = 'production/samplingplan_list.html'
+class SampleStructureView(ProductionRoleRequiredMixin, TemplateView):
+    template_name = 'production/sample_list.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -863,12 +863,12 @@ class SamplingPlanStructureView(ProductionRoleRequiredMixin, TemplateView):
         view_mode = self.request.GET.get('view', 'active')
 
         if view_mode == 'archived':
-            sampling_plans = SamplingPlan.objects.filter(step=step, is_active=False).order_by('created_at')
+            samples = Sample.objects.filter(step=step, is_active=False).order_by('created_at')
         else:
-            sampling_plans = SamplingPlan.objects.filter(step=step, is_active=True).order_by('created_at')
+            samples = Sample.objects.filter(step=step, is_active=True).order_by('created_at')
 
-        count_active = SamplingPlan.objects.filter(step=step, is_active=True).count()
-        count_archived = SamplingPlan.objects.filter(step=step, is_active=False).count()
+        count_active = Sample.objects.filter(step=step, is_active=True).count()
+        count_archived = Sample.objects.filter(step=step, is_active=False).count()
 
         user_group = None
         if self.request.user.is_authenticated and self.request.user.groups.exists():
@@ -878,128 +878,6 @@ class SamplingPlanStructureView(ProductionRoleRequiredMixin, TemplateView):
             'step': step,
             'unit': step.unit_operation,
             'process': step.unit_operation.process,
-            'sampling_plans': sampling_plans,
-            'view_mode': view_mode,
-            'count_active': count_active,
-            'count_archived': count_archived,
-            'user_group': user_group,
-            'form': context.get('form') or SamplingPlanForm()
-        })
-        return context
-
-
-class SamplingPlanAddView(ProductionRoleRequiredMixin, View):
-    def post(self, request, step_pk):
-        step = get_object_or_404(Step, pk=step_pk)
-        view_mode = request.GET.get('view', 'active')
-
-        form = SamplingPlanForm(request.POST)
-        form.instance.step = step
-
-        if form.is_valid():
-            try:
-                sampling_plan = form.save(commit=False)
-                sampling_plan.created_by = request.user
-                sampling_plan.updated_by = request.user
-                sampling_plan.save()
-                messages.success(request, f"Sampling Plan '{sampling_plan.Name or ''}' successfully added.")
-            except Exception as e:
-                messages.error(request, f"Error saving sampling plan: {str(e)}")
-        else:
-            for field, errors in form.errors.items():
-                for error in errors:
-                    messages.error(request, f"[{field.upper()}] {error}")
-
-        return redirect(f"/production/steps/{step.pk}/samplingplans/?view={view_mode}")
-
-
-class SamplingPlanDeleteView(ProductionRoleRequiredMixin, GenericDeleteView):
-    model = SamplingPlan
-
-    def get_success_url(self):
-        return f"/production/steps/{self.object.step.pk}/samplingplans/?view=active"
-
-    def form_valid(self, form):
-        success_url = self.get_success_url()
-        try:
-            self.object.delete(user=self.request.user)
-            messages.warning(self.request, f"Sampling Plan archived.")
-        except Exception as e:
-            messages.error(self.request, f"Action denied: {str(e)}")
-        return HttpResponseRedirect(success_url)
-
-
-class SamplingPlanRestoreView(ProductionRoleRequiredMixin, View):
-    def post(self, request, pk):
-        sampling_plan = get_object_or_404(SamplingPlan, pk=pk)
-        step_pk = sampling_plan.step.pk
-        try:
-            sampling_plan.restore()
-            messages.success(request, f"Sampling Plan restored successfully.")
-        except Exception as e:
-            messages.error(request, f"Action denied: {str(e)}")
-        return redirect(f"/production/steps/{step_pk}/samplingplans/?view=archived")
-
-
-class SamplingPlanDetailView(ProductionRoleRequiredMixin, EntityDetailView):
-    model = SamplingPlan
-    template_name = 'generic/generic_detail.html'
-
-    def get_context_data(self, **kwargs):
-        if not hasattr(self.model, 'get_authorized_actions'):
-            self.model.get_authorized_actions = lambda instance, user: []
-
-        context = super().get_context_data(**kwargs)
-        plan = context.get('object')
-
-        if plan and plan.step and plan.step.unit_operation and plan.step.unit_operation.process and 'dynamic_actions' in context:
-            process_status = plan.step.unit_operation.process.status
-            if process_status in ['VALIDATED', 'PENDING']:
-                context['dynamic_actions'] = [
-                    action for action in context['dynamic_actions']
-                    if action.get('label') != 'Edit Record'
-                ]
-
-        return context
-
-
-class SamplingPlanUpdateView(ProductionRoleRequiredMixin, AuditTrailMixin, StatusResetMixin, UpdateView):
-    model = SamplingPlan
-    form_class = SamplingPlanForm
-    template_name = 'generic/generic_form.html'
-
-    def get_success_url(self):
-        return f"/production/steps/{self.object.step.pk}/samplingplans/?view=active"
-
-
-# =========================================================================
-# 6. SAMPLE VIEWS
-# =========================================================================
-class SampleStructureView(ProductionRoleRequiredMixin, TemplateView):
-    template_name = 'production/sample_list.html'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        sampling_plan = get_object_or_404(SamplingPlan, pk=self.kwargs['sampling_plan_pk'])
-        view_mode = self.request.GET.get('view', 'active')
-
-        if view_mode == 'archived':
-            samples = Sample.objects.filter(sampling_plan=sampling_plan, is_active=False).order_by('-deleted_at')
-        else:
-            samples = Sample.objects.filter(sampling_plan=sampling_plan, is_active=True).order_by('created_at')
-
-        count_active = Sample.objects.filter(sampling_plan=sampling_plan, is_active=True).count()
-        count_archived = Sample.objects.filter(sampling_plan=sampling_plan, is_active=False).count()
-
-        user_group = None
-        if self.request.user.is_authenticated and self.request.user.groups.exists():
-            user_group = self.request.user.groups.all()[0].name
-
-        context.update({
-            'sampling_plan': sampling_plan,
-            'step': sampling_plan.step,
-            'unit': sampling_plan.step.unit_operation,
-            'process': sampling_plan.step.unit_operation.process,
             'samples': samples,
             'view_mode': view_mode,
             'count_active': count_active,
@@ -1011,12 +889,12 @@ class SampleStructureView(ProductionRoleRequiredMixin, TemplateView):
 
 
 class SampleAddView(ProductionRoleRequiredMixin, View):
-    def post(self, request, sampling_plan_pk):
-        sampling_plan = get_object_or_404(SamplingPlan, pk=sampling_plan_pk)
+    def post(self, request, step_pk):
+        step = get_object_or_404(Step, pk=step_pk)
         view_mode = request.GET.get('view', 'active')
 
         form = SampleForm(request.POST)
-        form.instance.sampling_plan = sampling_plan
+        form.instance.step = step
 
         if form.is_valid():
             try:
@@ -1024,8 +902,7 @@ class SampleAddView(ProductionRoleRequiredMixin, View):
                 sample.created_by = request.user
                 sample.updated_by = request.user
                 sample.save()
-
-                messages.success(request, f"Sample '{sample.sample_name}' successfully added.")
+                messages.success(request, f"Sample '{sample.name or ''}' successfully added.")
             except Exception as e:
                 messages.error(request, f"Error saving sample: {str(e)}")
         else:
@@ -1033,20 +910,20 @@ class SampleAddView(ProductionRoleRequiredMixin, View):
                 for error in errors:
                     messages.error(request, f"[{field.upper()}] {error}")
 
-        return redirect(f"/production/samplingplans/{sampling_plan.pk}/samples/?view={view_mode}")
+        return redirect(f"/production/steps/{step.pk}/samples/?view={view_mode}")
 
 
 class SampleDeleteView(ProductionRoleRequiredMixin, GenericDeleteView):
     model = Sample
 
     def get_success_url(self):
-        return f"/production/samplingplans/{self.object.sampling_plan.pk}/samples/?view=active"
+        return f"/production/steps/{self.object.step.pk}/samples/?view=active"
 
     def form_valid(self, form):
         success_url = self.get_success_url()
         try:
             self.object.delete(user=self.request.user)
-            messages.warning(self.request, f"Sample '{self.object.sample_name}' archived.")
+            messages.warning(self.request, f"Sample archived.")
         except Exception as e:
             messages.error(self.request, f"Action denied: {str(e)}")
         return HttpResponseRedirect(success_url)
@@ -1055,13 +932,13 @@ class SampleDeleteView(ProductionRoleRequiredMixin, GenericDeleteView):
 class SampleRestoreView(ProductionRoleRequiredMixin, View):
     def post(self, request, pk):
         sample = get_object_or_404(Sample, pk=pk)
-        sampling_plan_pk = sample.sampling_plan.pk
+        step_pk = sample.step.pk
         try:
             sample.restore()
-            messages.success(request, f"Sample '{sample.sample_name}' restored successfully.")
+            messages.success(request, f"Sample restored successfully.")
         except Exception as e:
             messages.error(request, f"Action denied: {str(e)}")
-        return redirect(f"/production/samplingplans/{sampling_plan_pk}/samples/?view=archived")
+        return redirect(f"/production/steps/{step_pk}/samples/?view=archived")
 
 
 class SampleDetailView(ProductionRoleRequiredMixin, EntityDetailView):
@@ -1073,11 +950,10 @@ class SampleDetailView(ProductionRoleRequiredMixin, EntityDetailView):
             self.model.get_authorized_actions = lambda instance, user: []
 
         context = super().get_context_data(**kwargs)
-
         sample = context.get('object')
 
-        if sample and sample.sampling_plan and sample.sampling_plan.step and sample.sampling_plan.step.unit_operation and sample.sampling_plan.step.unit_operation.process and 'dynamic_actions' in context:
-            process_status = sample.sampling_plan.step.unit_operation.process.status
+        if sample and sample.step and sample.step.unit_operation and sample.step.unit_operation.process and 'dynamic_actions' in context:
+            process_status = sample.step.unit_operation.process.status
             if process_status in ['VALIDATED', 'PENDING']:
                 context['dynamic_actions'] = [
                     action for action in context['dynamic_actions']
@@ -1093,4 +969,127 @@ class SampleUpdateView(ProductionRoleRequiredMixin, AuditTrailMixin, StatusReset
     template_name = 'generic/generic_form.html'
 
     def get_success_url(self):
-        return f"/production/samplingplans/{self.object.sampling_plan.pk}/samples/?view=active"
+        return f"/production/steps/{self.object.step.pk}/samples/?view=active"
+
+
+# =========================================================================
+# 6. ANALYSIS VIEWS
+# =========================================================================
+class AnalysisStructureView(ProductionRoleRequiredMixin, TemplateView):
+    template_name = 'production/analysis_list.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        sample = get_object_or_404(Sample, pk=self.kwargs['sample_pk'])
+        view_mode = self.request.GET.get('view', 'active')
+
+        if view_mode == 'archived':
+            analyses = Analysis.objects.filter(sample=sample, is_active=False).order_by('-deleted_at')
+        else:
+            analyses = Analysis.objects.filter(sample=sample, is_active=True).order_by('created_at')
+
+        count_active = Analysis.objects.filter(sample=sample, is_active=True).count()
+        count_archived = Analysis.objects.filter(sample=sample, is_active=False).count()
+
+        user_group = None
+        if self.request.user.is_authenticated and self.request.user.groups.exists():
+            user_group = self.request.user.groups.all()[0].name
+
+        context.update({
+            'sample': sample,
+            'step': sample.step,
+            'unit': sample.step.unit_operation,
+            'process': sample.step.unit_operation.process,
+            'analyses': analyses,
+            'view_mode': view_mode,
+            'count_active': count_active,
+            'count_archived': count_archived,
+            'user_group': user_group,
+            'form': context.get('form') or AnalysisForm()
+        })
+        return context
+
+
+class AnalysisAddView(ProductionRoleRequiredMixin, View):
+    def post(self, request, sample_pk):
+        sample = get_object_or_404(Sample, pk=sample_pk)
+        view_mode = request.GET.get('view', 'active')
+
+        form = AnalysisForm(request.POST)
+        form.instance.sample = sample
+
+        if form.is_valid():
+            try:
+                analysis = form.save(commit=False)
+                analysis.created_by = request.user
+                analysis.updated_by = request.user
+                analysis.save()
+
+                messages.success(request, f"Analysis '{analysis.analysis_name}' successfully added.")
+            except Exception as e:
+                messages.error(request, f"Error saving analysis: {str(e)}")
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"[{field.upper()}] {error}")
+
+        return redirect(f"/production/samples/{sample.pk}/analyses/?view={view_mode}")
+
+
+class AnalysisDeleteView(ProductionRoleRequiredMixin, GenericDeleteView):
+    model = Analysis
+
+    def get_success_url(self):
+        return f"/production/samples/{self.object.sample.pk}/analyses/?view=active"
+
+    def form_valid(self, form):
+        success_url = self.get_success_url()
+        try:
+            self.object.delete(user=self.request.user)
+            messages.warning(self.request, f"Analysis '{self.object.analysis_name}' archived.")
+        except Exception as e:
+            messages.error(self.request, f"Action denied: {str(e)}")
+        return HttpResponseRedirect(success_url)
+
+
+class AnalysisRestoreView(ProductionRoleRequiredMixin, View):
+    def post(self, request, pk):
+        analysis = get_object_or_404(Analysis, pk=pk)
+        sample_pk = analysis.sample.pk
+        try:
+            analysis.restore()
+            messages.success(request, f"Analysis '{analysis.analysis_name}' restored successfully.")
+        except Exception as e:
+            messages.error(request, f"Action denied: {str(e)}")
+        return redirect(f"/production/samples/{sample_pk}/analyses/?view=archived")
+
+
+class AnalysisDetailView(ProductionRoleRequiredMixin, EntityDetailView):
+    model = Analysis
+    template_name = 'generic/generic_detail.html'
+
+    def get_context_data(self, **kwargs):
+        if not hasattr(self.model, 'get_authorized_actions'):
+            self.model.get_authorized_actions = lambda instance, user: []
+
+        context = super().get_context_data(**kwargs)
+        analysis = context.get('object')
+
+        if analysis and analysis.sample and analysis.sample.step and analysis.sample.step.unit_operation and analysis.sample.step.unit_operation.process and 'dynamic_actions' in context:
+            process_status = analysis.sample.step.unit_operation.process.status
+            if process_status in ['VALIDATED', 'PENDING']:
+                context['dynamic_actions'] = [
+                    action for action in context['dynamic_actions']
+                    if action.get('label') != 'Edit Record'
+                ]
+
+        return context
+
+
+class AnalysisUpdateView(ProductionRoleRequiredMixin, AuditTrailMixin, StatusResetMixin, UpdateView):
+    model = Analysis
+    form_class = AnalysisForm
+    template_name = 'generic/generic_form.html'
+
+    def get_success_url(self):
+        return f"/production/samples/{self.object.sample.pk}/analyses/?view=active"

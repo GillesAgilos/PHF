@@ -1,6 +1,6 @@
 from django.db import models
 from phf.utils import BaseModel, BaseComponentEntity
-
+from django.core.exceptions import ValidationError
 
 class Process(BaseModel):
     class Status(models.TextChoices):
@@ -91,6 +91,7 @@ class Step(BaseComponentEntity):
         return f"{self.unit_operation.name} -> {self.name} (#{self.order})"
 
 
+
 class Parameter(BaseComponentEntity):
     FORMAT_TYPE_CHOICES = [
         ('numeric', 'Numeric'),
@@ -100,22 +101,18 @@ class Parameter(BaseComponentEntity):
 
     step = models.ForeignKey(Step, on_delete=models.CASCADE, related_name='parameters')
     name = models.CharField(max_length=255)
-    unit = models.CharField(max_length=50, blank=True, null=True)
     format_type = models.CharField(max_length=20, choices=FORMAT_TYPE_CHOICES, default='numeric')
+    order = models.PositiveIntegerField()
 
-    # Validation Ranges
-    format_low_range = models.FloatField(blank=True, null=True)
-    format_high_range = models.FloatField(blank=True, null=True)
+    unit = models.CharField(max_length=50)
 
-    # Proven Acceptable Range (PAR)
+    format_low_range = models.FloatField(blank=True, null=True, verbose_name="Format Low Range")
+    format_high_range = models.FloatField(blank=True, null=True, verbose_name="Format High Range")
+
     low_proven_acceptable_range = models.FloatField(blank=True, null=True)
     high_proven_acceptable_range = models.FloatField(blank=True, null=True)
-
-    # Normal Operating Range (NOR)
     low_normal_operating_range = models.FloatField(blank=True, null=True)
     high_normal_operating_range = models.FloatField(blank=True, null=True)
-
-    order = models.PositiveIntegerField()
 
     class Meta:
         ordering = ['order']
@@ -127,50 +124,100 @@ class Parameter(BaseComponentEntity):
     def __str__(self):
         return f"{self.name} ({self.step.name})"
 
-class SamplingPlan(BaseComponentEntity):
+    def clean(self):
+        super().clean()
+
+        if self.format_type == 'numeric':
+            errors = {}
+            if self.format_low_range is None:
+                errors['format_low_range'] = "This field is required when the format type is Numeric."
+            if self.format_high_range is None:
+                errors['format_high_range'] = "This field is required when the format type is Numeric."
+
+            if self.format_low_range is not None and self.format_high_range is not None:
+                if self.format_low_range > self.format_high_range:
+                    errors['format_low_range'] = "Low range cannot be higher than High range."
+
+            if errors:
+                raise ValidationError(errors)
+
+        else:
+            self.format_low_range = None
+            self.format_high_range = None
+            self.low_proven_acceptable_range = None
+            self.high_proven_acceptable_range = None
+            self.low_normal_operating_range = None
+            self.high_normal_operating_range = None
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+class Sample(BaseComponentEntity):
     step = models.ForeignKey(
         Step,
         on_delete=models.CASCADE,
-        related_name='sampling_plans',
+        related_name='samples',
         verbose_name="Related Step"
     )
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, verbose_name="Sample Name")
 
     class Meta:
-        verbose_name = "Sampling Plan"
+        verbose_name = "Sample"
+        ordering = ['name']
 
     def get_parent_entity(self):
         return self.step
 
     def __str__(self):
-        return f"Sampling Plan for {self.step.name}"
+        return f"Sample '{self.name}' for {self.step.name}"
 
 
-class Sample(BaseComponentEntity):
-    sampling_plan = models.ForeignKey(
-        SamplingPlan,
+class Analysis(BaseComponentEntity):
+    sample = models.ForeignKey(
+        Sample,
         on_delete=models.CASCADE,
-        related_name='samples',
-        verbose_name="Related Sampling Plan"
+        related_name='analyses',
+        verbose_name="Related Sample"
     )
-    sample_name = models.CharField(
+    analysis_name = models.CharField(
         max_length=25,
-        verbose_name="Sample Name"
+        verbose_name="Analysis Name"
     )
     analytical_method = models.ForeignKey(
         'referential.AnalyticalMethod',
         on_delete=models.PROTECT,
-        related_name='samples',
+        related_name='analyses',
         verbose_name="Analytical Method",
-        limit_choices_to={'is_active': True}
+        limit_choices_to={'status': 'VALIDATED', 'is_active': True}
     )
 
+    format_low_range = models.FloatField(blank=True, null=True, verbose_name="Validation Low Range")
+    format_high_range = models.FloatField(blank=True, null=True, verbose_name="Validation High Range")
+
     class Meta:
-        unique_together = ('sampling_plan', 'sample_name', 'analytical_method')
+        verbose_name = "Analysis"
+        verbose_name_plural = "Analyses"
+        unique_together = ('sample', 'analysis_name', 'analytical_method')
 
     def get_parent_entity(self):
-        return self.sampling_plan
+        return self.sample
 
     def __str__(self):
-        return f"{self.sample_name} -> {self.analytical_method.name}"
+        return f"{self.analysis_name} -> {self.analytical_method.name}"
 
+    def clean(self):
+        super().clean()
+        errors = {}
+
+        if self.format_low_range is not None and self.format_high_range is None:
+            errors['format_high_range'] = "High range is required when Low range is provided."
+        if self.format_high_range is not None and self.format_low_range is None:
+            errors['format_low_range'] = "Low range is required when High range is provided."
+
+        if self.format_low_range is not None and self.format_high_range is not None:
+            if self.format_low_range > self.format_high_range:
+                errors['format_low_range'] = "Low range cannot be higher than High range."
+
+        if errors:
+            raise ValidationError(errors)

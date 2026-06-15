@@ -9,9 +9,9 @@ from phf.utils import (
     GenericDeleteView, GenericRestoreView, EntityDetailView,
     EntityValidateView, EntityRejectView
 )
-from .models import Batch, SampleResult, ParameterResult
-from .forms import BatchForm, ParameterResultForm, SampleResultForm
-from production.models import UnitOperation, Step, Sample
+from .models import Batch, AnalysisResult, ParameterResult
+from .forms import BatchForm, ParameterResultForm, AnalysisResultForm
+from production.models import UnitOperation, Step, Analysis
 from .security import BatchRoleRequiredMixin
 
 
@@ -113,19 +113,21 @@ class BatchValidateView(BatchRoleRequiredMixin, EntityValidateView):
     model = Batch
     redirect_url = 'batch:batch_list'
 
-    def post(self, request, pk, *args, **kwargs):
-        obj = get_object_or_404(self.model, pk=pk)
+    def post(self, request, *args, **kwargs):
+        obj = get_object_or_404(Batch, pk=kwargs.get('pk'))
 
         try:
             obj.validate_entity(user=request.user)
-            messages.success(request, f"{self.model.__name__} '{obj}' has been validated.")
+            messages.success(request, f"The batch {obj.name} has been successfully validated.")
 
         except ValidationError as e:
-            error_msg = e.messages[0] if hasattr(e, 'messages') else str(e)
-            messages.error(request, error_msg)
-            return redirect('batch:batch_logbook', pk=obj.pk)
+            for msg in e.messages:
+                messages.error(request, msg)
 
-        return redirect(self.redirect_url)
+        except Exception as e:
+            messages.error(request, f"An unexpected error occurred: {str(e)}")
+
+        return redirect('batch:batch_detail', pk=obj.pk)
 
 
 class BatchRejectView(BatchRoleRequiredMixin, EntityRejectView):
@@ -150,15 +152,16 @@ class BatchLogbookView(BatchRoleRequiredMixin, DetailView):
 
         units = UnitOperation.objects.filter(process=process, is_active=True).order_by('order')
 
-        samples_with_methods = Sample.objects.filter(is_active=True).select_related('analytical_method')
+        analyses_with_methods = Analysis.objects.filter(is_active=True).select_related('analytical_method')
 
         steps = Step.objects.filter(unit_operation__in=units, is_active=True).order_by('order').prefetch_related(
             'parameters',
-            Prefetch('sampling_plans__samples', queryset=samples_with_methods)
+            Prefetch('samples__analyses', queryset=analyses_with_methods)
         )
 
         param_results = {res.parameter_id: res for res in ParameterResult.objects.filter(batch=batch, is_active=True)}
-        sample_results = {res.sample_id: res for res in SampleResult.objects.filter(batch=batch, is_active=True)}
+
+        analysis_results = {res.analysis_id: res for res in AnalysisResult.objects.filter(batch=batch, is_active=True)}
 
         process_tree = []
         for unit in units:
@@ -166,7 +169,11 @@ class BatchLogbookView(BatchRoleRequiredMixin, DetailView):
             unit_steps = [s for s in steps if s.unit_operation_id == unit.pk]
 
             for step in unit_steps:
-                step_data = {'object': step, 'parameters_with_results': [], 'samples_with_results': []}
+                step_data = {
+                    'object': step,
+                    'parameters_with_results': [],
+                    'analyses_with_results': []
+                }
 
                 for param in step.parameters.all():
                     step_data['parameters_with_results'].append({
@@ -175,18 +182,19 @@ class BatchLogbookView(BatchRoleRequiredMixin, DetailView):
                         'result': param_results.get(param.pk)
                     })
 
-                for plan in step.sampling_plans.all():
-                    for sample in plan.samples.all():
-                        step_data['samples_with_results'].append({
-                            'sample': sample,
-                            'unit': sample.analytical_method.unit if sample.analytical_method else None,
-                            'result': sample_results.get(sample.pk)
+                for sample in step.samples.all():
+                    for analysis in sample.analyses.all():
+                        step_data['analyses_with_results'].append({
+                            'analysis': analysis,
+                            'unit': analysis.analytical_method.unit if analysis.analytical_method else None,
+                            'result': analysis_results.get(analysis.pk)
                         })
                 unit_data['steps'].append(step_data)
             process_tree.append(unit_data)
 
         context['process_tree'] = process_tree
         return context
+
 
 # ==========================================
 # PARAMETER RESULT VIEWS
@@ -333,13 +341,13 @@ class ParameterResultRejectView(BatchRoleRequiredMixin, EntityRejectView):
 
 
 # ==========================================
-# SAMPLE RESULT VIEWS
+# ANALYSIS RESULT VIEWS
 # ==========================================
-class SampleResultListView(BatchRoleRequiredMixin, FilterStateMixin, ListView):
-    model = SampleResult
-    template_name = 'batch/sample_result_list.html'
-    context_object_name = 'sample_results'
-    search_fields = ['batch__name', 'sample__sample_name', 'actual_value']
+class AnalysisResultListView(BatchRoleRequiredMixin, FilterStateMixin, ListView):
+    model = AnalysisResult
+    template_name = 'batch/analysis_result_list.html'
+    context_object_name = 'analysis_results'
+    search_fields = ['batch__name', 'analysis__analysis_name', 'actual_value']
 
     def get_queryset(self):
         queryset = ListView.get_queryset(self)
@@ -361,18 +369,17 @@ class SampleResultListView(BatchRoleRequiredMixin, FilterStateMixin, ListView):
         else:
             queryset = queryset.filter(is_active=True, status='DRAFT').order_by('-updated_at')
 
-        return queryset.select_related('batch', 'sample')
+        return queryset.select_related('batch', 'analysis')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
         context['view_mode'] = self.request.GET.get('view', 'active') or 'active'
 
-        # Compteurs dédiés aux onglets SampleResult
-        context['count_active'] = SampleResult.objects.filter(is_active=True, status='VALIDATED').count()
-        context['count_archived'] = SampleResult.objects.filter(is_active=False).count()
-        context['count_rejected'] = SampleResult.objects.filter(is_active=True, status='REJECTED').count()
-        context['count_draft'] = SampleResult.objects.filter(is_active=True, status='DRAFT').count()
+        context['count_active'] = AnalysisResult.objects.filter(is_active=True, status='VALIDATED').count()
+        context['count_archived'] = AnalysisResult.objects.filter(is_active=False).count()
+        context['count_rejected'] = AnalysisResult.objects.filter(is_active=True, status='REJECTED').count()
+        context['count_draft'] = AnalysisResult.objects.filter(is_active=True, status='DRAFT').count()
 
         user_group = None
         if self.request.user.is_authenticated and self.request.user.groups.exists():
@@ -382,33 +389,33 @@ class SampleResultListView(BatchRoleRequiredMixin, FilterStateMixin, ListView):
         return context
 
 
-class SampleResultCreateView(BatchRoleRequiredMixin, AuditTrailMixin, CreateView):
-    model = SampleResult
-    form_class = SampleResultForm
+class AnalysisResultCreateView(BatchRoleRequiredMixin, AuditTrailMixin, CreateView):
+    model = AnalysisResult
+    form_class = AnalysisResultForm
     template_name = 'generic/generic_form.html'
 
     def get_success_url(self):
         return reverse('batch:batch_logbook', kwargs={'pk': self.object.batch.pk})
 
 
-class SampleResultUpdateView(BatchRoleRequiredMixin, AuditTrailMixin, StatusResetMixin, UpdateView):
-    model = SampleResult
-    form_class = SampleResultForm
+class AnalysisResultUpdateView(BatchRoleRequiredMixin, AuditTrailMixin, StatusResetMixin, UpdateView):
+    model = AnalysisResult
+    form_class = AnalysisResultForm
     template_name = 'generic/generic_form.html'
 
     def get_success_url(self):
         return reverse('batch:batch_logbook', kwargs={'pk': self.object.batch.pk})
 
 
-class SampleResultDeleteView(BatchRoleRequiredMixin, GenericDeleteView):
-    model = SampleResult
+class AnalysisResultDeleteView(BatchRoleRequiredMixin, GenericDeleteView):
+    model = AnalysisResult
 
     def get_success_url(self):
         return reverse('batch:batch_logbook', kwargs={'pk': self.object.batch.pk})
 
 
-class SampleResultRestoreView(BatchRoleRequiredMixin, GenericRestoreView):
-    model = SampleResult
+class AnalysisResultRestoreView(BatchRoleRequiredMixin, GenericRestoreView):
+    model = AnalysisResult
 
     def post(self, request, *args, **kwargs):
         obj = self.get_object()
@@ -416,8 +423,8 @@ class SampleResultRestoreView(BatchRoleRequiredMixin, GenericRestoreView):
         return redirect('batch:batch_logbook', pk=obj.batch.pk)
 
 
-class SampleResultDetailView(BatchRoleRequiredMixin, EntityDetailView):
-    model = SampleResult
+class AnalysisResultDetailView(BatchRoleRequiredMixin, EntityDetailView):
+    model = AnalysisResult
 
     def get_context_data(self, **kwargs):
         if not hasattr(self.model, 'get_authorized_actions'):
@@ -439,13 +446,13 @@ class SampleResultDetailView(BatchRoleRequiredMixin, EntityDetailView):
                 context['dynamic_actions'].extend([
                     {
                         'label': 'Validate',
-                        'url': reverse('batch:sample_result_validate', kwargs={'pk': result.pk}),
+                        'url': reverse('batch:analysis_result_validate', kwargs={'pk': result.pk}),
                         'class': 'btn-success btn-sm',
                         'icon': 'bi bi-check-circle'
                     },
                     {
                         'label': 'Reject',
-                        'url': reverse('batch:sample_result_reject', kwargs={'pk': result.pk}),
+                        'url': reverse('batch:analysis_result_reject', kwargs={'pk': result.pk}),
                         'class': 'btn-danger btn-sm',
                         'icon': 'bi bi-x-circle',
                         'target': '#rejectModal'
@@ -454,8 +461,8 @@ class SampleResultDetailView(BatchRoleRequiredMixin, EntityDetailView):
         return context
 
 
-class SampleResultValidateView(BatchRoleRequiredMixin, EntityValidateView):
-    model = SampleResult
+class AnalysisResultValidateView(BatchRoleRequiredMixin, EntityValidateView):
+    model = AnalysisResult
 
     def post(self, request, pk):
         obj = get_object_or_404(self.model, pk=pk)
@@ -463,8 +470,8 @@ class SampleResultValidateView(BatchRoleRequiredMixin, EntityValidateView):
         return redirect('batch:batch_logbook', pk=obj.batch.pk)
 
 
-class SampleResultRejectView(BatchRoleRequiredMixin, EntityRejectView):
-    model = SampleResult
+class AnalysisResultRejectView(BatchRoleRequiredMixin, EntityRejectView):
+    model = AnalysisResult
 
     def post(self, request, pk):
         obj = get_object_or_404(self.model, pk=pk)

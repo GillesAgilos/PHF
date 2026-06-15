@@ -39,14 +39,17 @@
         {% for unit_node in process_tree %}
             <div class="accordion-item border-0 mb-3 rounded shadow-sm overflow-hidden">
                 <h2 class="accordion-header" id="heading-{{ unit_node.object.pk }}">
-                    <button class="accordion-button bg-dark text-white fw-bold {% if not forloop.first %}collapsed{% endif %}"
-                            type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ unit_node.object.pk }}">
+                    <button class="accordion-button bg-dark text-white fw-bold collapsed"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#collapse-{{ unit_node.object.pk }}"
+                            data-unit-id="{{ unit_node.object.pk }}">
                         <i class="bi bi-gear-fill text-primary me-2"></i>
                         Unit {{ unit_node.object.order }} : {{ unit_node.object.name }}
                     </button>
                 </h2>
 
-                <div id="collapse-{{ unit_node.object.pk }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" data-bs-parent="#logbookAccordion">
+                <div id="collapse-{{ unit_node.object.pk }}" class="accordion-collapse collapse" data-bs-parent="#logbookAccordion">
                     <div class="accordion-body bg-light p-0">
                         {% for step_node in unit_node.steps %}
                             <div class="p-3 bg-white border-bottom">
@@ -58,7 +61,7 @@
                                             <thead class="table-light text-muted">
                                                 <tr>
                                                     <th class="ps-3">Parameter</th>
-                                                    <th>Recorded Value</th>
+                                                    <th>Recorded Value / Comment</th>
                                                     <th class="text-end pe-3">Actions</th>
                                                 </tr>
                                             </thead>
@@ -68,39 +71,77 @@
 
                                                         <td class="ps-3 fw-semibold text-secondary">
                                                             {% if p.result %}
-                                                                <a href="{% url 'batch:parameterresult_detail' p.result.pk %}" class="stretched-link text-decoration-none text-secondary">{{ p.parameter.name }}</a>
+                                                                <a href="{% url 'batch:parameter_result_detail' p.result.pk %}" class="stretched-link text-decoration-none text-secondary">{{ p.parameter.name }}</a>
                                                             {% else %}
                                                                 {{ p.parameter.name }}
                                                             {% endif %}
+                                                            <div class="text-muted" style="font-size: 0.72rem; font-weight: normal;">
+                                                                Target:
+                                                                {% if p.parameter.format_type == 'numeric' %}
+                                                                    {% if p.parameter.format_low_range is not None or p.parameter.format_high_range is not None %}
+                                                                        [{{ p.parameter.format_low_range|default:"-∞" }} ; {{ p.parameter.format_high_range|default:"+∞" }}]
+                                                                    {% else %}
+                                                                        Numeric
+                                                                    {% endif %}
+                                                                {% elif p.parameter.format_type == 'bool' %}
+                                                                    Boolean (Yes/No)
+                                                                {% else %}
+                                                                    {{ p.parameter.format_type|title }}
+                                                                {% endif %}
+                                                            </div>
                                                         </td>
 
                                                         <td class="custom-z-index">
                                                             {% if p.result %}
-                                                                <div class="d-inline-flex align-items-center">
-                                                                    <span class="font-monospace fw-bold fs-6">{{ p.result.actual_value }}</span>
-                                                                    {% if p.unit %}
-                                                                        <span class="badge bg-light text-secondary border ms-2 py-1 px-2 font-monospace" style="font-size: 0.75rem;">
-                                                                            {{ p.unit }}
-                                                                        </span>
-                                                                    {% elif p.parameter.unit %}
-                                                                        <span class="badge bg-light text-secondary border ms-2 py-1 px-2 font-monospace" style="font-size: 0.75rem;">
-                                                                            {{ p.parameter.unit }}
-                                                                        </span>
+                                                                <div class="d-flex flex-column">
+                                                                    {% if p.result.actual_value %}
+                                                                        <div class="d-inline-flex align-items-center">
+                                                                            <span class="font-monospace fw-bold fs-6">{{ p.result.actual_value }}</span>
+                                                                            {% if p.unit or p.parameter.unit %}
+                                                                                <span class="badge bg-light text-secondary border ms-2 py-1 px-2 font-monospace" style="font-size: 0.75rem;">
+                                                                                    {{ p.unit|default:p.parameter.unit }}
+                                                                                </span>
+                                                                            {% endif %}
+                                                                        </div>
+                                                                    {% endif %}
+                                                                    {% if p.result.comment %}
+                                                                        <div class="text-muted small italic mt-1"><i class="bi bi-chat-left-text text-secondary"></i> {{ p.result.comment }}</div>
                                                                     {% endif %}
                                                                 </div>
                                                             {% else %}
                                                                 {% if batch.status == 'VALIDATED' %}
                                                                     <span class="text-muted small italic"><i class="bi bi-lock-fill"></i> Locked</span>
                                                                 {% else %}
-                                                                    <form action="{% url 'batch:parameterresult_add' %}" method="post" class="d-flex m-0 align-items-center">
+                                                                    <form action="{% url 'batch:parameter_result_add' %}" method="post" class="m-0">
                                                                         {% csrf_token %}
                                                                         <input type="hidden" name="batch" value="{{ batch.pk }}">
                                                                         <input type="hidden" name="parameter" value="{{ p.parameter.pk }}">
-                                                                        <input type="text" name="actual_value" class="form-control form-control-sm border-primary font-monospace p-1" style="max-width: 120px;" required placeholder="Enter value...">
-                                                                        {% if p.unit or p.parameter.unit %}
-                                                                            <span class="text-muted small font-monospace ms-2 me-1">{{ p.unit|default:p.parameter.unit }}</span>
-                                                                        {% endif %}
-                                                                        <button type="submit" class="btn btn-sm btn-primary ms-1 px-2 py-0"><i class="bi bi-check-lg"></i></button>
+
+                                                                        <div class="d-flex align-items-center">
+                                                                            {% if p.parameter.format_type == 'bool' %}
+                                                                                <select name="actual_value" id="val-param-{{ p.parameter.pk }}" class="form-select form-select-sm border-primary font-monospace p-1" style="max-width: 120px;">
+                                                                                    <option value="">---</option>
+                                                                                    <option value="Yes">Yes</option>
+                                                                                    <option value="No">No</option>
+                                                                                </select>
+                                                                            {% else %}
+                                                                                <input type="text" name="actual_value" id="val-param-{{ p.parameter.pk }}" class="form-control form-control-sm border-primary font-monospace p-1" style="max-width: 120px;" placeholder="Enter value...">
+                                                                            {% endif %}
+
+                                                                            {% if p.unit or p.parameter.unit %}
+                                                                                <span class="text-muted small font-monospace ms-2 me-1">{{ p.unit|default:p.parameter.unit }}</span>
+                                                                            {% endif %}
+
+                                                                            <button type="button" class="btn btn-sm btn-outline-secondary ms-1 px-2 py-0" title="Add Comment instead of value" onclick="toggleCommentField('param-{{ p.parameter.pk }}')">
+                                                                                <i class="bi bi-chat-text-fill"></i>
+                                                                            </button>
+
+                                                                            <button type="submit" onclick="return validateSubmission('param-{{ p.parameter.pk }}')" class="btn btn-sm btn-primary ms-1 px-2 py-0" title="Save result"><i class="bi bi-check-lg"></i></button>
+                                                                        </div>
+
+                                                                        <div id="commentGroup-param-{{ p.parameter.pk }}" class="mt-1 d-none">
+                                                                            <textarea name="comment" id="com-param-{{ p.parameter.pk }}" class="form-control form-control-sm border-secondary small" rows="2" placeholder="Write comment here..."></textarea>
+                                                                        </div>
                                                                     </form>
                                                                 {% endif %}
                                                             {% endif %}
@@ -109,25 +150,17 @@
                                                         <td class="text-end pe-3 custom-z-index">
                                                             {% if p.result %}
                                                                 <div class="btn-group btn-group-sm">
-                                                                    {% if batch.status == 'VALIDATED' %}
-                                                                        <a href="{% url 'batch:parameterresult_detail' p.result.pk %}" class="btn btn-outline-secondary" title="Details"><i class="bi bi-eye-fill"></i> View</a>
-                                                                    {% else %}
-                                                                        {% if p.result.status == 'REJECTED' %}
-                                                                            <a href="{% url 'batch:parameterresult_edit' p.result.pk %}" class="btn btn-outline-primary" title="Edit"><i class="bi bi-pencil-fill"></i> Edit</a>
-                                                                        {% else %}
-                                                                            <a href="{% url 'batch:parameterresult_detail' p.result.pk %}" class="btn btn-outline-secondary" title="Details"><i class="bi bi-eye-fill"></i> View</a>
+                                                                    <a href="{% url 'batch:parameter_result_detail' p.result.pk %}" class="btn btn-outline-secondary" title="Details"><i class="bi bi-eye-fill"></i> View</a>
 
-                                                                            {% if p.result.status != 'VALIDATED' and p.result.status != 'DRAFT' and p.result.status != 'PENDING' %}
-                                                                                <a href="{% url 'batch:parameterresult_edit' p.result.pk %}" class="btn btn-outline-primary" title="Edit"><i class="bi bi-pencil-fill"></i> Edit</a>
-                                                                            {% endif %}
+                                                                    {% if batch.status != 'VALIDATED' %}
+                                                                        <a href="{% url 'batch:parameter_result_edit' p.result.pk %}" class="btn btn-outline-primary" title="Edit"><i class="bi bi-pencil-fill"></i> Edit</a>
 
-                                                                            {% if p.result.status != 'VALIDATED' %}
-                                                                                <form action="{% url 'batch:parameterresult_validate' p.result.pk %}" method="post" class="d-inline m-0">
-                                                                                    {% csrf_token %}
-                                                                                    <button type="submit" class="btn btn-outline-success border-start-0 rounded-0" title="Validate"><i class="bi bi-check-circle-fill"></i> Validate</button>
-                                                                                </form>
-                                                                                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectParam-{{ p.result.pk }}" title="Reject"><i class="bi bi-x-circle-fill"></i> Reject</button>
-                                                                            {% endif %}
+                                                                        {% if p.result.status != 'VALIDATED' %}
+                                                                            <form action="{% url 'batch:parameter_result_validate' p.result.pk %}" method="post" class="d-inline m-0">
+                                                                                {% csrf_token %}
+                                                                                <button type="submit" class="btn btn-outline-success border-start-0 rounded-0" title="Validate"><i class="bi bi-check-circle-fill"></i> Validate</button>
+                                                                            </form>
+                                                                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectParam-{{ p.result.pk }}" title="Reject"><i class="bi bi-x-circle-fill"></i> Reject</button>
                                                                         {% endif %}
                                                                     {% endif %}
                                                                 </div>
@@ -143,77 +176,93 @@
                                         <table class="table table-sm table-hover align-middle small mb-0">
                                             <thead class="table-light text-muted">
                                                 <tr>
-                                                    <th class="ps-3">Sample Tag</th>
-                                                    <th>Analysis Result</th>
+                                                    <th class="ps-3">Analysis</th>
+                                                    <th>Analysis Value / Comment</th>
                                                     <th class="text-end pe-3">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {% for s in step_node.samples_with_results %}
-                                                    <tr class="position-relative {% if s.result.status == 'VALIDATED' %}border-start border-4 border-success table-success{% elif s.result.status == 'REJECTED' %}border-start border-4 border-danger table-danger{% endif %}">
+                                                {% for a in step_node.analyses_with_results %}
+                                                    <tr class="position-relative {% if a.result.status == 'VALIDATED' %}border-start border-4 border-success table-success{% elif a.result.status == 'REJECTED' %}border-start border-4 border-danger table-danger{% endif %}">
 
                                                         <td class="ps-3 fw-semibold text-secondary">
-                                                            {% if s.result %}
-                                                                <a href="{% url 'batch:sampleresult_detail' s.result.pk %}" class="stretched-link text-decoration-none text-secondary">{{ s.sample.sample_name }}</a>
+                                                            {% if a.result %}
+                                                                <a href="{% url 'batch:analysis_result_detail' a.result.pk %}" class="stretched-link text-decoration-none text-secondary">{{ a.analysis.analysis_name }}</a>
                                                             {% else %}
-                                                                {{ s.sample.sample_name }}
+                                                                {{ a.analysis.analysis_name }}
                                                             {% endif %}
+                                                            <div class="small text-muted font-monospace" style="font-size: 0.7rem;">Sample: {{ a.analysis.sample.name }}</div>
+                                                            <div class="text-muted" style="font-size: 0.72rem; font-weight: normal;">
+                                                                Specs:
+                                                                {% if a.analysis.format_low_range is not None or a.analysis.format_high_range is not None %}
+                                                                    [{{ a.analysis.format_low_range|default:"-∞" }} ; {{ a.analysis.format_high_range|default:"+∞" }}]
+                                                                {% else %}
+                                                                    No specific range
+                                                                {% endif %}
+                                                            </div>
                                                         </td>
 
                                                         <td class="custom-z-index">
-                                                            {% if s.result %}
-                                                                <div class="d-inline-flex align-items-center">
-                                                                    <span class="font-monospace fw-bold text-info fs-6">{{ s.result.actual_value }}</span>
-                                                                    {% if s.sample.analytical_method.unit %}
-                                                                        <span class="badge bg-light text-secondary border ms-2 py-1 px-2 font-monospace" style="font-size: 0.75rem;">
-                                                                            {{ s.sample.analytical_method.unit }}
-                                                                        </span>
-                                                                    {% elif s.unit %}
-                                                                        <span class="badge bg-light text-secondary border ms-2 py-1 px-2 font-monospace" style="font-size: 0.75rem;">
-                                                                            {{ s.unit }}
-                                                                        </span>
+                                                            {% if a.result %}
+                                                                <div class="d-flex flex-column">
+                                                                    {% if a.result.actual_value %}
+                                                                        <div class="d-inline-flex align-items-center">
+                                                                            <span class="font-monospace fw-bold text-info fs-6">{{ a.result.actual_value }}</span>
+                                                                            {% if a.analysis.analytical_method.unit or a.unit %}
+                                                                                <span class="badge bg-light text-secondary border ms-2 py-1 px-2 font-monospace" style="font-size: 0.75rem;">
+                                                                                    {{ a.analysis.analytical_method.unit|default:a.unit }}
+                                                                                </span>
+                                                                            {% endif %}
+                                                                        </div>
+                                                                    {% endif %}
+                                                                    {% if a.result.comment %}
+                                                                        <div class="text-muted small italic mt-1"><i class="bi bi-chat-left-text text-secondary"></i> {{ a.result.comment }}</div>
                                                                     {% endif %}
                                                                 </div>
                                                             {% else %}
                                                                 {% if batch.status == 'VALIDATED' %}
                                                                     <span class="text-muted small italic"><i class="bi bi-lock-fill"></i> Locked</span>
                                                                 {% else %}
-                                                                    <form action="{% url 'batch:sampleresult_add' %}" method="post" class="d-flex m-0 align-items-center">
+                                                                    <form action="{% url 'batch:analysis_result_add' %}" method="post" class="m-0">
                                                                         {% csrf_token %}
                                                                         <input type="hidden" name="batch" value="{{ batch.pk }}">
-                                                                        <input type="hidden" name="sample" value="{{ s.sample.pk }}">
-                                                                        <input type="text" name="actual_value" class="form-control form-control-sm border-info font-monospace p-1" style="max-width: 120px;" required placeholder="Enter result...">
-                                                                        {% if s.sample.analytical_method.unit or s.unit %}
-                                                                            <span class="text-muted small font-monospace ms-2 me-1">{{ s.sample.analytical_method.unit|default:s.unit }}</span>
-                                                                        {% endif %}
-                                                                        <button type="submit" class="btn btn-sm btn-info text-white ms-1 px-2 py-0"><i class="bi bi-check-lg"></i></button>
+                                                                        <input type="hidden" name="analysis" value="{{ a.analysis.pk }}">
+
+                                                                        <div class="d-flex align-items-center">
+                                                                            <input type="text" name="actual_value" id="val-analysis-{{ a.analysis.pk }}" class="form-control form-control-sm border-info font-monospace p-1" style="max-width: 120px;" placeholder="Enter result...">
+                                                                            {% if a.analysis.analytical_method.unit or a.unit %}
+                                                                                <span class="text-muted small font-monospace ms-2 me-1">{{ a.analysis.analytical_method.unit|default:a.unit }}</span>
+                                                                            {% endif %}
+
+                                                                            <button type="button" class="btn btn-sm btn-outline-secondary ms-1 px-2 py-0" title="Add Comment instead of result" onclick="toggleCommentField('analysis-{{ a.analysis.pk }}')">
+                                                                                <i class="bi bi-chat-text-fill"></i>
+                                                                            </button>
+
+                                                                            <button type="submit" onclick="return validateSubmission('analysis-{{ a.analysis.pk }}')" class="btn btn-sm btn-info text-white ms-1 px-2 py-0" title="Save result"><i class="bi bi-check-lg"></i></button>
+                                                                        </div>
+
+                                                                        <div id="commentGroup-analysis-{{ a.analysis.pk }}" class="mt-1 d-none">
+                                                                            <textarea name="comment" id="com-analysis-{{ a.analysis.pk }}" class="form-control form-control-sm border-secondary small" rows="2" placeholder="Write comment here..."></textarea>
+                                                                        </div>
                                                                     </form>
                                                                 {% endif %}
                                                             {% endif %}
                                                         </td>
 
                                                         <td class="text-end pe-3 custom-z-index">
-                                                            {% if s.result %}
+                                                            {% if a.result %}
                                                                 <div class="btn-group btn-group-sm">
-                                                                    {% if batch.status == 'VALIDATED' %}
-                                                                        <a href="{% url 'batch:sampleresult_detail' s.result.pk %}" class="btn btn-outline-secondary" title="Details"><i class="bi bi-eye-fill"></i> View</a>
-                                                                    {% else %}
-                                                                        {% if s.result.status == 'REJECTED' %}
-                                                                            <a href="{% url 'batch:sampleresult_edit' s.result.pk %}" class="btn btn-outline-primary" title="Edit"><i class="bi bi-pencil-fill"></i> Edit</a>
-                                                                        {% else %}
-                                                                            <a href="{% url 'batch:sampleresult_detail' s.result.pk %}" class="btn btn-outline-secondary" title="Details"><i class="bi bi-eye-fill"></i> View</a>
+                                                                    <a href="{% url 'batch:analysis_result_detail' a.result.pk %}" class="btn btn-outline-secondary" title="Details"><i class="bi bi-eye-fill"></i> View</a>
 
-                                                                            {% if s.result.status != 'VALIDATED' and s.result.status != 'DRAFT' and s.result.status != 'PENDING' %}
-                                                                                <a href="{% url 'batch:sampleresult_edit' s.result.pk %}" class="btn btn-outline-primary" title="Edit"><i class="bi bi-pencil-fill"></i> Edit</a>
-                                                                            {% endif %}
+                                                                    {% if batch.status != 'VALIDATED' %}
+                                                                        <a href="{% url 'batch:analysis_result_edit' a.result.pk %}" class="btn btn-outline-primary" title="Edit"><i class="bi bi-pencil-fill"></i> Edit</a>
 
-                                                                            {% if s.result.status != 'VALIDATED' %}
-                                                                                <form action="{% url 'batch:sampleresult_validate' s.result.pk %}" method="post" class="d-inline m-0">
-                                                                                    {% csrf_token %}
-                                                                                    <button type="submit" class="btn btn-outline-success border-start-0 rounded-0" title="Validate"><i class="bi bi-check-circle-fill"></i> Validate</button>
-                                                                                </form>
-                                                                                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectSample-{{ s.result.pk }}" title="Reject"><i class="bi bi-x-circle-fill"></i> Reject</button>
-                                                                            {% endif %}
+                                                                        {% if a.result.status != 'VALIDATED' %}
+                                                                            <form action="{% url 'batch:analysis_result_validate' a.result.pk %}" method="post" class="d-inline m-0">
+                                                                                {% csrf_token %}
+                                                                                <button type="submit" class="btn btn-outline-success border-start-0 rounded-0" title="Validate"><i class="bi bi-check-circle-fill"></i> Validate</button>
+                                                                            </form>
+                                                                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectAnalysis-{{ a.result.pk }}" title="Reject"><i class="bi bi-x-circle-fill"></i> Reject</button>
                                                                         {% endif %}
                                                                     {% endif %}
                                                                 </div>
@@ -241,7 +290,7 @@
                 {% if p.result and p.result.status != 'REJECTED' %}
                     <div class="modal fade" id="rejectParam-{{ p.result.pk }}" tabindex="-1" aria-hidden="true">
                         <div class="modal-dialog modal-dialog-centered">
-                            <form action="{% url 'batch:parameterresult_reject' p.result.pk %}" method="post" class="modal-content text-start">
+                            <form action="{% url 'batch:parameter_result_reject' p.result.pk %}" method="post" class="modal-content text-start">
                                 {% csrf_token %}
                                 <div class="modal-header">
                                     <h5 class="modal-title text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> Reject Parameter Result</h5>
@@ -261,14 +310,14 @@
                 {% endif %}
             {% endfor %}
 
-            {% for s in step_node.samples_with_results %}
-                {% if s.result and s.result.status != 'REJECTED' %}
-                    <div class="modal fade" id="rejectSample-{{ s.result.pk }}" tabindex="-1" aria-hidden="true">
+            {% for a in step_node.analyses_with_results %}
+                {% if a.result and a.result.status != 'REJECTED' %}
+                    <div class="modal fade" id="rejectAnalysis-{{ a.result.pk }}" tabindex="-1" aria-hidden="true">
                         <div class="modal-dialog modal-dialog-centered">
-                            <form action="{% url 'batch:sampleresult_reject' s.result.pk %}" method="post" class="modal-content text-start">
+                            <form action="{% url 'batch:analysis_result_reject' a.result.pk %}" method="post" class="modal-content text-start">
                                 {% csrf_token %}
                                 <div class="modal-header">
-                                    <h5 class="modal-title text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> Reject Sample Result</h5>
+                                    <h5 class="modal-title text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> Reject Analysis Result</h5>
                                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                 </div>
                                 <div class="modal-body">
@@ -287,6 +336,67 @@
         {% endfor %}
     {% endfor %}
 {% endif %}
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const activeUnitId = localStorage.getItem('activeLogbookUnit');
+
+        if (activeUnitId) {
+            const targetCollapse = document.getElementById(`collapse-${activeUnitId}`);
+            const targetButton = document.querySelector(`[data-bs-target="#collapse-${activeUnitId}"]`);
+
+            if (targetCollapse && targetButton) {
+                targetCollapse.classList.add('show');
+                targetButton.classList.remove('collapsed');
+                targetButton.setAttribute('aria-expanded', 'true');
+            }
+        } else {
+            const firstCollapse = document.querySelector('.accordion-collapse');
+            const firstButton = document.querySelector('.accordion-button');
+            if (firstCollapse && firstButton) {
+                firstCollapse.classList.add('show');
+                firstButton.classList.remove('collapsed');
+                firstButton.setAttribute('aria-expanded', 'true');
+            }
+        }
+
+        const accordionButtons = document.querySelectorAll('.accordion-button');
+        accordionButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                setTimeout(() => {
+                    const isExpanded = button.getAttribute('aria-expanded') === 'true';
+                    if (isExpanded) {
+                        const unitId = button.getAttribute('data-unit-id');
+                        localStorage.setItem('activeLogbookUnit', unitId);
+                    } else {
+                        localStorage.removeItem('activeLogbookUnit');
+                    }
+                }, 150);
+            });
+        });
+    });
+
+    function toggleCommentField(id) {
+        const commentGroup = document.getElementById(`commentGroup-${id}`);
+        if (commentGroup) {
+            commentGroup.classList.toggle('d-none');
+        }
+    }
+
+    function validateSubmission(id) {
+        const valInput = document.getElementById(`val-${id}`);
+        const comInput = document.getElementById(`com-${id}`);
+
+        const hasValue = valInput && valInput.value.trim() !== '';
+        const hasComment = comInput && comInput.value.trim() !== '';
+
+        if (!hasValue && !hasComment) {
+            alert("Validation Error: You must fill in either the value field or add a comment.");
+            return false;
+        }
+        return true;
+    }
+</script>
 
 <style>
     .custom-z-index {

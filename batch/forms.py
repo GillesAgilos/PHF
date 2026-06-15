@@ -1,10 +1,9 @@
 from django import forms
 from django.db.models import Max
-
 from phf.utils import BaseEntityForm
-from .models import Batch, ParameterResult, SampleResult
+from .models import Batch, ParameterResult, AnalysisResult
 from referential.models import Project
-from production.models import Process, Parameter, Sample
+from production.models import Process, Parameter, Analysis
 
 
 class BatchForm(BaseEntityForm):
@@ -23,9 +22,9 @@ class BatchForm(BaseEntityForm):
         self.fields['process'].queryset = Process.objects.filter(is_active=True, status='VALIDATED')
 
         if self.instance and self.instance._state.adding is False:
-            self.fields['process'].disabled = True
-            self.fields['project'].disabled = True
-            self.fields['category'].disabled = True
+            self.fields['process'].widget.attrs.update({'readonly': True, 'style': 'pointer-events: none; background-color: #e9ecef;'})
+            self.fields['project'].widget.attrs.update({'readonly': True, 'style': 'pointer-events: none; background-color: #e9ecef;'})
+            self.fields['category'].widget.attrs.update({'readonly': True, 'style': 'pointer-events: none; background-color: #e9ecef;'})
 
         elif self.instance._state.adding:
             project_id = self.data.get('project') or self.initial.get('project')
@@ -66,6 +65,7 @@ class BatchForm(BaseEntityForm):
 
         return cleaned_data
 
+
 class ParameterResultForm(BaseEntityForm):
     class Meta:
         model = ParameterResult
@@ -74,21 +74,35 @@ class ParameterResultForm(BaseEntityForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['batch'].queryset = Batch.objects.filter(is_active=True)
+        self.fields['parameter'].queryset = Parameter.objects.filter(is_active=True)
 
-        self.fields['parameter'].queryset = Parameter.objects.filter(
-            is_active=True
-        )
+        if self.instance and self.instance.pk:
+            self.fields['batch'].widget.attrs.update({'readonly': True, 'style': 'pointer-events: none; background-color: #e9ecef;'})
+            self.fields['parameter'].widget.attrs.update({'readonly': True, 'style': 'pointer-events: none; background-color: #e9ecef;'})
+
+        target_parameter = None
+        if self.instance and hasattr(self.instance, 'parameter') and self.instance.parameter:
+            target_parameter = self.instance.parameter
+        elif self.initial.get('parameter'):
+            target_parameter = Parameter.objects.filter(pk=self.initial.get('parameter')).first()
+
+        if target_parameter and getattr(target_parameter, 'format_type', None) == 'bool':
+            self.fields['actual_value'].widget = forms.Select(
+                choices=[('', '---------'), ('Yes', 'Yes'), ('No', 'No')],
+                attrs={'class': 'form-select form-select-sm'}
+            )
 
 
-class SampleResultForm(BaseEntityForm):
+class AnalysisResultForm(BaseEntityForm):
     class Meta:
-        model = SampleResult
-        fields = ['batch', 'sample', 'actual_value', 'comment']
+        model = AnalysisResult
+        fields = ['batch', 'analysis', 'actual_value', 'comment']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['batch'].queryset = Batch.objects.filter(is_active=True)
+        self.fields['analysis'].queryset = Analysis.objects.filter(is_active=True)
 
-        self.fields['sample'].queryset = Sample.objects.filter(
-            is_active=True
-        )
+        if self.instance and self.instance.pk:
+            self.fields['batch'].widget.attrs.update({'readonly': True, 'style': 'pointer-events: none; background-color: #e9ecef;'})
+            self.fields['analysis'].widget.attrs.update({'readonly': True, 'style': 'pointer-events: none; background-color: #e9ecef;'})

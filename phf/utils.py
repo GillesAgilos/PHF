@@ -298,10 +298,12 @@ class AuditTrailMixin:
 
         if form.instance.pk and form.has_changed():
             reason = form.cleaned_data.get('change_justification')
-            if reason: form.instance._change_reason = reason
+            if reason:
+                form.instance._change_reason = reason
 
-        if not form.instance.pk:
+        if form.instance._state.adding:
             form.instance.created_by = self.request.user
+
         form.instance.updated_by = self.request.user
 
         return super().form_valid(form)
@@ -317,6 +319,7 @@ class StatusResetMixin:
 
 class FilterStateMixin:
     search_fields = ['name']
+    paginate_by = 20
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -355,6 +358,11 @@ class FilterStateMixin:
 
         context['view_mode'] = view_mode
         context['search_query'] = self.request.GET.get('q', '')
+
+        query_params = self.request.GET.copy()
+        if 'page' in query_params:
+            del query_params['page']
+        context['url_filters'] = query_params.urlencode()
 
         base_qs = self.model.objects.all()
         if context['search_query']:
@@ -484,17 +492,44 @@ class EntityDetailView(AuditTrailMixin, ListView):
         context['history_list'] = history_list
 
         display_fields = []
-        iterable_fields = [f.name for f in self.obj._meta.fields]
-        for field_name in iterable_fields:
+        ignored_display_fields = ['unique_id','status']
+
+        audit_fields_at_the_end = [
+            'status',
+            'created_at', 'created_by',
+            'updated_at', 'updated_by',
+            'deleted_at', 'deleted_by',
+            'is_active', 'rejection_reason'
+        ]
+
+        first_fields = []
+        last_fields = []
+
+        for f in self.model._meta.fields:
+            if f.name in ignored_display_fields:
+                continue
+            if f.name in audit_fields_at_the_end:
+                last_fields.append(f)
+            else:
+                first_fields.append(f)
+
+        ordered_fields = first_fields + last_fields
+
+        for f in ordered_fields:
             try:
-                f = self.model._meta.get_field(field_name)
+                field_name = f.name
                 if f.choices:
                     value = getattr(self.obj, f"get_{field_name}_display")()
                 else:
                     value = getattr(self.obj, field_name)
+
                 if hasattr(value, '__str__') and not isinstance(value, (str, int, bool, datetime, date, type(None))):
                     value = str(value)
-                display_fields.append({'label': f.verbose_name.replace('_', ' '), 'value': value})
+
+                display_fields.append({
+                    'label': f.verbose_name.replace('_', ' '),
+                    'value': value
+                })
             except:
                 continue
 

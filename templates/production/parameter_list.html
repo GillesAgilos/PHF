@@ -51,7 +51,8 @@
                             </div>
                         {% elif view_mode == 'archived' %}
                             <div class="alert alert-warning small mb-0 border-0">
-                                <i class="bi bi-exclamation-triangle-fill"></i> Switch to Active view to add new sequential
+                                <i class="bi bi-exclamation-triangle-fill"></i> Switch to Active view to add new
+                                sequential
                                 parameters.
                             </div>
                         {% else %}
@@ -87,7 +88,9 @@
                                     </div>
                                     <div class="col-6">
                                         <label class="form-label small fw-bold text-muted">UNIT</label>
-                                        <input type="text" name="unit" class="form-control form-control-sm border-secondary" placeholder="e.g. g/L, °C">
+                                        <input type="text" name="unit"
+                                               class="form-control form-control-sm border-secondary"
+                                               placeholder="e.g. g/L, °C">
                                         {% if form.unit.errors %}
                                             <div class="text-danger small">{{ form.unit.errors.0 }}</div>
                                         {% endif %}
@@ -99,10 +102,14 @@
                                         <span class="badge bg-secondary mb-2">NOR (Normal Operating Range)</span>
                                         <div class="row g-2">
                                             <div class="col-6">
-                                                <input type="number" step="any" name="low_normal_operating_range" placeholder="Low" class="form-control form-control-sm border-secondary">
+                                                <input type="number" step="any" name="low_normal_operating_range"
+                                                       placeholder="Low"
+                                                       class="form-control form-control-sm border-secondary">
                                             </div>
                                             <div class="col-6">
-                                                <input type="number" step="any" name="high_normal_operating_range" placeholder="High" class="form-control form-control-sm border-secondary">
+                                                <input type="number" step="any" name="high_normal_operating_range"
+                                                       placeholder="High"
+                                                       class="form-control form-control-sm border-secondary">
                                             </div>
                                         </div>
                                     </div>
@@ -111,10 +118,14 @@
                                         <span class="badge bg-secondary mb-2">PAR (Proven Acceptable Range)</span>
                                         <div class="row g-2">
                                             <div class="col-6">
-                                                <input type="number" step="any" name="low_proven_acceptable_range" placeholder="Low" class="form-control form-control-sm border-secondary">
+                                                <input type="number" step="any" name="low_proven_acceptable_range"
+                                                       placeholder="Low"
+                                                       class="form-control form-control-sm border-secondary">
                                             </div>
                                             <div class="col-6">
-                                                <input type="number" step="any" name="high_proven_acceptable_range" placeholder="High" class="form-control form-control-sm border-secondary">
+                                                <input type="number" step="any" name="high_proven_acceptable_range"
+                                                       placeholder="High"
+                                                       class="form-control form-control-sm border-secondary">
                                             </div>
                                         </div>
                                     </div>
@@ -123,10 +134,24 @@
                                         <span class="badge bg-secondary mb-2">Validation Limits</span>
                                         <div class="row g-2">
                                             <div class="col-6">
-                                                <input type="number" step="any" name="format_low_range" placeholder="Low" class="form-control form-control-sm border-secondary">
+                                                <input type="number" step="any" name="format_low_range"
+                                                       placeholder="Low"
+                                                       class="form-control form-control-sm border-secondary"
+                                                       value="{{ form.format_low_range.value|default_if_none:'' }}">
+                                                {% if form.format_low_range.errors %}
+                                                    <div class="text-danger small"
+                                                         style="font-size: 0.75rem;">{{ form.format_low_range.errors.0 }}</div>
+                                                {% endif %}
                                             </div>
                                             <div class="col-6">
-                                                <input type="number" step="any" name="format_high_range" placeholder="High" class="form-control form-control-sm border-secondary">
+                                                <input type="number" step="any" name="format_high_range"
+                                                       placeholder="High"
+                                                       class="form-control form-control-sm border-secondary"
+                                                       value="{{ form.format_high_range.value|default_if_none:'' }}">
+                                                {% if form.format_high_range.errors %}
+                                                    <div class="text-danger small"
+                                                         style="font-size: 0.75rem;">{{ form.format_high_range.errors.0 }}</div>
+                                                {% endif %}
                                             </div>
                                         </div>
                                     </div>
@@ -141,7 +166,8 @@
                         {% endif %}
                     {% else %}
                         <div class="alert alert-info small mb-0 border-0">
-                            <i class="bi bi-shield-lock-fill"></i> Read-only mode. You do not have permissions to register new process parameters.
+                            <i class="bi bi-shield-lock-fill"></i> Read-only mode. You do not have permissions to
+                            register new process parameters.
                         </div>
                     {% endif %}
                 </div>
@@ -180,11 +206,11 @@
 
                                 <div class="me-3 text-center" style="width: 40px;">
                                     {% if param.is_active %}
-                                    <span class="badge bg-dark rounded-circle py-2 px-2" style="min-width: 32px;">
+                                        <span class="badge bg-dark rounded-circle py-2 px-2" style="min-width: 32px;">
                                         {{ param.order }}
                                     </span>
                                     {% else %}
-                                    <span class="text-muted"><i class="bi bi-archive text-secondary"></i></span>
+                                        <span class="text-muted"><i class="bi bi-archive text-secondary"></i></span>
                                     {% endif %}
                                 </div>
 
@@ -204,13 +230,15 @@
                                         {% if param.format_type == 'numeric' %}
                                             {% if param.low_normal_operating_range is not null %}
                                                 <span class="text-muted border-start ps-2">
-                                                    NOR: <strong class="text-dark">[{{ param.low_normal_operating_range }} ; {{ param.high_normal_operating_range }}]</strong>
+                                                    NOR: <strong
+                                                        class="text-dark">[{{ param.low_normal_operating_range }} ; {{ param.high_normal_operating_range }}]</strong>
                                                 </span>
                                             {% endif %}
 
                                             {% if param.format_low_range is not null %}
                                                 <span class="text-muted border-start ps-2">
-                                                    Validation Range: <strong class="text-danger">[{{ param.format_low_range }} ; {{ param.format_high_range }}]</strong>
+                                                    Validation Range: <strong
+                                                        class="text-danger">[{{ param.format_low_range }} ; {{ param.format_high_range }}]</strong>
                                                 </span>
                                             {% endif %}
                                         {% endif %}
@@ -246,19 +274,22 @@
 
                                         {% if request.user.is_superuser or user_group == "System_Admin" or user_group == "Data_Steward" or request.user.groups.all.0.name == "System_Admin" or request.user.groups.all.0.name == "Data_Steward" %}
                                             <a href="{% url 'production:parameter_edit' pk=param.pk %}"
-                                               class="btn btn-sm btn-outline-warning me-2 shadow-sm" title="Edit Parameter Specifications">
+                                               class="btn btn-sm btn-outline-warning me-2 shadow-sm"
+                                               title="Edit Parameter Specifications">
                                                 <i class="bi bi-pencil"></i> Edit
                                             </a>
                                         {% endif %}
 
                                         <a href="{% url 'production:parameter_detail' pk=param.pk %}"
-                                           class="btn btn-sm btn-outline-info shadow-sm me-2" title="View details & history">
+                                           class="btn btn-sm btn-outline-info shadow-sm me-2"
+                                           title="View details & history">
                                             <i class="bi bi-eye"></i> Detail
                                         </a>
 
                                         {% if request.user.is_superuser or user_group == "System_Admin" or user_group == "Data_Steward" or request.user.groups.all.0.name == "System_Admin" or request.user.groups.all.0.name == "Data_Steward" %}
                                             <a href="{% url 'production:parameter_delete' pk=param.pk %}"
-                                              class="btn btn-sm btn-outline-danger shadow-sm ms-1" title="Archive Parameter">
+                                               class="btn btn-sm btn-outline-danger shadow-sm ms-1"
+                                               title="Archive Parameter">
                                                 <i class="bi bi-trash3"></i>
                                             </a>
                                         {% endif %}
@@ -284,7 +315,8 @@
                                     {% else %}
                                         <div class="d-flex align-items-center gap-2">
                                             <a href="{% url 'production:parameter_detail' pk=param.pk %}"
-                                               class="btn btn-sm btn-outline-info shadow-sm" title="View details & history">
+                                               class="btn btn-sm btn-outline-info shadow-sm"
+                                               title="View details & history">
                                                 <i class="bi bi-eye"></i> Detail
                                             </a>
                                             <span class="text-muted small"><i class="bi bi-lock-fill"></i> Locked</span>

@@ -42,17 +42,18 @@ class Project(BaseModel):
     def __str__(self):
         return f"{self.code} - {self.name}"
 
+
 class AnalyticalMethod(BaseModel):
     name = models.CharField(max_length=255, unique=True, verbose_name="Method Name")
     unit = models.CharField(max_length=255, verbose_name="Unit")
-    format = models.CharField(max_length=255, verbose_name="Format")
+    sop_code = models.CharField(max_length=255, verbose_name="SOP Code")
+    sop_version = models.CharField(max_length=50, verbose_name="SOP Version")
 
     class Meta:
         ordering = ['name']
 
     def __str__(self):
         return self.name
-
 
 
 class GlobalUnitOperation(BaseModel):

@@ -76,8 +76,10 @@
                 <thead class="{% if view_mode == 'draft' %}table-primary{% elif view_mode == 'rejected' %}table-danger{% elif view_mode == 'active' %}table-dark{% else %}table-secondary{% endif %}">
                 <tr>
                     <th>QA Status</th>
+                    <th>Client</th>
                     <th>Project</th>
                     <th>Process Template</th>
+                    <th>Version</th>
                     <th>Category / Iteration</th>
                     <th>{% if view_mode == 'archived' %}Archived on{% else %}Last Update{% endif %}</th>
                     <th class="text-end">Actions</th>
@@ -98,8 +100,19 @@
                                 <span class="badge rounded-pill bg-danger text-white">Rejected</span>
                             {% endif %}
                         </td>
+                        <td>
+                            <span class="badge bg-secondary text-white font-monospace">{{ batch.project.client.code }}</span>
+                            <small class="text-dark d-block text-truncate" style="max-width: 150px;" title="{{ batch.project.client.name }}">
+                                {{ batch.project.client.name }}
+                            </small>
+                        </td>
                         <td><span class="fw-semibold text-dark">{{ batch.project.name }}</span></td>
                         <td class="fw-bold font-monospace text-primary">{{ batch.process.code }}</td>
+                        <td>
+                            <span class="badge bg-light text-primary border fw-bold">
+                                v{{ batch.process.version|default:"1.0" }}
+                            </span>
+                        </td>
                         <td>
                             <span class="badge bg-light text-dark border font-monospace">{{ batch.get_category_display }}</span>
                             <span class="text-muted ms-1">Run #{{ batch.iteration_number }}</span>
@@ -153,7 +166,7 @@
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center py-5 text-muted">
+                        <td colspan="8" class="text-center py-5 text-muted">
                             <i class="bi bi-inbox fs-2"></i><br>
                             <p class="mt-2 mb-0">No batches tracking recorded in this category.</p>
                         </td>
@@ -162,6 +175,11 @@
                 </tbody>
             </table>
         </div>
+        {% if is_paginated %}
+            <div class="card-footer bg-white border-top-0 py-3">
+                {% include "generic/_pagination.html" %}
+            </div>
+        {% endif %}
     </div>
 
     <script>

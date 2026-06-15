@@ -224,6 +224,11 @@
                 </tbody>
             </table>
         </div>
+        {% if is_paginated %}
+            <div class="card-footer bg-white border-top-0 py-3">
+                {% include "generic/_pagination.html" %}
+            </div>
+        {% endif %}
     </div>
 {% endblock %}
 

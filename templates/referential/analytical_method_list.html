@@ -78,7 +78,8 @@
                 <tr>
                     <th>Status</th>
                     <th>Method Name</th>
-                    <th>Format / Volume</th>
+                    <th>SOP Code</th>
+                    <th>SOP Version</th>
                     <th>Unit</th>
                     <th>{% if view_mode == 'archived' %}Archived on{% else %}Last Update{% endif %}</th>
                     <th class="text-end">Actions</th>
@@ -106,7 +107,10 @@
                             {% endif %}
                         </td>
                         <td>
-                            <span class="badge bg-light text-dark border font-monospace">{{ method.volume_required }} mL</span>
+                            <span class="badge bg-light text-dark border font-monospace">{{ method.sop_code }}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-white text-secondary border font-monospace">{{ method.sop_version }}</span>
                         </td>
                         <td class="text-muted small">
                             {{ method.unit }}
@@ -149,7 +153,7 @@
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center py-5 text-muted">
+                        <td colspan="7" class="text-center py-5 text-muted">
                             <i class="bi bi-inbox fs-2"></i><br>
                             <p class="mt-2 mb-0">No analytical methods found in this category.</p>
                         </td>
@@ -158,6 +162,11 @@
                 </tbody>
             </table>
         </div>
+        {% if is_paginated %}
+            <div class="card-footer bg-white border-top-0 py-3">
+                {% include "generic/_pagination.html" %}
+            </div>
+        {% endif %}
     </div>
 
     <script>
