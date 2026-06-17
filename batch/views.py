@@ -19,6 +19,22 @@ from .security import BatchRoleRequiredMixin
 # BATCH VIEWS
 # ==========================================
 class BatchListView(BatchRoleRequiredMixin, FilterStateMixin, ListView):
+    """View for displaying a list of batches.
+
+    This class-based view is responsible for rendering a list of batches in a
+    web application. It supports search functionality and provides contextual
+    data such as counts of batches in various statuses. It also customizes the
+    queryset used for retrieving batches to optimize related data fetching.
+
+    Attributes:
+        model (type): The model associated with this view, representing the
+            data structure for batches.
+        template_name (str): The template name used to render the batch list.
+        context_object_name (str): The name of the context variable that will
+            hold the list of batches in the template.
+        search_fields (list): A list of fields to allow searching batches,
+            specifically project names and process codes.
+    """
     model = Batch
     template_name = 'batch/batch_list.html'
     context_object_name = 'batches'
@@ -47,6 +63,24 @@ class BatchListView(BatchRoleRequiredMixin, FilterStateMixin, ListView):
 
 
 class BatchCreateView(BatchRoleRequiredMixin, AuditTrailMixin, CreateView):
+    """
+    Handles batch creation functionality through a web interface.
+
+    This class-based view integrates mixins to enforce role-based access control
+    and audit trail logging. It is designed to streamline the creation of batch
+    instances using a provided form. It renders a predefined template for
+    input collection and redirects users to the batch list view upon
+    successful creation.
+
+    Attributes:
+        model (type): The model associated with this view, in this case, Batch.
+        form_class (type): The form utilized to handle user inputs for creating
+            a Batch instance.
+        template_name (str): The path to the HTML template used to render
+            the form for batch creation.
+        success_url (type): A reverse-resolved URL where users are redirected
+            after successfully creating a Batch instance.
+    """
     model = Batch
     form_class = BatchForm
     template_name = 'generic/generic_form.html'
@@ -54,6 +88,22 @@ class BatchCreateView(BatchRoleRequiredMixin, AuditTrailMixin, CreateView):
 
 
 class BatchUpdateView(BatchRoleRequiredMixin, AuditTrailMixin, StatusResetMixin, UpdateView):
+    """
+    View for updating an existing batch.
+
+    This class provides functionality to update an existing batch record through
+    a form interface. It inherits from several mixins to ensure role-based access
+    control, audit trail management, and status resetting as part of the update
+    process. Additionally, it uses Django's UpdateView to handle the form rendering
+    and submission.
+
+    Attributes:
+        model (Model): The model class associated with this view, which is `Batch`.
+        form_class (Form): The form class used in this view, which is `BatchForm`.
+        template_name (str): The path to the template file used to render the form.
+        success_url (str): The URL path to which users are redirected upon
+            successful form submission, pointing to the batch list view.
+    """
     model = Batch
     form_class = BatchForm
     template_name = 'generic/generic_form.html'
@@ -61,16 +111,51 @@ class BatchUpdateView(BatchRoleRequiredMixin, AuditTrailMixin, StatusResetMixin,
 
 
 class BatchDeleteView(BatchRoleRequiredMixin, GenericDeleteView):
+    """
+    View for managing the deletion of batch instances.
+
+    This class provides functionality to delete instances of the `Batch` model.
+    It ensures that only users with the appropriate roles can perform this
+    action by inheriting permissions from `BatchRoleRequiredMixin`. The class
+    redirects to a predefined success URL upon successful deletion.
+
+    Attributes:
+        model: The model class that this view operates on. Set to `Batch`.
+        success_url: The URL to redirect to after a successful deletion.
+            This is lazily evaluated and set to the `batch_list` URL.
+    """
     model = Batch
     success_url = reverse_lazy('batch:batch_list')
 
 
 class BatchRestoreView(BatchRoleRequiredMixin, GenericRestoreView):
+    """Handles the restoration of deleted batches.
+
+    This class is responsible for providing functionality to restore
+    deleted batch objects. It extends the permissions and views of
+    `BatchRoleRequiredMixin` and `GenericRestoreView` to ensure proper
+    access control and restore mechanics.
+
+    Attributes:
+        model: The model associated with the view, in this case, `Batch`.
+        redirect_url (str): The URL to redirect to after successfully
+            restoring a batch.
+    """
     model = Batch
     redirect_url = 'batch:batch_list'
 
 
 class BatchDetailView(BatchRoleRequiredMixin, EntityDetailView):
+    """
+    Handles the detailed view and context manipulation for Batch objects.
+
+    This class provides a detailed view functionality for Batch objects and integrates
+    dynamic actions based on the user's group membership, the batch's status, and other
+    contextual conditions.
+
+    Attributes:
+        model (type): The model associated with this view. Represents the Batch class.
+    """
     model = Batch
 
     def get_context_data(self, **kwargs):
@@ -110,6 +195,19 @@ class BatchDetailView(BatchRoleRequiredMixin, EntityDetailView):
 
 
 class BatchValidateView(BatchRoleRequiredMixin, EntityValidateView):
+    """
+    Handles batch validation functionality.
+
+    This class is responsible for managing the validation of batches. It inherits
+    from `BatchRoleRequiredMixin` and `EntityValidateView` to ensure proper role
+    permissions and validation functionality. The class provides an endpoint for
+    validating a batch by an authorized user and redirects to appropriate views
+    based on the action outcome.
+
+    Attributes:
+        model (type): The model class associated with the view, which is `Batch`.
+        redirect_url (str): The URL to redirect to after validation success.
+    """
     model = Batch
     redirect_url = 'batch:batch_list'
 
@@ -131,11 +229,39 @@ class BatchValidateView(BatchRoleRequiredMixin, EntityValidateView):
 
 
 class BatchRejectView(BatchRoleRequiredMixin, EntityRejectView):
+    """
+    Handles the rejection of Batch entities with specific role requirements.
+
+    This class is responsible for managing the rejection process for `Batch`
+    objects. It enforces specific role requirements through the
+    `BatchRoleRequiredMixin` and utilizes the `EntityRejectView` functionality
+    to streamline the rejection process. It also provides a configurable
+    redirection URL upon successful rejection.
+
+    Attributes:
+        model (type): The model class associated with the view, which is `Batch`.
+        redirect_url (str): The URL to redirect to after the rejection process
+            is completed, set to 'batch:batch_list'.
+    """
     model = Batch
     redirect_url = 'batch:batch_list'
 
 
 class BatchLogbookView(BatchRoleRequiredMixin, DetailView):
+    """
+    View for displaying the logbook of a batch, including detailed process and analysis
+    information.
+
+    This view generates a detailed logbook representation of a batch, providing a hierarchical
+    structure of unit operations, steps, parameters, and analyses. It calculates and includes
+    results for parameters and analyses associated with the batch, giving an organized view
+    to users with access rights.
+
+    Attributes:
+        model (Batch): The model associated with this view, representing the batch data.
+        template_name (str): The name of the template used for rendering the batch logbook.
+        context_object_name (str): The context variable name for the batch object passed to the template.
+    """
     model = Batch
     template_name = 'batch/batch_logbook.html'
     context_object_name = 'batch'
@@ -200,6 +326,20 @@ class BatchLogbookView(BatchRoleRequiredMixin, DetailView):
 # PARAMETER RESULT VIEWS
 # ==========================================
 class ParameterResultListView(BatchRoleRequiredMixin, FilterStateMixin, ListView):
+    """
+    Manages the view for listing parameter results with search and filter capabilities.
+
+    This class provides functionality to display a list of parameter results
+    based on search queries, filtering by status or activity, and ordering.
+    It enhances the standard Django ListView by adding custom queryset filtering
+    and context data for displaying various counts and user information.
+
+    Attributes:
+        model (type): The model associated with the view (ParameterResult).
+        template_name (str): The path to the template used to render the view.
+        context_object_name (str): The context variable name to use for the list of parameter results.
+        search_fields (list of str): Fields of the model that can be searched using a query string.
+    """
     model = ParameterResult
     template_name = 'batch/parameter_result_list.html'
     context_object_name = 'parameter_results'
@@ -246,6 +386,20 @@ class ParameterResultListView(BatchRoleRequiredMixin, FilterStateMixin, ListView
 
 
 class ParameterResultCreateView(BatchRoleRequiredMixin, AuditTrailMixin, CreateView):
+    """
+    Represents a view for creating a ParameterResult instance.
+
+    This class is used to handle the creation of a new ParameterResult object using
+    a form. It specifies the model, form class, and template to use for rendering the
+    view. Additionally, it enforces role-based access control and audit trail logging
+    mechanisms.
+
+    Attributes:
+        model (ParameterResult): The model class associated with this view.
+        form_class (ParameterResultForm): The form class used for creating an instance
+            of the model.
+        template_name (str): The path to the template used to render the view.
+    """
     model = ParameterResult
     form_class = ParameterResultForm
     template_name = 'generic/generic_form.html'
@@ -255,6 +409,21 @@ class ParameterResultCreateView(BatchRoleRequiredMixin, AuditTrailMixin, CreateV
 
 
 class ParameterResultUpdateView(BatchRoleRequiredMixin, AuditTrailMixin, StatusResetMixin, UpdateView):
+    """View for updating a ParameterResult instance.
+
+    This class-based view is used to update a `ParameterResult` instance using
+    a form. It inherits from multiple mixins to include additional functionality
+    such as handling role-based access, maintaining an audit trail, and resetting
+    status upon updates. The form and template are specified for rendering the
+    update view.
+
+    Attributes:
+        model (ParameterResult): The model being updated by the view.
+        form_class (ParameterResultForm): The form class used to handle
+            updates for `ParameterResult`.
+        template_name (str): The path to the template used for rendering
+            the update view.
+    """
     model = ParameterResult
     form_class = ParameterResultForm
     template_name = 'generic/generic_form.html'
@@ -264,6 +433,18 @@ class ParameterResultUpdateView(BatchRoleRequiredMixin, AuditTrailMixin, StatusR
 
 
 class ParameterResultDeleteView(BatchRoleRequiredMixin, GenericDeleteView):
+    """
+    Handles the deletion of a ParameterResult object with role-based access control.
+
+    This view inherits from BatchRoleRequiredMixin to enforce role-based security
+    and GenericDeleteView to provide the deletion functionality. It is designed
+    to delete ParameterResult objects and redirect to a success URL based on the
+    related batch's primary key after deletion.
+
+    Attributes:
+        model (ParameterResult): The model that the view operates on, representing
+            the ParameterResult object to be deleted.
+    """
     model = ParameterResult
 
     def get_success_url(self):
@@ -271,6 +452,17 @@ class ParameterResultDeleteView(BatchRoleRequiredMixin, GenericDeleteView):
 
 
 class ParameterResultRestoreView(BatchRoleRequiredMixin, GenericRestoreView):
+    """
+    Handles the restoration of ParameterResult objects within a batch context.
+
+    This class defines functionality for restoring a ParameterResult object
+    and redirecting to the batch logbook page. Requires appropriate role-based
+    authentication through BatchRoleRequiredMixin.
+
+    Attributes:
+        model (ParameterResult): The model associated with this view, used
+            for restoring specific instances.
+    """
     model = ParameterResult
 
     def post(self, request, *args, **kwargs):
@@ -280,6 +472,19 @@ class ParameterResultRestoreView(BatchRoleRequiredMixin, GenericRestoreView):
 
 
 class ParameterResultDetailView(BatchRoleRequiredMixin, EntityDetailView):
+    """
+    View for displaying the details of a ParameterResult instance.
+
+    The ParameterResultDetailView class is responsible for presenting detailed
+    information about a specific instance of the ParameterResult model. It also
+    modifies the context data to include dynamic actions based on the user's
+    permissions, groups, and the object's status. The dynamic actions are tailored
+    to support workflows such as validation and rejection of parameter results
+    based on user roles and the current state of the result.
+
+    Attributes:
+        model: The model associated with this view, which is ParameterResult.
+    """
     model = ParameterResult
 
     def get_context_data(self, **kwargs):
@@ -318,6 +523,16 @@ class ParameterResultDetailView(BatchRoleRequiredMixin, EntityDetailView):
 
 
 class ParameterResultValidateView(BatchRoleRequiredMixin, EntityValidateView):
+    """
+    Handles the validation of a ParameterResult instance and redirects upon completion.
+
+    This class is designed to ensure entities of type ParameterResult are validated
+    by a user with the proper permissions. Upon successful validation, the user is
+    redirected to a specific batch logbook page.
+
+    Attributes:
+        model (type): The model associated with this view, set to ParameterResult.
+    """
     model = ParameterResult
 
     def post(self, request, pk):
@@ -327,6 +542,15 @@ class ParameterResultValidateView(BatchRoleRequiredMixin, EntityValidateView):
 
 
 class ParameterResultRejectView(BatchRoleRequiredMixin, EntityRejectView):
+    """
+    Handles the rejection of parameter results within a batch context.
+
+    This view facilitates rejecting a parameter result with a provided reason and updates its status.
+    It ensures the user has the appropriate role to perform this action.
+
+    Attributes:
+        model (type): Specifies the model associated with the view, `ParameterResult`.
+    """
     model = ParameterResult
 
     def post(self, request, pk):
@@ -344,6 +568,25 @@ class ParameterResultRejectView(BatchRoleRequiredMixin, EntityRejectView):
 # ANALYSIS RESULT VIEWS
 # ==========================================
 class AnalysisResultListView(BatchRoleRequiredMixin, FilterStateMixin, ListView):
+    """
+    Manages the display and filtering of a list of analysis results.
+
+    This class provides functionality for rendering a list view of analysis results
+    with customizable filtering options based on the user's query parameters.
+    It handles different view modes (active, archived, rejected, draft)
+    and allows searching through specific fields. Additionally, it calculates
+    context information such as counts for various status categories
+    and includes it in the response.
+
+    Attributes:
+        model (Model): The model associated with this view.
+            For this class, it is set to `AnalysisResult`.
+        template_name (str): The path to the template used for rendering the view.
+        context_object_name (str): The name of the context variable that will
+            contain the queryset in the template.
+        search_fields (list of str): A list of model fields to be searched when
+            filtering by query.
+    """
     model = AnalysisResult
     template_name = 'batch/analysis_result_list.html'
     context_object_name = 'analysis_results'
@@ -390,6 +633,19 @@ class AnalysisResultListView(BatchRoleRequiredMixin, FilterStateMixin, ListView)
 
 
 class AnalysisResultCreateView(BatchRoleRequiredMixin, AuditTrailMixin, CreateView):
+    """
+    View for creating an `AnalysisResult` instance.
+
+    This class-based view is responsible for handling the creation of a new
+    `AnalysisResult` instance. It uses a form for user input, ensures that the
+    user has the necessary permissions, and records audit trails for actions
+    performed. The view redirects to a success URL upon successful creation.
+
+    Attributes:
+        model (Model): The model associated with this view, which is `AnalysisResult`.
+        form_class (Form): The form used for creating a new `AnalysisResult` instance.
+        template_name (str): The template used to render the view.
+    """
     model = AnalysisResult
     form_class = AnalysisResultForm
     template_name = 'generic/generic_form.html'
@@ -399,6 +655,21 @@ class AnalysisResultCreateView(BatchRoleRequiredMixin, AuditTrailMixin, CreateVi
 
 
 class AnalysisResultUpdateView(BatchRoleRequiredMixin, AuditTrailMixin, StatusResetMixin, UpdateView):
+    """
+    Handles the update functionality for AnalysisResult objects by rendering a form view.
+
+    This class provides a user interface for updating existing AnalysisResult objects
+    through a form. It integrates several mixins to add specific functionality, such as
+    role-based access control, audit trail logging, and status resetting during the update process.
+    It also defines the specific model, form, and template used for rendering the update view.
+
+    Attributes:
+        model (AnalysisResult): The model class associated with this view, representing
+            an analysis result that will be updated.
+        form_class (AnalysisResultForm): The form class used for rendering and validating
+            the fields required for updating an AnalysisResult object.
+        template_name (str): The path to the template file used for rendering the form view.
+    """
     model = AnalysisResult
     form_class = AnalysisResultForm
     template_name = 'generic/generic_form.html'
@@ -408,6 +679,18 @@ class AnalysisResultUpdateView(BatchRoleRequiredMixin, AuditTrailMixin, StatusRe
 
 
 class AnalysisResultDeleteView(BatchRoleRequiredMixin, GenericDeleteView):
+    """
+    Handles the deletion of an AnalysisResult object.
+
+    Specialized view for facilitating the deletion operation of AnalysisResult
+    objects while enforcing batch-based role restrictions. This class ensures
+    users with certain permissions tied to specific batches can execute the delete
+    operation. After successful deletion, redirection to the associated batch logbook
+    view is executed to provide relevant context.
+
+    Attributes:
+        model (type): The model class targeted for deletion, which is AnalysisResult.
+    """
     model = AnalysisResult
 
     def get_success_url(self):
@@ -415,6 +698,18 @@ class AnalysisResultDeleteView(BatchRoleRequiredMixin, GenericDeleteView):
 
 
 class AnalysisResultRestoreView(BatchRoleRequiredMixin, GenericRestoreView):
+    """
+    Handles the restoration of an AnalysisResult instance.
+
+    This class provides functionality for restoring an instance of the
+    AnalysisResult model. It integrates role-based access control and uses
+    a POST request to handle the restoration operation. Upon successful
+    restoration, it redirects to the appropriate batch logbook page.
+
+    Attributes:
+        model (AnalysisResult): Specifies the model class associated with
+            this view.
+    """
     model = AnalysisResult
 
     def post(self, request, *args, **kwargs):
@@ -424,6 +719,18 @@ class AnalysisResultRestoreView(BatchRoleRequiredMixin, GenericRestoreView):
 
 
 class AnalysisResultDetailView(BatchRoleRequiredMixin, EntityDetailView):
+    """
+    Provides detailed information and context for an analysis result.
+
+    This view is designed to handle the presentation of a specific analysis result,
+    including managing dynamic actions based on user roles, authentication, and the
+    status of the result. It leverages role-based permissions and adjusts the
+    available actions dynamically to ensure proper user access control.
+
+    Attributes:
+        model (AnalysisResult): The model associated with the view, representing
+            an analysis result entity.
+    """
     model = AnalysisResult
 
     def get_context_data(self, **kwargs):
@@ -462,6 +769,18 @@ class AnalysisResultDetailView(BatchRoleRequiredMixin, EntityDetailView):
 
 
 class AnalysisResultValidateView(BatchRoleRequiredMixin, EntityValidateView):
+    """
+    Handles the validation of analysis results within the context of batch processing.
+
+    This class provides functionality to validate analysis results tied to a specific
+    batch entity. It ensures that only authorized users with the required roles can
+    initiate the validation process. Upon successful validation, the user is redirected
+    to the associated batch logbook page.
+
+    Attributes:
+        model (Model): The model associated with the analysis result, specifically
+            `AnalysisResult`.
+    """
     model = AnalysisResult
 
     def post(self, request, pk):
@@ -471,6 +790,19 @@ class AnalysisResultValidateView(BatchRoleRequiredMixin, EntityValidateView):
 
 
 class AnalysisResultRejectView(BatchRoleRequiredMixin, EntityRejectView):
+    """
+    Handles the rejection of analysis results.
+
+    This class provides functionality to reject an analysis result with a specified
+    reason. It ensures that only users with the appropriate role can perform this
+    action. Upon rejection, the analysis result's status is updated, the rejection
+    reason is stored, and it is logged appropriately in the associated batch
+    logbook.
+
+    Attributes:
+        model (type): The model class associated with this view, representing the
+            analysis result.
+    """
     model = AnalysisResult
 
     def post(self, request, pk):

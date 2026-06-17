@@ -10,13 +10,21 @@ from phf.utils import (
 
 class ProductionRoleRequiredMixin(LoginRequiredMixin):
     """
+    Mixin that enforces role-based access control for views in a production environment.
+
+    This mixin extends `LoginRequiredMixin` and adds additional role-based validation for
+    users based on their group memberships. It restricts access and certain actions
+    based on the roles defined for users, ensuring stricter control over production data handling.
+
+    Attributes:
+        None
+
     Global security Mixin for the Production application.
     Rights Matrix:
     - System_Admin       : Full Access (Bypass)
     - Data_Steward       : Read-Only (List/Detail/Structure) + Write (Create/Update/Delete/Restore)
     - QA_Representative  : Read-Only (List/Detail/Structure) + Decision (Validate/Reject)
     """
-
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return super().dispatch(request, *args, **kwargs)

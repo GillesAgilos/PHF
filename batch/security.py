@@ -11,6 +11,19 @@ from phf.utils import (
 
 class BatchRoleRequiredMixin(LoginRequiredMixin):
     """
+    Mixin to enforce role-based permissions for accessing views and performing
+    specific actions in a Django application.
+
+    This class extends the functionality of `LoginRequiredMixin`, ensuring that
+    only authenticated users with appropriate roles can perform actions on views.
+    It introduces fine-grained access control based on the user's group membership
+    and the type of view being accessed. This mixin supports use cases such as
+    read-only views for QA users, action-specific permissions for Data Custodians
+    and Data Stewards, and unrestricted access for superusers and System Administrators.
+
+    Attributes:
+        None
+
     Security Mixin for the Batch & Results application.
     Rights Matrix:
     - System_Admin     : Full Access (Bypass)
@@ -18,7 +31,6 @@ class BatchRoleRequiredMixin(LoginRequiredMixin):
     - Data_Steward     : Read-Only + Decision (Validate/Reject)
     - QA               : Read-Only Only (List/Detail)
     """
-
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return super().dispatch(request, *args, **kwargs)

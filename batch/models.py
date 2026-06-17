@@ -4,6 +4,30 @@ from phf.utils import BaseModel
 
 
 class Batch(BaseModel):
+    """
+    Represents a batch in a production or engineering context with its associated properties and validation constraints.
+
+    The Batch class is utilized to model a grouping of processes and projects in either manufacturing or engineering
+    contexts. It enforces unique constraints, provides validation mechanisms, and integrates attributes such as category,
+    project designation, and iteration information. It ensures data integrity and supports operations like validation
+    checks for specific production-related requirements.
+
+    Attributes:
+        name (str): A unique name identifying the batch.
+        project (referential.Project): A foreign key linking to the associated project.
+        process (production.Process): A foreign key linking to the associated production process.
+        category (str): Defines the category of the batch and is restricted to predefined choices
+            (e.g., 'Manufacturing', 'Engineering').
+        iteration_number (int): Specifies the iteration number of the batch.
+        start_date (Optional[datetime.date]): The start date of the batch; can be left blank.
+        end_date (Optional[datetime.date]): The end date of the batch; can be left blank.
+
+        Meta:
+            verbose_name (str): Human-readable name for this model ("Batch").
+            verbose_name_plural (str): Human-readable plural name for this model ("Batches").
+            constraints (list): Contains model-level constraints such as ensuring unique combinations of
+                project, process, category, and iteration for active batches.
+    """
     class CategoryChoices(models.TextChoices):
         MANUFACTURING = 'M-', 'Manufacturing'
         ENGINEERING = 'E-', 'Engineering'
@@ -80,6 +104,21 @@ class Batch(BaseModel):
 
 
 class ParameterResult(BaseModel):
+    """
+    Represents the result of a parameter associated with a batch in a production process.
+
+    Encapsulates data related to a parameter's result, including its actual value and any comments.
+    Ensures data integrity through validation rules, such as permissible value ranges and parameter
+    status checks. It is typically associated with a batch and a production parameter, enforcing
+    constraints based on their states (e.g., whether they are archived or validated).
+
+    Attributes:
+        batch (models.ForeignKey): A reference to the related batch this parameter result belongs to.
+        parameter (models.ForeignKey): A reference to the production parameter this result corresponds to.
+        actual_value (str): The actual value of the parameter (could be a numeric or other expected type).
+        comment (str): A comment or note associated with the parameter result.
+
+    """
     batch = models.ForeignKey('batch.Batch', on_delete=models.CASCADE, related_name='parameter_results',
                               verbose_name="Related Batch")
     parameter = models.ForeignKey('production.Parameter', on_delete=models.PROTECT, related_name='results',
@@ -143,6 +182,21 @@ class ParameterResult(BaseModel):
 
 
 class AnalysisResult(BaseModel):
+    """
+    Represents the results of a specific analysis within a batch process.
+
+    This class is used to record and validate the results of an analysis process
+    related to a specific batch. It ensures that results conform to validation ranges
+    when applicable and restricts modifications under certain conditions such as
+    when the batch is already validated or archived.
+
+    Attributes:
+        batch (ForeignKey): The batch to which the analysis result is associated.
+        analysis (ForeignKey): The production analysis for which the result is recorded.
+        actual_value (CharField): The recorded value of the analysis. Can be null or blank.
+        comment (TextField): An optional comment provided alongside the analysis result.
+
+    """
     batch = models.ForeignKey('batch.Batch', on_delete=models.CASCADE, related_name='analysis_results',
                               verbose_name="Related Batch")
     analysis = models.ForeignKey('production.Analysis', on_delete=models.PROTECT, related_name='results',

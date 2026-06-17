@@ -12,13 +12,22 @@ from phf.utils import (
 
 class ReferentialRoleRequiredMixin(LoginRequiredMixin):
     """
+    Mixin class for managing role-based access to views in a Django application.
+
+    This class extends `LoginRequiredMixin` and adds role-based authentication for
+    users accessing views. It ensures that only authorized users with specific roles
+    or permissions are allowed to access views, perform actions, or manipulate referential
+    data. The role validation is determined based on user groups stored in the system.
+
+    Attributes:
+        None
+
     Global security Mixin for the Referential application.
     Rights Matrix:
     - System_Admin       : Full Access (Bypass)
     - Data_Steward       : Read-Only (List/Detail) + Write (Create/Update/Delete/Restore)
     - QA_Representative  : Read-Only (List/Detail) + Decision (Validate/Reject)
     """
-
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return super().dispatch(request, *args, **kwargs)

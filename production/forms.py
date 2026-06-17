@@ -6,12 +6,36 @@ from .models import Process, UnitOperation, Step, Parameter, Analysis, Sample
 
 
 class ProcessForm(BaseEntityForm):
+    """
+    Represents a form for managing Process entities.
+
+    This class is used to define the structure and validation logic for forms
+    associated with the `Process` model. It specifies the model and fields that
+    should be included in the form. The form ensures data integrity and is an
+    essential part of handling user input related to the `Process` model.
+
+    Attributes:
+        Meta (type): Contains metadata for the form, including the associated
+            model and the fields to be included in the form.
+    """
     class Meta:
         model = Process
         fields = ['name', 'code', 'scale']
 
 
 class UnitOperationForm(forms.ModelForm):
+    """
+    Represents a form for handling unit operations in the application.
+
+    This form is used to manage and validate data associated with a unit operation. It
+    leverages a model choice field to select only validated and active global unit operations.
+    The form is built on top of the `ModelForm` provided by Django and is tied to the
+    `UnitOperation` model.
+
+    Attributes:
+        name (ModelChoiceField): A dropdown field allowing the selection of a unit
+            operation, filtered to include only validated and active operations.
+    """
     name = forms.ModelChoiceField(
         queryset=GlobalUnitOperation.objects.filter(status='VALIDATED', is_active=True),
         to_field_name='name',
@@ -25,12 +49,35 @@ class UnitOperationForm(forms.ModelForm):
 
 
 class StepForm(forms.ModelForm):
+    """
+    Form class for creating and modifying Step objects.
+
+    This class represents a form for the Step model, allowing users to create
+    or edit Step instances. It includes specific fields from the Step model to
+    be displayed and managed via the form.
+
+    Attributes:
+        Meta (type): Inner Meta class to define the Step model and the fields
+            ['name', 'order'] included in the form.
+    """
     class Meta:
         model = Step
         fields = ['name', 'order']
 
 
 class ParameterForm(forms.ModelForm):
+    """
+    ParameterForm class for creating and validating Parameter model instances.
+
+    This form is designed to handle validation based on the format type of the
+    Parameter model. It ensures that certain conditions are met, such as numeric
+    parameters requiring valid low and high range values, while gracefully handling
+    cleanup of irrelevant fields for non-numeric formats.
+
+    Attributes:
+        Meta (type): Contains metadata for the model form, including the model and
+            fields definitions.
+    """
     class Meta:
         model = Parameter
         fields = [
@@ -71,12 +118,40 @@ class ParameterForm(forms.ModelForm):
 
 
 class SampleForm(forms.ModelForm):
+    """
+    Represents a form for the Sample model.
+
+    This class defines a form that is bound to the Sample model and allows for
+    creating or updating instances of this model through user input. It includes
+    fields specified in the `fields` attribute.
+
+    Attributes:
+        Meta (ModelMeta): Contains metadata that links the form to the
+            associated model and defines which fields are included.
+    """
     class Meta:
         model = Sample
         fields = ['name']
 
 
 class AnalysisForm(forms.ModelForm):
+    """
+    Form for performing analysis operations, built upon Django's ModelForm.
+
+    This class provides a representation of the `Analysis` model's form, handling
+    field validations and custom widget configurations for user-friendly input. The
+    form enforces constraints to ensure the logical consistency of numeric ranges
+    entered in the associated fields.
+
+    Attributes:
+        Meta.model (type): The model class that the form is associated with, which
+            is `Analysis`.
+        Meta.fields (list): The list of model fields to include in the form,
+            specifically `analysis_name`, `analytical_method`,
+            `format_low_range`, and `format_high_range`.
+        Meta.widgets (dict): Custom widget configurations for form fields, such as
+            specifying a styled searchable dropdown for the `analytical_method`.
+    """
     class Meta:
         model = Analysis
         fields = ['analysis_name', 'analytical_method', 'format_low_range', 'format_high_range']

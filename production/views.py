@@ -20,6 +20,23 @@ from .security import ProductionRoleRequiredMixin
 # 1. PROCESS VIEWS
 # =========================================================================
 class ProcessListView(ProductionRoleRequiredMixin, FilterStateMixin, ListView):
+    """
+    Represents a view for displaying a list of Process objects.
+
+    This class extends functionality from several mixins and ListView to
+    provide a filtered and searchable list of Process objects intended for
+    use in production environments. The view utilizes a specified template
+    and context variable to render and manage display logic. It restricts
+    access to users with appropriate production roles.
+
+    Attributes:
+        model (type): The model associated with this view (Process).
+        template_name (str): The path to the template used to render the view.
+        context_object_name (str): The name of the context variable containing
+            the list of processes.
+        search_fields (list of str): Fields that can be searched within the list
+            of Process objects.
+    """
     model = Process
     template_name = 'production/process_list.html'
     context_object_name = 'processes'
@@ -27,6 +44,28 @@ class ProcessListView(ProductionRoleRequiredMixin, FilterStateMixin, ListView):
 
 
 class ProcessCreateView(ProductionRoleRequiredMixin, AuditTrailMixin, CreateView):
+    """
+    Represents a view for creating a new Process object.
+
+    This class combines functionality for enforcing production-specific role
+    permissions, audit trail logging, and form handling for creating a new
+    Process object within the application. It leverages the CreateView
+    generic class-based view to handle the creation logic, and it integrates
+    mixins for additional functionality such as access control and activity
+    tracking. The view also defines the form used for submission, the success
+    redirect URL, and the template for rendering the form.
+
+    Attributes:
+        model (Model): The model that this view will handle, which is the
+            Process model.
+        form_class (Form): The form class used for rendering the form and
+            processing data submission, which is the ProcessForm.
+        template_name (str): The path to the template used for rendering the
+            create form, defined as 'generic/generic_form.html'.
+        success_url (str): The URL to redirect to upon successful creation
+            of a Process object, defined using reverse_lazy as
+            'production:process_list'.
+    """
     model = Process
     form_class = ProcessForm
     template_name = 'generic/generic_form.html'
@@ -34,6 +73,23 @@ class ProcessCreateView(ProductionRoleRequiredMixin, AuditTrailMixin, CreateView
 
 
 class ProcessUpdateView(ProductionRoleRequiredMixin, ProcessLockRequiredMixin,AuditTrailMixin, StatusResetMixin, UpdateView):
+    """
+    Handles the update operation for a Process instance.
+
+    The class combines multiple mixins to enforce role-based access, lock
+    requirements, audit trail handling, and status resetting for the Process model.
+    It utilizes a form for process updates and manages the functionality for
+    rendering the form, processing the update, and redirecting to a success URL
+    upon completion.
+
+    Attributes:
+        model (Process): The model associated with this view.
+        form_class (ProcessForm): The form class used for updating a Process
+            instance.
+        template_name (str): Path to the template used for rendering the view's
+            form.
+        success_url (str): URL to redirect to upon successful update.
+    """
     model = Process
     form_class = ProcessForm
     template_name = 'generic/generic_form.html'
@@ -41,16 +97,53 @@ class ProcessUpdateView(ProductionRoleRequiredMixin, ProcessLockRequiredMixin,Au
 
 
 class ProcessDeleteView(ProductionRoleRequiredMixin, ProcessLockRequiredMixin,GenericDeleteView):
+    """View for handling the deletion of a Process object.
+
+    This view ensures that only users with appropriate production roles
+    and access to the necessary process lock can delete a Process object.
+    Inherits functionality from `GenericDeleteView` to handle standard
+    DELETE operations and redirect users upon successful deletion.
+
+    Attributes:
+        model (Type[Process]): The model associated with this view. Defines
+            the `Process` object being deleted.
+        success_url (str): URL to redirect to upon successful deletion. Points
+            to the process list view.
+    """
     model = Process
     success_url = reverse_lazy('production:process_list')
 
 
 class ProcessRestoreView(ProductionRoleRequiredMixin, GenericRestoreView):
+    """
+    Handles the restoration of Process objects in the application.
+
+    This class provides functionality for restoring Process instances that may
+    have been deleted or deactivated. It enforces production role requirements
+    to restrict access and also defines a redirection URL for successful restore
+    operations.
+
+    Attributes:
+        model (type): The model class to be used for restoration. Represents
+            the Process model.
+        redirect_url (str): The URL to redirect to after a successful
+            restoration operation.
+    """
     model = Process
     redirect_url = 'production:process_list'
 
 
 class ProcessDetailView(ProductionRoleRequiredMixin, EntityDetailView):
+    """
+    View for displaying detailed information about a Process.
+
+    This class extends generic entity detail functionality and integrates production role-specific
+    permissions. It optimizes query performance for related data and provides additional
+    context for rendering the Process detail view.
+
+    Attributes:
+        model (Process): The Django model representing the entity for this view.
+    """
     model = Process
 
     def get_object(self, queryset=None):
@@ -80,6 +173,18 @@ class ProcessDetailView(ProductionRoleRequiredMixin, EntityDetailView):
 
 
 class ProcessValidateView(ProductionRoleRequiredMixin, EntityValidateView):
+    """
+    View for validating a process in the production workflow.
+
+    This class handles the validation of a process in the production system. It requires
+    the user to have the appropriate production role. The validation is only allowed
+    for processes with a "PENDING" status. For other statuses, an error message is displayed,
+    and the user is redirected to the process list.
+
+    Attributes:
+        model (type): The model class representing the process to be validated.
+        redirect_url (str): The URL to redirect the user to if the validation fails.
+    """
     model = Process
     redirect_url = 'production:process_list'
 
@@ -94,6 +199,20 @@ class ProcessValidateView(ProductionRoleRequiredMixin, EntityValidateView):
 
 
 class ProcessRejectView(ProductionRoleRequiredMixin, EntityRejectView):
+    """
+    View for handling rejection of a process in the production workflow.
+
+    This class ensures that only users with the required production roles can
+    perform the reject operation on a process entity. The view validates the
+    status of the process before allowing it to be rejected. If the process is
+    not in a pending review state, it prevents rejection and displays an error
+    message to the user.
+
+    Attributes:
+        model (type): The model class associated with the process.
+        redirect_url (str): The URL to redirect to after a failed or successful
+            rejection attempt.
+    """
     model = Process
     redirect_url = 'production:process_list'
 
@@ -107,7 +226,18 @@ class ProcessRejectView(ProductionRoleRequiredMixin, EntityRejectView):
         return super().post(request, *args, **kwargs)
 
 class ProcessSubmitView(ProductionRoleRequiredMixin, View):
+    """
+    Handles submission of a process for review by changing its status.
 
+    This class-based view allows the submission of process templates for review.
+    Only users with the required production role can use this functionality.
+    The status of a process is updated to 'PENDING' if it is currently in 'DRAFT'
+    or 'REJECTED' status. A success message is displayed upon submission, and the
+    user is redirected to the process list view.
+
+    Attributes:
+        None
+    """
     def post(self, request, pk):
         process = get_object_or_404(Process, pk=pk)
         if process.status in ['DRAFT', 'REJECTED']:
@@ -119,7 +249,18 @@ class ProcessSubmitView(ProductionRoleRequiredMixin, View):
 
 
 class ProcessCreateNewVersionView(ProductionRoleRequiredMixin, View):
+    """
+    Handles the creation of a new version of a validated production process.
 
+    This view allows users with the necessary production role to create a new version
+    of an existing process template. It duplicates the process, including its units, steps,
+    parameters, samples, and their associated analyses. Only processes with a status of
+    'VALIDATED' can be versioned. The new version is created in 'DRAFT' status and is
+    initialized with all relevant data copied from the previous version.
+
+    Attributes:
+        None
+    """
     def post(self, request, pk):
         old_process = get_object_or_404(Process, pk=pk)
 
@@ -208,6 +349,18 @@ class ProcessCreateNewVersionView(ProductionRoleRequiredMixin, View):
 # 2. UNIT OPERATION VIEWS
 # =========================================================================
 class UnitOperationStructureView(ProductionRoleRequiredMixin, TemplateView):
+    """View to manage and display the structure of unit operations in a process.
+
+    This view facilitates the display of unit operations associated with a particular
+    process. It supports viewing both active and archived unit operations, along
+    with additional context such as the count of active and archived operations,
+    the user's associated group, and a form for creating or modifying
+    unit operations.
+
+    Attributes:
+        template_name (str): Path to the template used for rendering the unit
+            operation list.
+    """
     template_name = 'production/unitoperation_list.html'
 
     def get_context_data(self, **kwargs):
@@ -240,6 +393,20 @@ class UnitOperationStructureView(ProductionRoleRequiredMixin, TemplateView):
 
 
 class UnitOperationAddView(ProductionRoleRequiredMixin, View):
+    """
+    Handles the addition of a unit operation to a process flowchart.
+
+    This class-based view allows users with the necessary production role permissions
+    to add new unit operations to a specific process. The operation's order is determined
+    based on other active operations within the process. Feedback messages are displayed
+    to the user depending on the success or failure of the operation's creation.
+
+    Methods:
+        post: Handles POST requests for adding a unit operation to a process.
+
+    Attributes:
+        None
+    """
     def post(self, request, process_pk):
         process = get_object_or_404(Process, pk=process_pk)
         view_mode = request.GET.get('view', 'active')
@@ -278,7 +445,18 @@ class UnitOperationAddView(ProductionRoleRequiredMixin, View):
 
 
 class UnitOperationRestoreView(ProductionRoleRequiredMixin, View):
+    """
+    Handles the restoration of an archived UnitOperation back to the active flowchart
+    within a specific process.
 
+    This view facilitates the process of restoring a `UnitOperation` instance by updating
+    its order to the next available position in the active flowchart. It ensures the
+    integrity of the order for both active and archived `UnitOperation` instances within
+    the same process.
+
+    Attributes:
+        None
+    """
     def post(self, request, pk):
         unit = get_object_or_404(UnitOperation, pk=pk)
         process_pk = unit.process.pk
@@ -310,7 +488,17 @@ class UnitOperationRestoreView(ProductionRoleRequiredMixin, View):
 
 
 class UnitOperationReorderView(ProductionRoleRequiredMixin, View):
+    """
+    Handles the reordering of unit operations within a production process.
 
+    This class is a view that allows the reordering of steps (units) in a production
+    process unless the process is in a locked state, such as 'VALIDATED' or 'PENDING'.
+    The ordering is performed atomically to ensure data consistency. It ensures that
+    the sequence of flow in the production process can be updated dynamically.
+
+    Attributes:
+        None
+    """
     def get(self, request, pk, direction):
         unit = get_object_or_404(UnitOperation, pk=pk)
         process = unit.process
@@ -351,6 +539,17 @@ class UnitOperationReorderView(ProductionRoleRequiredMixin, View):
 
 
 class UnitOperationDetailView(ProductionRoleRequiredMixin, EntityDetailView):
+    """View for displaying the details of a UnitOperation.
+
+    This class serves as a detail view for a UnitOperation instance, extending
+    functionality from `EntityDetailView`. It enforces a role-based access control
+    by integrating `ProductionRoleRequiredMixin`. The view customizes the context
+    data to include dynamic actions based on the status of the related process.
+
+    Attributes:
+        model (UnitOperation): The model associated with this view.
+        template_name (str): The name of the template used for rendering the view.
+    """
     model = UnitOperation
     template_name = 'generic/generic_detail.html'
 
@@ -373,6 +572,19 @@ class UnitOperationDetailView(ProductionRoleRequiredMixin, EntityDetailView):
 
 
 class UnitOperationUpdateView(ProductionRoleRequiredMixin, AuditTrailMixin, StatusResetMixin, UpdateView):
+    """
+    Handles the update view for a UnitOperation object.
+
+    This class is responsible for rendering a form to update an existing UnitOperation,
+    validating the provided input, saving the updates, and redirecting the user upon
+    successful completion. It ensures that appropriate permissions are enforced through
+    the use of mixins and maintains an audit trail for changes.
+
+    Attributes:
+        model (Model): The model associated with this view, representing a unit operation.
+        form_class (Form): The form class used to render and validate the input.
+        template_name (str): The path to the HTML template for rendering the form.
+    """
     model = UnitOperation
     form_class = UnitOperationForm
     template_name = 'generic/generic_form.html'
@@ -382,6 +594,17 @@ class UnitOperationUpdateView(ProductionRoleRequiredMixin, AuditTrailMixin, Stat
 
 
 class UnitOperationDeleteView(ProductionRoleRequiredMixin, GenericDeleteView):
+    """
+    Handles the deletion of a UnitOperation object from the database and updates the
+    ordering of other UnitOperation objects in the relevant process.
+
+    This view provides functionality to archive a specific UnitOperation object, reassign
+    orders for the active and archived UnitOperation objects within the same process,
+    and display relevant user messages upon completion.
+
+    Attributes:
+        model (type): The model associated with this view, which is `UnitOperation`.
+    """
     model = UnitOperation
 
     def get_success_url(self):
@@ -428,6 +651,16 @@ class UnitOperationDeleteView(ProductionRoleRequiredMixin, GenericDeleteView):
 # 3. STEP VIEWS
 # =========================================================================
 class StepStructureView(ProductionRoleRequiredMixin, TemplateView):
+    """
+    View that displays a list of steps in a unit operation with filtering options.
+
+    This view retrieves and displays step data associated with a specific unit operation,
+    allowing users to filter between active and archived steps. It also provides contextual
+    information such as the user's group, counts of active and archived steps, and associated forms.
+
+    Attributes:
+        template_name (str): Path to the HTML template used to render the view.
+    """
     template_name = 'production/step_list.html'
 
     def get_context_data(self, **kwargs):
@@ -461,7 +694,17 @@ class StepStructureView(ProductionRoleRequiredMixin, TemplateView):
 
 
 class StepAddView(ProductionRoleRequiredMixin, View):
+    """
+    Handles the addition of a new step to a unit operation in a production system.
 
+    This view is responsible for processing the form submission to add a new step to
+    a specific unit operation. It validates the input data, assigns necessary metadata,
+    and updates the ordering of active steps for proper positioning. In case of form
+    errors or system issues, appropriate messages are displayed to the user.
+
+    Attributes:
+        None
+    """
     def post(self, request, unit_pk):
         unit = get_object_or_404(UnitOperation, pk=unit_pk)
         view_mode = request.GET.get('view', 'active')
@@ -493,6 +736,16 @@ class StepAddView(ProductionRoleRequiredMixin, View):
         return redirect(f"/production/unit-operations/{unit.pk}/manage/?view={view_mode}")
 
 class StepDeleteView(ProductionRoleRequiredMixin, GenericDeleteView):
+    """
+    View class to handle the deletion of Step objects with extended functionality.
+
+    This class ensures that steps associated with a unit operation are properly
+    archived, and active and archived sequences are re-indexed after deletion.
+    It also manages user notifications for successful and failed deletion actions.
+
+    Attributes:
+        model (Step): The database model associated with this view.
+    """
     model = Step
 
     def get_success_url(self):
@@ -536,7 +789,18 @@ class StepDeleteView(ProductionRoleRequiredMixin, GenericDeleteView):
         return HttpResponseRedirect(success_url)
 
 class StepRestoreView(ProductionRoleRequiredMixin, View):
+    """
+    Handles the restoration of archived steps within a unit operation.
 
+    This class is responsible for restoring archived steps in a production
+    environment. When a step is restored, it is marked as active, assigned a
+    new order, and properly re-added to the active steps list. Any archived
+    steps with altered order due to gaps are adjusted accordingly. Messages
+    are displayed to indicate the success or failure of the operation.
+
+    Attributes:
+        None
+    """
     def post(self, request, pk):
         step = get_object_or_404(Step, pk=pk)
         unit_pk = step.unit_operation.pk
@@ -567,7 +831,17 @@ class StepRestoreView(ProductionRoleRequiredMixin, View):
 
 
 class StepReorderView(ProductionRoleRequiredMixin, View):
+    """
+    Provides functionality to reorder steps within a production unit operation.
 
+    This view allows steps within a production process to be reordered by moving
+    a specific step up or down in the sequence. The reordering is only permitted
+    if the process status allows modification of its structure. Once the reordering
+    is completed, an appropriate message is displayed to the user.
+
+    Attributes:
+        None
+    """
     def get(self, request, pk, direction):
         step = get_object_or_404(Step, pk=pk)
         unit = step.unit_operation
@@ -609,6 +883,18 @@ class StepReorderView(ProductionRoleRequiredMixin, View):
 
 
 class StepDetailView(ProductionRoleRequiredMixin, EntityDetailView):
+    """
+    Represents the detailed view for a specific Step in the production process.
+
+    The StepDetailView class inherits from both ProductionRoleRequiredMixin and EntityDetailView.
+    It is designed to display detailed information about a specific Step object in a template.
+    Additionally, it customizes the context data to filter out certain dynamic actions based on
+    the status of the associated process.
+
+    Attributes:
+        model (Step): The model associated with this view.
+        template_name (str): The template used to render the detailed view.
+    """
     model = Step
     template_name = 'generic/generic_detail.html'
 
@@ -631,6 +917,19 @@ class StepDetailView(ProductionRoleRequiredMixin, EntityDetailView):
 
 
 class StepUpdateView(ProductionRoleRequiredMixin, AuditTrailMixin, StatusResetMixin, UpdateView):
+    """
+    Handles the update view for the Step model, incorporating role-based access, audit
+    trail logging, and resetting of statuses as required within the update operation.
+
+    This class is used to modify instances of the Step model while enforcing production
+    role requirements, tracking changes through audit trails, and resetting related
+    statuses upon updates. It also defines a custom success URL for post-update redirection.
+
+    Attributes:
+        model (Step): The model associated with this view.
+        form_class (StepForm): The form class used for handling Step model updates.
+        template_name (str): The template file used to render the update form.
+    """
     model = Step
     form_class = StepForm
     template_name = 'generic/generic_form.html'
@@ -643,6 +942,18 @@ class StepUpdateView(ProductionRoleRequiredMixin, AuditTrailMixin, StatusResetMi
 # 4. PARAMETER VIEWS
 # =========================================================================
 class ParameterStructureView(ProductionRoleRequiredMixin, TemplateView):
+    """
+    Handles the display of parameters associated with a specific step in a production process.
+
+    This view is responsible for retrieving and organizing data regarding parameters
+    and their statuses (active or archived) for a specific step. It also provides
+    context variables required for rendering the page, including user group information
+    and parameter counts.
+
+    Attributes:
+        template_name (str): The path to the template used to render the parameter
+            list view.
+    """
     template_name = 'production/parameter_list.html'
 
     def get_context_data(self, **kwargs):
@@ -678,6 +989,20 @@ class ParameterStructureView(ProductionRoleRequiredMixin, TemplateView):
 
 
 class ParameterAddView(ProductionRoleRequiredMixin, View):
+    """
+    Handles the addition of a new parameter to a specific step in a production process.
+
+    This view allows users to add parameters to a given step in the production workflow.
+    It validates the parameter form, assigns a sequential order to the new parameter, and
+    saves it while associating it with the step and user performing the action. Upon
+    successful creation, a success message is displayed, and the user is redirected to
+    the updated parameters list for the step. Errors during validation or saving are
+    handled and appropriate error messages are shown.
+
+    Attributes:
+        model_name (str): A description of the model name utilized in the process,
+
+    """
     def post(self, request, step_pk):
         step = get_object_or_404(Step, pk=step_pk)
         view_mode = request.GET.get('view', 'active')
@@ -710,6 +1035,18 @@ class ParameterAddView(ProductionRoleRequiredMixin, View):
 
 
 class ParameterDeleteView(ProductionRoleRequiredMixin, GenericDeleteView):
+    """
+    View for deleting a Parameter instance with additional processing.
+
+    This class provides a mechanism to delete a Parameter instance from the production
+    workflow, including tasks such as updating the order of active and archived
+    parameters after deletion and displaying appropriate user messages. It is designed
+    to be used in production settings where ordering and status of parameters are
+    critical to system functionality.
+
+    Attributes:
+        model (Parameter): The model associated with this view.
+    """
     model = Parameter
 
     def get_success_url(self):
@@ -752,6 +1089,17 @@ class ParameterDeleteView(ProductionRoleRequiredMixin, GenericDeleteView):
 
 
 class ParameterRestoreView(ProductionRoleRequiredMixin, View):
+    """
+    Handles the restoration of archived parameters for a specific step in the application's production process.
+
+    This view is responsible for restoring a previously archived parameter, updating its order,
+    and ensuring the orders of other archived parameters are adjusted accordingly. The process
+    is performed within a database transaction to maintain data consistency. Finally, it redirects
+    to the archived parameters view for the related step.
+
+    Attributes:
+        None
+    """
     def post(self, request, pk):
         param = get_object_or_404(Parameter, pk=pk)
         step_pk = param.step.pk
@@ -782,6 +1130,16 @@ class ParameterRestoreView(ProductionRoleRequiredMixin, View):
 
 
 class ParameterReorderView(ProductionRoleRequiredMixin, View):
+    """
+    Handles reordering of parameters within a production step.
+
+    Allows the user to reorder parameters in a production step, either moving
+    them up or down the list. Restrictions apply if the associated process
+    structure is locked or has a specific status.
+
+    Attributes:
+        model (type): The `Parameter` model being manipulated.
+    """
     def get(self, request, pk, direction):
         param = get_object_or_404(Parameter, pk=pk)
         step = param.step
@@ -821,6 +1179,19 @@ class ParameterReorderView(ProductionRoleRequiredMixin, View):
 
 
 class ParameterDetailView(ProductionRoleRequiredMixin, EntityDetailView):
+    """
+    Handles displaying the details of a Parameter entity.
+
+    This class extends the functionality of `EntityDetailView` to provide a detailed view
+    of Parameter entities. It incorporates authorization checks and customizes the dynamic
+    actions available in the context based on the status of related processes. It ensures
+    the appropriate dynamic actions are filtered based on specific conditions, such as
+    the process status and entity associations.
+
+    Attributes:
+        model (Model): The model the view operates upon. In this case, it is the `Parameter` model.
+        template_name (str): The name of the template used for rendering the detail view.
+    """
     model = Parameter
     template_name = 'generic/generic_detail.html'
 
@@ -844,6 +1215,20 @@ class ParameterDetailView(ProductionRoleRequiredMixin, EntityDetailView):
 
 
 class ParameterUpdateView(ProductionRoleRequiredMixin, AuditTrailMixin, StatusResetMixin, UpdateView):
+    """
+    Class for handling parameter updates in the production workflow.
+
+    This class extends multiple mixins to provide functionality such as
+    role-based access control, audit trail management, and status reset
+    capabilities. It leverages Django's UpdateView to handle updating
+    instances of the Parameter model using a form. A specific success URL
+    is defined to redirect after the parameter is successfully updated.
+
+    Attributes:
+        model: The model being updated, which is Parameter.
+        form_class: The form used to update the Parameter model.
+        template_name (str): Path to the template used for rendering the form.
+    """
     model = Parameter
     form_class = ParameterForm
     template_name = 'generic/generic_form.html'
@@ -855,6 +1240,16 @@ class ParameterUpdateView(ProductionRoleRequiredMixin, AuditTrailMixin, StatusRe
 # 5. SAMPLE VIEWS
 # =========================================================================
 class SampleStructureView(ProductionRoleRequiredMixin, TemplateView):
+    """
+    A view for displaying and managing a list of samples for a specific step in a production process.
+
+    This view is used to show active or archived samples associated with a specific step
+    in a production process. The view also provides context information related to the
+    step, unit operation, associated process, and the user's group information if available.
+
+    Attributes:
+        template_name (str): The path to the template used for rendering the view.
+    """
     template_name = 'production/sample_list.html'
 
     def get_context_data(self, **kwargs):
@@ -889,6 +1284,17 @@ class SampleStructureView(ProductionRoleRequiredMixin, TemplateView):
 
 
 class SampleAddView(ProductionRoleRequiredMixin, View):
+    """
+    Handles the addition of samples associated with a specific step in the production workflow.
+
+    This view facilitates creating and saving a sample linked to a production step. It processes
+    a POST request containing form data for a new sample. Upon successful validation and saving,
+    a success message is displayed, otherwise error messages are shown. Once processed, the user
+    is redirected back to the sample listing of the relevant step.
+
+    Attributes:
+        None
+    """
     def post(self, request, step_pk):
         step = get_object_or_404(Step, pk=step_pk)
         view_mode = request.GET.get('view', 'active')
@@ -914,6 +1320,17 @@ class SampleAddView(ProductionRoleRequiredMixin, View):
 
 
 class SampleDeleteView(ProductionRoleRequiredMixin, GenericDeleteView):
+    """
+    Handles the deletion of a sample within a production workflow.
+
+    This class ensures that only users with the required production role can delete
+    a sample. Upon successful deletion, it redirects the user to the appropriate
+    active samples view of the corresponding step. If deletion fails, a relevant
+    error message is displayed, and the process is aborted.
+
+    Attributes:
+        model (Sample): Specifies the model associated with this view.
+    """
     model = Sample
 
     def get_success_url(self):
@@ -930,6 +1347,17 @@ class SampleDeleteView(ProductionRoleRequiredMixin, GenericDeleteView):
 
 
 class SampleRestoreView(ProductionRoleRequiredMixin, View):
+    """
+    Handles the restoration of archived samples in the production system.
+
+    Provides functionality to restore a sample to its active state and handle any
+    errors encountered during the restore process. This view enforces role-based
+    access control, allowing only users with the "Production Role" to perform the
+    operation.
+
+    Attributes:
+        None
+    """
     def post(self, request, pk):
         sample = get_object_or_404(Sample, pk=pk)
         step_pk = sample.step.pk
@@ -942,6 +1370,18 @@ class SampleRestoreView(ProductionRoleRequiredMixin, View):
 
 
 class SampleDetailView(ProductionRoleRequiredMixin, EntityDetailView):
+    """
+    View for displaying detailed information about a Sample.
+
+    This view is responsible for rendering the detailed information of a `Sample`
+    object. It ensures that only authorized users can access the view and modifies
+    the context data to remove specific dynamic actions based on the status of the
+    associated process.
+
+    Attributes:
+        model (type): The model associated with this view.
+        template_name (str): The template used for rendering the detailed view.
+    """
     model = Sample
     template_name = 'generic/generic_detail.html'
 
@@ -964,6 +1404,19 @@ class SampleDetailView(ProductionRoleRequiredMixin, EntityDetailView):
 
 
 class SampleUpdateView(ProductionRoleRequiredMixin, AuditTrailMixin, StatusResetMixin, UpdateView):
+    """
+    View for updating a Sample instance.
+
+    This view is responsible for managing the update of a `Sample` object. It ensures proper
+    permissions and audit tracking by utilizing several mixins. The view also manages
+    the status reset functionality for the updated `Sample`, and uses a form to perform
+    validations on the input data during the update process.
+
+    Attributes:
+        model (Model): The model class associated with this view. Represents the `Sample` model.
+        form_class (Form): The form class used for handling and validating input data.
+        template_name (str): The path to the template used for rendering the update view.
+    """
     model = Sample
     form_class = SampleForm
     template_name = 'generic/generic_form.html'
@@ -976,6 +1429,20 @@ class SampleUpdateView(ProductionRoleRequiredMixin, AuditTrailMixin, StatusReset
 # 6. ANALYSIS VIEWS
 # =========================================================================
 class AnalysisStructureView(ProductionRoleRequiredMixin, TemplateView):
+    """
+    Represents a view for analyzing the structure of a sample within a production
+    process.
+
+    This class is responsible for retrieving context data required to display the
+    analysis information related to a specific sample. It supports switching
+    between active and archived analyses and includes additional metadata for
+    rendering the context in a template. The view is restricted to users with
+    specific production roles.
+
+    Attributes:
+        template_name (str): The name of the template used for rendering the
+            view.
+    """
     template_name = 'production/analysis_list.html'
 
     def get_context_data(self, **kwargs):
@@ -1011,6 +1478,17 @@ class AnalysisStructureView(ProductionRoleRequiredMixin, TemplateView):
 
 
 class AnalysisAddView(ProductionRoleRequiredMixin, View):
+    """Handles the addition of an analysis for a given sample.
+
+    This view is responsible for processing a POST request to add a new analysis
+    associated with a specific sample. It validates form data, handles errors, and
+    saves the analysis instance to the database if valid. The user is redirected
+    to the analysis list page upon completion. User messages indicate success or
+    failure of the operation.
+
+    Attributes:
+        None
+    """
     def post(self, request, sample_pk):
         sample = get_object_or_404(Sample, pk=sample_pk)
         view_mode = request.GET.get('view', 'active')
@@ -1037,6 +1515,18 @@ class AnalysisAddView(ProductionRoleRequiredMixin, View):
 
 
 class AnalysisDeleteView(ProductionRoleRequiredMixin, GenericDeleteView):
+    """
+    Handles the deletion of analysis objects within a production context.
+
+    This view ensures that only users with appropriate production roles can delete
+    analysis objects. Upon successful deletion, the user is redirected to an
+    active analyses view of the associated sample. If deletion fails, the user is
+    presented with an appropriate error message.
+
+    Attributes:
+        model (Model): The model associated with the view, specifying the type of
+            object this view will handle (Analysis).
+    """
     model = Analysis
 
     def get_success_url(self):
@@ -1053,6 +1543,20 @@ class AnalysisDeleteView(ProductionRoleRequiredMixin, GenericDeleteView):
 
 
 class AnalysisRestoreView(ProductionRoleRequiredMixin, View):
+    """
+    Handles the restoration of archived analyses within the production system.
+
+    This view enables authorized users to restore previously archived analyses.
+    Upon successful restoration, users are redirected to the analyses page of
+    the corresponding sample. It ensures error handling to provide feedback
+    in case the restoration fails.
+
+    Methods:
+        post: Processes the restoration request for a specified analysis.
+
+    Attributes:
+        None
+    """
     def post(self, request, pk):
         analysis = get_object_or_404(Analysis, pk=pk)
         sample_pk = analysis.sample.pk
@@ -1065,6 +1569,18 @@ class AnalysisRestoreView(ProductionRoleRequiredMixin, View):
 
 
 class AnalysisDetailView(ProductionRoleRequiredMixin, EntityDetailView):
+    """
+    Provides a detailed view for the Analysis model, ensuring that only users with the necessary
+    production role permissions can access it.
+
+    This class is designed to render a detailed page for an Analysis object using a generic
+    template. It customizes the context data to dynamically update actionable user interface
+    elements based on the state of related objects, such as the Status of the associated process.
+
+    Attributes:
+        model (Model): Specifies the Analysis model as the target for detail view functionality.
+        template_name (str): Path to the HTML template used to render the detail view.
+    """
     model = Analysis
     template_name = 'generic/generic_detail.html'
 
@@ -1087,6 +1603,24 @@ class AnalysisDetailView(ProductionRoleRequiredMixin, EntityDetailView):
 
 
 class AnalysisUpdateView(ProductionRoleRequiredMixin, AuditTrailMixin, StatusResetMixin, UpdateView):
+    """View class for updating Analysis objects.
+
+    This class is used to handle the update functionality for Analysis objects.
+    It enforces specific production roles, maintains an audit trail of changes, and
+    resets statuses as needed.
+
+    This view utilizes a specified form class to render and process the update
+    form and provides a custom template for this purpose. Additionally, it
+    defines a success URL that redirects to the list of active analyses for
+    the associated sample upon successful update.
+
+    Attributes:
+        model (Type[Model]): The model that the view will operate on, in this
+            case, the `Analysis` model.
+        form_class (Type[ModelForm]): The form class used for rendering and processing
+            the update form.
+        template_name (str): The path to the template used to render the update form.
+    """
     model = Analysis
     form_class = AnalysisForm
     template_name = 'generic/generic_form.html'

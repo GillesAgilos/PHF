@@ -19,6 +19,27 @@ from simple_history.models import HistoricalRecords
 # =========================================================================
 
 class BaseModel(models.Model):
+    """
+    BaseModel serves as an abstract base class, providing essential fields and functionality
+    for all models inheriting from it. It includes status tracking, soft-deletion mechanics,
+    audit fields for tracking creation and modification metadata, and utility methods for
+    common operations such as validation, restoration, and field-level cleaning.
+
+    Attributes:
+        unique_id (UUIDField): The universally unique identifier for the model instance,
+            serving as the primary key.
+        status (CharField): Represents the current lifecycle status of the object, with choices
+            including 'DRAFT', 'VALIDATED', and 'REJECTED'.
+        created_at (DateTimeField): The timestamp indicating when the record was created.
+        created_by (ForeignKey): A reference to the user who created the record. Can be null or blank.
+        updated_at (DateTimeField): The timestamp indicating the last time the record was updated.
+        updated_by (ForeignKey): A reference to the user who last updated the record. Can be null or blank.
+        is_active (BooleanField): Indicates whether the record is currently active or soft-deleted.
+        deleted_at (DateTimeField): The timestamp of when the record was soft-deleted. Can be null or blank.
+        deleted_by (ForeignKey): A reference to the user who soft-deleted the record. Can be null or blank.
+        history (HistoricalRecords): Historical tracking of changes made to the model instance.
+        rejection_reason (TextField): A reason provided for why the record was rejected.
+    """
     unique_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     class Status(models.TextChoices):
@@ -109,7 +130,22 @@ class BaseModel(models.Model):
 
     def get_authorized_actions(self, user):
         """
-        Calculates authorized actions for Referential entities based on their lifecycle status.
+        Determines the set of actions a user is authorized to perform on the object, based
+        on their authentication status, group memberships, and the current state of the
+        object. Different roles such as "System_Admin", "Data_Steward", and "QA_Representative"
+        have varying levels of permissions and can perform specific actions.
+
+        Args:
+            user (User): The user for whom the authorized actions are being determined.
+
+        Returns:
+            list: A list of dictionaries, where each dictionary represents a specific action the
+            user is authorized to perform. Each dictionary contains the following keys:
+                - 'label' (str): The display label for the action.
+                - 'url' (str): The URL endpoint where the action is performed.
+                - 'class' (str): The CSS classes to style the action.
+                - 'icon' (str): The icon class for visual representation.
+                - 'method' (str): The HTTP method to use when performing the action.
         """
         actions = []
         if not user.is_authenticated:
@@ -172,6 +208,35 @@ class BaseModel(models.Model):
 # =========================================================================
 
 class BaseComponentEntity(models.Model):
+    """
+    Represents a base model entity with common fields and functionalities for tracking
+    creation, updates, soft-deletion, and historical records.
+
+    This class serves as an abstract model to be extended by other models that require
+    basic entity tracking features such as audit fields for creation, modification,
+    soft-deletion handling, and historical record keeping. It ensures data consistency
+    through the clean method and enforces validation constraints tied to parent entities.
+
+    Attributes:
+        unique_id (UUIDField): A unique identifier for the entity, automatically
+            generated as the primary key.
+        created_at (DateTimeField): Timestamp when the entity was created, set
+            automatically at creation.
+        created_by (ForeignKey): The user who created the entity. Can be null or
+            blank, with a reference to the AUTH_USER_MODEL.
+        updated_at (DateTimeField): Timestamp when the entity was last updated,
+            set automatically on every update.
+        updated_by (ForeignKey): The user who last updated the entity. Can be
+            null or blank, with a reference to the AUTH_USER_MODEL.
+        is_active (BooleanField): Indicates whether the entity is active. Used
+            for soft deletion. Defaults to True.
+        deleted_at (DateTimeField): Timestamp when the entity was soft-deleted. Can
+            be null or blank.
+        deleted_by (ForeignKey): The user who soft-deleted the entity. Can be null
+            or blank, with a reference to the AUTH_USER_MODEL.
+        history (HistoricalRecords): Historical record management for tracking
+            changes to the entity over time.
+    """
     unique_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -229,7 +294,17 @@ class BaseComponentEntity(models.Model):
 # =========================================================================
 
 class ProcessLockRequiredMixin:
+    """
+    Mixin to enforce access restrictions on locked process-related views.
 
+    This mixin checks whether the requested object or process is in a locked state
+    (i.e., 'VALIDATED' or 'PENDING') and denies the action when appropriate. It can
+    be used to protect views where operations should not be allowed on locked
+    processes, units, or steps.
+
+    Attributes:
+        None
+    """
     def dispatch(self, request, *args, **kwargs):
         obj = None
         if hasattr(self, 'get_object'):
@@ -288,6 +363,19 @@ class ProcessLockRequiredMixin:
 
 
 class AuditTrailMixin:
+    """
+    A mixin to enhance form handling with audit trail functionality for Django admin interfaces.
+
+    This mixin is designed to add audit trail capabilities, providing features such as restriction
+    of actions on inactive or archived objects, tracking changes with justifications, and recording
+    user actions for object creation and updates. It is intended for use in a Django admin
+    context, where forms are required to manage model instances effectively.
+
+    Attributes:
+        model (type): The associated Django model class that this mixin interacts with.
+        request (type): The current HttpRequest object containing metadata about the
+            request, typically passed in during runtime operations.
+    """
     def form_valid(self, form):
         if form.instance.pk:
             current_obj = self.model.objects.filter(pk=form.instance.pk).first()
@@ -310,6 +398,19 @@ class AuditTrailMixin:
 
 
 class StatusResetMixin:
+    """
+    Mixin to reset the status of a model instance upon form validation if changes
+    are detected.
+
+    This mixin modifies the behavior of the form's validation process to reset the
+    `status` field of the corresponding model instance to 'DRAFT' when changes have
+    been made to the form inputs. It is intended to be used in scenarios where the
+    status of a model instance must reflect any ongoing edits or updates.
+
+    Methods:
+        form_valid: Overrides the default form validation behavior to include logic
+            for resetting the `status` field if necessary.
+    """
     def form_valid(self, form):
         if form.instance.pk and form.has_changed():
             form.instance.status = 'DRAFT'
@@ -318,6 +419,18 @@ class StatusResetMixin:
 
 
 class FilterStateMixin:
+    """
+    A mixin class for filtering querysets and managing context data in list views.
+
+    This class provides functionalities to filter querysets based on search terms
+    and view modes, such as active, archived, and rejected items. It also adds
+    additional context data to the views, such as counts for different statuses
+    and URL filters for pagination or query parameters navigation.
+
+    Attributes:
+        search_fields (list of str): Fields to be used for search filtering.
+        paginate_by (int): The number of items to be displayed per page.
+    """
     search_fields = ['name']
     paginate_by = 20
 
@@ -390,6 +503,17 @@ class FilterStateMixin:
 # =========================================================================
 
 class GenericDeleteView(DeleteView):
+    """
+    Handles the deletion of objects with a confirmation step and success message.
+
+    This class provides functionality for confirming and processing the deletion of
+    objects. It uses a predefined template for the confirmation page and allows
+    archiving of objects by associating the deletion action with a user. A success
+    message is displayed upon successful deletion.
+
+    Attributes:
+        template_name (str): Path to the template used for the confirmation page.
+    """
     template_name = 'generic/generic_confirm_delete.html'
 
     def form_valid(self, form):
@@ -399,6 +523,20 @@ class GenericDeleteView(DeleteView):
 
 
 class GenericRestoreView(View):
+    """
+    View for handling the restoration of a model instance.
+
+    This class provides functionality to restore a previously deleted or deactivated
+    model instance. It retrieves the instance, attempts to restore it using its
+    `restore` method, and then redirects the user to a specified URL. Success or
+    failure messages are displayed to the user based on the operation's result.
+
+    Attributes:
+        model (Model): The model class associated with the view. This attribute
+            should be set to specify which model to access for restoration.
+        redirect_url (str): The URL to redirect the user to after the restoration
+            attempt is complete.
+    """
     model = None
     redirect_url = None
 
@@ -417,6 +555,17 @@ class GenericRestoreView(View):
 
 
 class EntityValidateView(View):
+    """
+    Handles entity validation in a web application.
+
+    This class-based view is used to validate specific entities within a web application.
+    It retrieves an object based on the provided primary key, invokes a validation method on
+    the object, displays a success message, and redirects to a specified URL.
+
+    Attributes:
+        model (type): The model class associated with the entity to be validated.
+        redirect_url (str): The URL to which the user is redirected after validation.
+    """
     model = None
     redirect_url = None
 
@@ -428,6 +577,21 @@ class EntityValidateView(View):
 
 
 class EntityRejectView(View):
+    """
+    Allows rejection of a specific entity instance by handling POST requests.
+
+    The EntityRejectView class enables updating the status of a specific entity
+    instance to 'REJECTED' along with a reason provided by the user. This view
+    is particularly useful for workflows that support rejecting objects with
+    customizable rejection reasons. It also displays appropriate messages to
+    the user upon successful or failed operations.
+
+    Attributes:
+        model (Type[Model]): The model class that the view handles. It should
+            be a subclass of `django.db.models.Model`.
+        redirect_url (str): The URL to which the user will be redirected after
+            processing the request.
+    """
     model = None
     redirect_url = None
 
@@ -446,6 +610,20 @@ class EntityRejectView(View):
 
 
 class EntityDetailView(AuditTrailMixin, ListView):
+    """
+    View class to display detailed information and historical changes of an object.
+
+    This class provides functionality to fetch and display the history of changes
+    for an object, including a detailed comparison of its historical states.
+    It dynamically generates a user-friendly context used for rendering the
+    template, including object details, field changes, and authorized user actions.
+
+    Attributes:
+        template_name (str): The path to the template used for rendering the view.
+        context_object_name (str): The key under which the queryset will be
+            available in the template context.
+
+    """
     template_name = 'generic/generic_detail.html'
     context_object_name = 'history_records'
 
@@ -542,6 +720,20 @@ class EntityDetailView(AuditTrailMixin, ListView):
 # =========================================================================
 
 class BaseEntityForm(forms.ModelForm):
+    """
+    This class represents a form for managing entity modifications with an optional
+    justification field.
+
+    The form extends `forms.ModelForm` to provide additional functionality for tracking
+    and validating the reason for modifying an entity. It ensures that modifications
+    are accompanied by a descriptive justification when necessary. The form is designed
+    to handle cases for both new entity creation and modifications to existing entities.
+
+    Attributes:
+        change_justification (forms.CharField): A text field for capturing the reason
+            for entity modification. It is optional during creation but required
+            when modifying an existing entity.
+    """
     change_justification = forms.CharField(
         widget=forms.Textarea(
             attrs={'rows': 2, 'placeholder': 'Why are you modifying this entity?', 'class': 'form-control'}),

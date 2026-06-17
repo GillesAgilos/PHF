@@ -4,6 +4,19 @@ from django.urls import resolve
 
 
 class LoginRequiredMiddleware:
+    """
+    Middleware that enforces login requirements and redirects users to a login page when
+    accessing protected views.
+
+    This middleware intercepts HTTP requests, checks if the user is authenticated,
+    and ensures that users attempting to access non-exempt URLs are redirected to
+    the login page if not authenticated. Exempt URLs are specified and bypass this
+    check, allowing unauthenticated access.
+
+    Attributes:
+        get_response (Callable): The next middleware or view in the request response
+            cycle, invoked after this middleware processes the request.
+    """
     def __init__(self, get_response):
         self.get_response = get_response
 

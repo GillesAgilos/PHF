@@ -7,6 +7,20 @@ from production.models import Process, Parameter, Analysis
 
 
 class BatchForm(BaseEntityForm):
+    """
+    This class represents a form for creating and editing Batch entities.
+
+    The form is designed to handle input related to Batch attributes such as
+    name, project, process, category, iteration number, start date, and end
+    date. It includes custom logic to handle project, process, and category
+    selection, as well as validation to prevent duplicate iteration numbers.
+
+    Attributes:
+        Meta (Meta): Contains model configuration metadata.
+        fields (list): Specifies the fields to be included in the form.
+        widgets (dict): Customizes the widgets for certain fields to provide
+            specific attributes like input types and CSS classes.
+    """
     class Meta:
         model = Batch
         fields = ['name', 'project', 'process', 'category', 'iteration_number', 'start_date', 'end_date']
@@ -67,6 +81,24 @@ class BatchForm(BaseEntityForm):
 
 
 class ParameterResultForm(BaseEntityForm):
+    """
+    Form class used for managing and validating data related to ParameterResult.
+
+    This form is specifically designed to handle ParameterResult objects, providing
+    customized behavior for field initialization and rendering. It ensures that
+    only active batches and active parameters populate their respective fields and
+    adjusts widget behavior based on the format type of a parameter.
+
+    Attributes:
+        Meta:
+            model (ParameterResult): The model associated with this form.
+
+        fields (list): List of fields to display in the form. Includes:
+            - batch: Represents the batch associated with the ParameterResult.
+            - parameter: Represents the parameter linked to the actual value.
+            - actual_value: Stores the actual value for a specific parameter.
+            - comment: Allows for additional comments regarding the ParameterResult.
+    """
     class Meta:
         model = ParameterResult
         fields = ['batch', 'parameter', 'actual_value', 'comment']
@@ -94,6 +126,18 @@ class ParameterResultForm(BaseEntityForm):
 
 
 class AnalysisResultForm(BaseEntityForm):
+    """
+    Defines a form for handling analysis results.
+
+    This form is built upon the BaseEntityForm and is specialized to manage
+    the input and manipulation of AnalysisResult models. It includes custom
+    initialization to dynamically filter querysets for specific fields and
+    applies read-only behavior to certain fields when editing existing records.
+
+    Attributes:
+        Meta (Meta): Specifies the model associated with the form and the fields
+            to be included in the form.
+    """
     class Meta:
         model = AnalysisResult
         fields = ['batch', 'analysis', 'actual_value', 'comment']
