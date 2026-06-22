@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.http import HttpResponseRedirect, request
 from django.urls import reverse_lazy
 from django.shortcuts import get_object_or_404, redirect
@@ -40,7 +41,7 @@ class ProcessListView(ProductionRoleRequiredMixin, FilterStateMixin, ListView):
     model = Process
     template_name = 'production/process_list.html'
     context_object_name = 'processes'
-    search_fields = ['name', 'code']
+    search_fields = ['name', 'code', 'scale']
 
 
 class ProcessCreateView(ProductionRoleRequiredMixin, AuditTrailMixin, CreateView):
@@ -249,14 +250,12 @@ class ProcessSubmitView(ProductionRoleRequiredMixin, View):
 
 
 class ProcessCreateNewVersionView(ProductionRoleRequiredMixin, View):
-    """
-    Handles the creation of a new version of a validated production process.
+    """Handles the creation of a new version of a validated process template.
 
-    This view allows users with the necessary production role to create a new version
-    of an existing process template. It duplicates the process, including its units, steps,
-    parameters, samples, and their associated analyses. Only processes with a status of
-    'VALIDATED' can be versioned. The new version is created in 'DRAFT' status and is
-    initialized with all relevant data copied from the previous version.
+    This view allows creating a new draft version of an existing validated process
+    template. It copies the details of units, steps, parameters, and analyses from
+    the old version to the new version. The new version is created in draft status
+    and must be validated before it can be used.
 
     Attributes:
         None
@@ -264,85 +263,105 @@ class ProcessCreateNewVersionView(ProductionRoleRequiredMixin, View):
     def post(self, request, pk):
         old_process = get_object_or_404(Process, pk=pk)
 
-        if old_process.status != 'VALIDATED':
+        if old_process.status != "VALIDATED":
             messages.error(request, "Only validated templates can be versioned.")
-            return redirect('production:process_list')
+            return redirect("production:process_list")
 
-        with transaction.atomic():
-            max_version = Process.objects.filter(
-                code=old_process.code
-            ).aggregate(Max('version'))['version__max']
+        try:
+            with transaction.atomic():
+                max_version = Process.objects.filter(code=old_process.code).aggregate(Max("version"))[
+                    "version__max"
+                ]
 
-            current_max = max_version if max_version is not None else old_process.version
-            next_version = current_max + 1
+                current_max = max_version if max_version is not None else old_process.version
+                next_version = current_max + 1
 
-            new_process = Process.objects.create(
-                name=old_process.name,
-                code=old_process.code,
-                scale=old_process.scale,
-                version=next_version,
-                parent_version=old_process,
-                status='DRAFT',
-                created_by=request.user,
-                updated_by=request.user
-            )
-
-            for u in old_process.units.filter(is_active=True):
-                new_u = UnitOperation.objects.create(
-                    process=new_process,
-                    name=u.name,
-                    unit_type=u.unit_type,
-                    order=u.order,
+                new_process = Process.objects.create(
+                    name=old_process.name,
+                    code=old_process.code,
+                    scale=old_process.scale,
+                    version=next_version,
+                    parent_version=old_process,
+                    status="DRAFT",
                     created_by=request.user,
-                    updated_by=request.user
+                    updated_by=request.user,
                 )
 
-                for s in u.steps.filter(is_active=True):
-                    new_s = Step.objects.create(
-                        unit_operation=new_u,
-                        name=s.name,
-                        order=s.order,
+                for u in old_process.units.filter(is_active=True):
+                    new_u = UnitOperation.objects.create(
+                        process=new_process,
+                        name=u.name,
+                        unit_type=u.unit_type,
+                        order=u.order,
                         created_by=request.user,
-                        updated_by=request.user
+                        updated_by=request.user,
                     )
 
-                    for p in s.parameters.filter(is_active=True):
-                        Parameter.objects.create(
-                            step=new_s,
-                            name=p.name,
-                            unit=p.unit,
-                            format_type=p.format_type,
-                            format_low_range=p.format_low_range,
-                            format_high_range=p.format_high_range,
-                            low_proven_acceptable_range=p.low_proven_acceptable_range,
-                            high_proven_acceptable_range=p.high_proven_acceptable_range,
-                            low_normal_operating_range=p.low_normal_operating_range,
-                            high_normal_operating_range=p.high_normal_operating_range,
-                            order=p.order,
+                    for s in u.steps.filter(is_active=True):
+                        new_s = Step.objects.create(
+                            unit_operation=new_u,
+                            name=s.name,
+                            order=s.order,
                             created_by=request.user,
-                            updated_by=request.user
+                            updated_by=request.user,
                         )
 
-                    for plan in s.samples.filter(is_active=True):
-                        new_plan = Sample.objects.create(
-                            step=new_s,
-                            name=plan.name,
-                            created_by=request.user,
-                            updated_by=request.user
-                        )
-
-                        for sample in plan.analyses.filter(is_active=True):
-                            Analysis.objects.create(
-
-                                sample=new_plan,
-                                analysis_name=sample.analysis_name,
-                                analytical_method=sample.analytical_method,
+                        for p in s.parameters.filter(is_active=True):
+                            Parameter.objects.create(
+                                step=new_s,
+                                name=p.name,
+                                unit=p.unit,
+                                format_type=p.format_type,
+                                format_low_range=p.format_low_range,
+                                format_high_range=p.format_high_range,
+                                low_proven_acceptable_range=p.low_proven_acceptable_range,
+                                high_proven_acceptable_range=p.high_proven_acceptable_range,
+                                low_normal_operating_range=p.low_normal_operating_range,
+                                high_normal_operating_range=p.high_normal_operating_range,
+                                order=p.order,
                                 created_by=request.user,
-                                updated_by=request.user
+                                updated_by=request.user,
                             )
 
-        messages.success(request, f"New version {new_process.version} initialized successfully in Draft.")
-        return redirect('production:process_list')
+                        for plan in s.samples.filter(is_active=True):
+                            new_plan = Sample.objects.create(
+                                step=new_s,
+                                name=plan.name,
+                                created_by=request.user,
+                                updated_by=request.user,
+                            )
+
+                            for sample in plan.analyses.filter(is_active=True):
+                                Analysis.objects.create(
+                                    sample=new_plan,
+                                    analysis_name=sample.analysis_name,
+                                    analytical_method=sample.analytical_method,
+                                    format_low_range=sample.format_low_range,
+                                    format_high_range=sample.format_high_range,
+                                    low_normal_operating_range=sample.low_normal_operating_range,
+                                    high_normal_operating_range=sample.high_normal_operating_range,
+                                    created_by=request.user,
+                                    updated_by=request.user,
+                                )
+
+            messages.success(
+                request, f"New version {new_process.version} initialized successfully in Draft."
+            )
+            return redirect("production:process_list")
+
+        except ValidationError as e:
+            error_details = ""
+            if hasattr(e, "message_dict"):
+                for field, errors in e.message_dict.items():
+                    error_details += f" ({field}: {', '.join(errors)})"
+            else:
+                error_details += f" ({', '.join(e.messages)})"
+
+            messages.error(
+                request,
+                f"Cannot create a new version: One or more analytical methods used in this process have been archived or are no longer valid.{error_details}",
+            )
+            return redirect("production:process_list")
 
 
 # =========================================================================

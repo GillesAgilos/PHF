@@ -154,7 +154,14 @@ class AnalysisForm(forms.ModelForm):
     """
     class Meta:
         model = Analysis
-        fields = ['analysis_name', 'analytical_method', 'format_low_range', 'format_high_range']
+        fields = [
+            'analysis_name',
+            'analytical_method',
+            'low_normal_operating_range',
+            'high_normal_operating_range',
+            'format_low_range',
+            'format_high_range',
+        ]
         widgets = {
             'analytical_method': Select2Widget(attrs={
                 'data-placeholder': 'Search an analytical method...',
@@ -165,8 +172,27 @@ class AnalysisForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+        normal_low = cleaned_data.get('low_normal_operating_range')
+        normal_high = cleaned_data.get('high_normal_operating_range')
         low = cleaned_data.get('format_low_range')
         high = cleaned_data.get('format_high_range')
+
+        if normal_low is not None and normal_high is None:
+            self.add_error(
+                'high_normal_operating_range',
+                "High normal operating range is required when Low normal operating range is provided."
+            )
+        if normal_high is not None and normal_low is None:
+            self.add_error(
+                'low_normal_operating_range',
+                "Low normal operating range is required when High normal operating range is provided."
+            )
+
+        if normal_low is not None and normal_high is not None and normal_low > normal_high:
+            self.add_error(
+                'low_normal_operating_range',
+                "Low normal operating range cannot be higher than High normal operating range."
+            )
 
         if low is not None and high is None:
             self.add_error('format_high_range', "High validation limit is required when Low limit is provided.")

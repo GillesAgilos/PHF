@@ -9,7 +9,7 @@
                 <i class="bi bi-boxes"></i> Batches Tracking
             </h2>
 
-            <form method="get" class="d-flex border rounded shadow-sm bg-white p-1">
+            <form method="get" id="searchForm" class="d-flex border rounded shadow-sm bg-white p-1">
                 <input type="hidden" name="view" value="{{ view_mode }}">
                 <input type="text" name="q" class="form-control form-control-sm border-0 shadow-none"
                        placeholder="Search batch..." value="{{ search_query }}">
@@ -27,7 +27,7 @@
         </div>
 
         <div>
-            {% if user_group == 'Data_Custodian' or user.is_superuser or user_group == 'System_Admin' %}
+            {% if user_group == 'Data_Custodian' or user.is_superuser or user_group == 'System_Admin' or user.groups.all.0.name == "System_Admin" or user.groups.all.0.name == "Data_Custodian" %}
                 <a href="{% url 'batch:batch_add' %}" class="btn btn-primary shadow-sm">
                     <i class="bi bi-plus-lg"></i> Instantiate New Batch
                 </a>
@@ -35,10 +35,10 @@
         </div>
     </div>
 
-    <ul class="nav nav-tabs mb-4">
+    <ul class="nav nav-tabs mb-4" id="navTabs">
         <li class="nav-item">
             <a class="nav-link {% if view_mode == 'draft' %}active fw-bold text-primary border-bottom-0{% endif %}"
-               href="?view=draft{% if search_query %}&q={{ search_query }}{% endif %}">
+               data-base-url="?view=draft" href="?view=draft{% if search_query %}&q={{ search_query }}{% endif %}">
                 To Validate
                 {% if count_draft > 0 %}
                     <span class="badge rounded-pill bg-primary ms-1">{{ count_draft }}</span>
@@ -47,7 +47,7 @@
         </li>
         <li class="nav-item">
             <a class="nav-link {% if view_mode == 'rejected' %}active fw-bold text-danger{% endif %}"
-               href="?view=rejected{% if search_query %}&q={{ search_query }}{% endif %}">
+               data-base-url="?view=rejected" href="?view=rejected{% if search_query %}&q={{ search_query }}{% endif %}">
                 Rejected
                 {% if count_rejected > 0 %}
                     <span class="badge rounded-pill bg-danger ms-1">{{ count_rejected }}</span>
@@ -56,14 +56,14 @@
         </li>
         <li class="nav-item">
             <a class="nav-link {% if view_mode == 'active' %}active fw-bold text-success{% endif %}"
-               href="?view=active{% if search_query %}&q={{ search_query }}{% endif %}">
+               data-base-url="?view=active" href="?view=active{% if search_query %}&q={{ search_query }}{% endif %}">
                 Active and Validated
                 <span class="badge rounded-pill bg-light text-dark border ms-1">{{ count_active }}</span>
             </a>
         </li>
         <li class="nav-item">
             <a class="nav-link {% if view_mode == 'archived' %}active fw-bold text-muted{% endif %}"
-               href="?view=archived{% if search_query %}&q={{ search_query }}{% endif %}">
+               data-base-url="?view=archived" href="?view=archived{% if search_query %}&q={{ search_query }}{% endif %}">
                 Archived
                 <span class="badge rounded-pill bg-light text-dark border ms-1">{{ count_archived }}</span>
             </a>
@@ -76,6 +76,7 @@
                 <thead class="{% if view_mode == 'draft' %}table-primary{% elif view_mode == 'rejected' %}table-danger{% elif view_mode == 'active' %}table-dark{% else %}table-secondary{% endif %}">
                 <tr>
                     <th>QA Status</th>
+                    <th>Name</th>
                     <th>Client</th>
                     <th>Project</th>
                     <th>Process Template</th>
@@ -100,9 +101,11 @@
                                 <span class="badge rounded-pill bg-danger text-white">Rejected</span>
                             {% endif %}
                         </td>
+                        <td><span class="fw-semibold text-dark">{{ batch.name }}</span></td>
                         <td>
                             <span class="badge bg-secondary text-white font-monospace">{{ batch.project.client.code }}</span>
-                            <small class="text-dark d-block text-truncate" style="max-width: 150px;" title="{{ batch.project.client.name }}">
+                            <small class="text-dark d-block text-truncate" style="max-width: 150px;"
+                                   title="{{ batch.project.client.name }}">
                                 {{ batch.project.client.name }}
                             </small>
                         </td>
@@ -126,7 +129,7 @@
                                 <small class="text-muted">by {{ batch.updated_by.username|default:"sys" }}</small>
                             {% endif %}
                         </td>
-                        <td class="text-end" onclick="event.stopPropagation();">
+                        <td class="text-end">
                             {% if batch.is_active %}
                                 <a href="{% url 'batch:batch_logbook' batch.pk %}"
                                    class="btn btn-sm btn-primary px-2 me-1 shadow-sm" title="Open Production Logbook">
@@ -135,28 +138,33 @@
                             {% endif %}
 
                             <a href="{% url 'batch:batch_detail' batch.pk %}"
-                               class="btn btn-sm btn-outline-primary px-2 shadow-sm" title="View Global Details & Audit">
+                               class="btn btn-sm btn-outline-primary px-2 shadow-sm"
+                               title="View Global Details & Audit">
                                 <i class="bi bi-eye"></i>
                             </a>
 
                             {% if batch.is_active and batch.status == 'DRAFT' %}
-                                {% if user_group == 'Data_Custodian' or user.is_superuser or user_group == 'System_Admin' %}
+                                {% if user_group == 'Data_Custodian' or user.is_superuser or user_group == 'System_Admin' or user.groups.all.0.name == "System_Admin" or user.groups.all.0.name == "Data_Custodian" %}
                                     <a href="{% url 'batch:batch_edit' batch.pk %}"
                                        class="btn btn-sm btn-outline-dark ms-1" title="Edit">
                                         <i class="bi bi-pencil"></i>
                                     </a>
-                                    <a href="{% url 'batch:batch_delete' batch.pk %}"
-                                       class="btn btn-sm btn-outline-danger ms-1" title="Archive">
-                                        <i class="bi bi-trash"></i>
-                                    </a>
+
+                                    {% if user.is_superuser or user_group == 'System_Admin' or user.groups.all.0.name == "System_Admin" %}
+                                        <a href="{% url 'batch:batch_delete' batch.pk %}"
+                                           class="btn btn-sm btn-outline-danger ms-1" title="Archive">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                    {% endif %}
                                 {% endif %}
                             {% endif %}
 
                             {% if not batch.is_active %}
-                                {% if user_group == 'Data_Custodian' or user.is_superuser or user_group == 'System_Admin' %}
-                                    <form action="{% url 'batch:batch_restore' batch.pk %}" method="post" class="d-inline ms-1">
+                                {% if user.is_superuser or user_group == 'System_Admin' or user.groups.all.0.name == "System_Admin" %}
+                                    <form action="{% url 'batch:batch_restore' batch.pk %}" method="post"
+                                          class="d-inline ms-1 m-0">
                                         {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Restore">
+                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Restore">
                                             <i class="bi bi-arrow-counterclockwise"></i>
                                         </button>
                                     </form>
@@ -166,7 +174,7 @@
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="8" class="text-center py-5 text-muted">
+                        <td colspan="9" class="text-center py-5 text-muted">
                             <i class="bi bi-inbox fs-2"></i><br>
                             <p class="mt-2 mb-0">No batches tracking recorded in this category.</p>
                         </td>
@@ -181,19 +189,82 @@
             </div>
         {% endif %}
     </div>
+{% endblock %}
 
+{% block extra_js %}
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
+        document.addEventListener("DOMContentLoaded", function () {
             const rows = document.querySelectorAll(".clickable-row");
+            const searchInput = document.querySelector('input[name="q"]');
+            const activeTabBadge = document.querySelector('.nav-tabs .nav-link.active .badge');
+            const tabLinks = document.querySelectorAll('#navTabs .nav-link');
+
             rows.forEach(row => {
-                row.addEventListener("click", function() {
-                    window.location.href = this.dataset.href;
+                row.addEventListener("click", function (e) {
+                    if (e.target.closest('a') || e.target.closest('button') || e.target.closest('form')) {
+                        return;
+                    }
+                    const url = this.dataset.href;
+                    if (url) window.location.href = url;
                 });
             });
+
+            function applyLiveFilter(filterValue) {
+                let visibleCount = 0;
+
+                rows.forEach(row => {
+                    const nameText = row.querySelector('td:nth-child(2)') ? row.querySelector('td:nth-child(2)').textContent.toLowerCase() : '';
+                    const clientText = row.querySelector('td:nth-child(3)') ? row.querySelector('td:nth-child(3)').textContent.toLowerCase() : '';
+                    const projText = row.querySelector('td:nth-child(4)') ? row.querySelector('td:nth-child(4)').textContent.toLowerCase() : '';
+                    const templateText = row.querySelector('td:nth-child(5)') ? row.querySelector('td:nth-child(5)').textContent.toLowerCase() : '';
+
+                    if (nameText.includes(filterValue) || clientText.includes(filterValue) || projText.includes(filterValue) || templateText.includes(filterValue)) {
+                        row.style.setProperty("display", "", "important");
+                        visibleCount++;
+                    } else {
+                        row.style.setProperty("display", "none", "important");
+                    }
+                });
+
+                if (activeTabBadge) {
+                    activeTabBadge.textContent = visibleCount;
+                }
+
+                tabLinks.forEach(link => {
+                    const baseUrl = link.getAttribute('data-base-url');
+                    if (baseUrl) {
+                        if (filterValue) {
+                            link.setAttribute('href', `${baseUrl}&q=${encodeURIComponent(filterValue)}`);
+                        } else {
+                            link.setAttribute('href', baseUrl);
+                        }
+                    }
+                });
+            }
+
+            if (searchInput) {
+                searchInput.addEventListener("input", function () {
+                    applyLiveFilter(this.value.toLowerCase().trim());
+                });
+
+                searchInput.focus();
+                const val = searchInput.value;
+                searchInput.value = '';
+                searchInput.value = val;
+
+                if (searchInput.value) {
+                    applyLiveFilter(searchInput.value.toLowerCase().trim());
+                }
+            }
         });
     </script>
+{% endblock %}
 
+{% block extra_css %}
     <style>
-        .clickable-row:hover { background-color: rgba(0, 0, 0, 0.03) !important; transition: all 0.2s ease; }
+        .clickable-row:hover {
+            background-color: rgba(0, 0, 0, 0.03) !important;
+            transition: all 0.2s ease;
+        }
     </style>
 {% endblock %}

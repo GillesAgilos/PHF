@@ -42,14 +42,10 @@ class BatchForm(BaseEntityForm):
 
         elif self.instance._state.adding:
             project_id = self.data.get('project') or self.initial.get('project')
-            process_id = self.data.get('process') or self.initial.get('process')
-            category = self.data.get('category') or self.initial.get('category')
 
-            if project_id and process_id and category:
+            if project_id:
                 max_iter = Batch.objects.filter(
                     project_id=project_id,
-                    process_id=process_id,
-                    category=category,
                     is_active=True
                 ).aggregate(Max('iteration_number'))['iteration_number__max']
 
@@ -60,22 +56,20 @@ class BatchForm(BaseEntityForm):
     def clean(self):
         cleaned_data = super().clean()
         project = cleaned_data.get('project')
-        process = cleaned_data.get('process')
-        category = cleaned_data.get('category')
         iteration_number = cleaned_data.get('iteration_number')
 
-        if self.instance._state.adding and project and process and category and iteration_number:
+        if self.instance._state.adding and project and iteration_number:
             duplicate_exists = Batch.objects.filter(
                 project=project,
-                process=process,
-                category=category,
                 iteration_number=iteration_number,
                 is_active=True
             ).exists()
 
             if duplicate_exists:
-                self.add_error('iteration_number',
-                               f"The iteration number {iteration_number} already exists for this configuration.")
+                self.add_error(
+                    'iteration_number',
+                    f"The iteration number {iteration_number} already exists for this project."
+                )
 
         return cleaned_data
 

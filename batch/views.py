@@ -1,6 +1,8 @@
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Max
+from django.http import JsonResponse
 from django.urls import reverse_lazy, reverse
 from django.shortcuts import get_object_or_404, redirect
 from django.views.generic import CreateView, UpdateView, ListView, DetailView
@@ -47,7 +49,7 @@ class BatchListView(BatchRoleRequiredMixin, FilterStateMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        context['view_mode'] = self.request.GET.get('view', 'active') or 'active'
+        context['view_mode'] = self.request.GET.get('view', 'draft') or 'draft'
 
         context['count_active'] = Batch.objects.filter(is_active=True, status='VALIDATED').count()
         context['count_archived'] = Batch.objects.filter(is_active=False).count()
@@ -473,17 +475,18 @@ class ParameterResultRestoreView(BatchRoleRequiredMixin, GenericRestoreView):
 
 class ParameterResultDetailView(BatchRoleRequiredMixin, EntityDetailView):
     """
-    View for displaying the details of a ParameterResult instance.
+    Manages the details view for `ParameterResult` model by handling dynamic actions
+    based on user roles and the object's status.
 
-    The ParameterResultDetailView class is responsible for presenting detailed
-    information about a specific instance of the ParameterResult model. It also
-    modifies the context data to include dynamic actions based on the user's
-    permissions, groups, and the object's status. The dynamic actions are tailored
-    to support workflows such as validation and rejection of parameter results
-    based on user roles and the current state of the result.
+    This view customizes the context data to include dynamic actions, such as
+    'Validate', 'Reject', and 'Edit Record', depending on the status of the `ParameterResult`
+    object and the roles of the currently authenticated user. It extends from
+    `BatchRoleRequiredMixin` and `EntityDetailView` with additional logic tailored to
+    handle the `ParameterResult` model.
 
     Attributes:
-        model: The model associated with this view, which is ParameterResult.
+        model (ParameterResult): The model associated with the detail view, which is
+            used to fetch and display detailed information about a specific object.
     """
     model = ParameterResult
 
@@ -497,11 +500,18 @@ class ParameterResultDetailView(BatchRoleRequiredMixin, EntityDetailView):
                                                            flat=True) if self.request.user.is_authenticated else []
 
         if result and 'dynamic_actions' in context:
-            if result.status == 'VALIDATED':
-                context['dynamic_actions'] = [
-                    action for action in context['dynamic_actions']
-                    if action.get('label') != 'Edit Record'
-                ]
+            context['dynamic_actions'] = [
+                action for action in context['dynamic_actions']
+                if action.get('label') not in ['Validate', 'Reject', 'Edit Record']
+            ]
+
+            if result.status != 'VALIDATED':
+                context['dynamic_actions'].append({
+                    'label': 'Edit Record',
+                    'url': reverse('batch:parameter_result_edit', kwargs={'pk': result.pk}),
+                    'class': 'btn-outline-primary',
+                    'icon': 'bi bi-pencil'
+                })
 
             if 'Data_Steward' in user_groups and result.status == 'DRAFT' and result.is_active:
                 context['dynamic_actions'].extend([
@@ -719,17 +729,15 @@ class AnalysisResultRestoreView(BatchRoleRequiredMixin, GenericRestoreView):
 
 
 class AnalysisResultDetailView(BatchRoleRequiredMixin, EntityDetailView):
-    """
-    Provides detailed information and context for an analysis result.
+    """Class for managing the detailed view of an analysis result.
 
-    This view is designed to handle the presentation of a specific analysis result,
-    including managing dynamic actions based on user roles, authentication, and the
-    status of the result. It leverages role-based permissions and adjusts the
-    available actions dynamically to ensure proper user access control.
+    Provides functionality for rendering the detail view of an analysis result
+    and dynamically adjusting the context based on user roles, actions, and the
+    status of the analysis result.
 
     Attributes:
-        model (AnalysisResult): The model associated with the view, representing
-            an analysis result entity.
+        model (Model): The model associated with the detailed view. In this case,
+            it is the `AnalysisResult` model.
     """
     model = AnalysisResult
 
@@ -743,11 +751,18 @@ class AnalysisResultDetailView(BatchRoleRequiredMixin, EntityDetailView):
                                                            flat=True) if self.request.user.is_authenticated else []
 
         if result and 'dynamic_actions' in context:
-            if result.status == 'VALIDATED':
-                context['dynamic_actions'] = [
-                    action for action in context['dynamic_actions']
-                    if action.get('label') != 'Edit Record'
-                ]
+            context['dynamic_actions'] = [
+                action for action in context['dynamic_actions']
+                if action.get('label') not in ['Validate', 'Reject', 'Edit Record']
+            ]
+
+            if result.status != 'VALIDATED':
+                context['dynamic_actions'].append({
+                    'label': 'Edit Record',
+                    'url': reverse('batch:analysis_result_edit', kwargs={'pk': result.pk}),
+                    'class': 'btn-outline-primary',
+                    'icon': 'bi bi-pencil'
+                })
 
             if 'Data_Steward' in user_groups and result.status == 'DRAFT' and result.is_active:
                 context['dynamic_actions'].extend([
@@ -814,3 +829,18 @@ class AnalysisResultRejectView(BatchRoleRequiredMixin, EntityRejectView):
             obj.updated_by = request.user
             obj.save()
         return redirect('batch:batch_logbook', pk=obj.batch.pk)
+
+
+@login_required
+def get_next_iteration(request):
+    project_id = request.GET.get('project_id')
+    if not project_id:
+        return JsonResponse({'next_iteration': 1})
+
+    max_iter = Batch.objects.filter(
+        project_id=project_id,
+        is_active=True
+    ).aggregate(Max('iteration_number'))['iteration_number__max']
+
+    next_iter = (max_iter or 0) + 1
+    return JsonResponse({'next_iteration': next_iter})

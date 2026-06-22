@@ -340,7 +340,7 @@ class ProcessLockRequiredMixin:
                 step = get_object_or_404(StepModel, pk=self.kwargs['step_pk'])
                 process = step.unit_operation.process
 
-        if process and process.status in ['VALIDATED', 'PENDING']:
+        if process and process.status in ['PENDING']:
             messages.error(
                 request,
                 f"Action denied: The process chart '{process.name}' is locked ({process.get_status_display()})."
@@ -445,7 +445,8 @@ class FilterStateMixin:
             queryset = queryset.filter(search_filter)
 
         is_process_model = hasattr(self.model, 'Status') and hasattr(self.model.Status, 'PENDING')
-        default_view = 'active'
+        is_draft_default_model = is_process_model or self.model.__name__ == 'Batch'
+        default_view = 'draft' if is_draft_default_model else 'active'
         view_mode = self.request.GET.get('view', default_view) or default_view
 
         if view_mode == 'archived':
@@ -466,7 +467,7 @@ class FilterStateMixin:
         context = super().get_context_data(**kwargs)
         is_process_model = hasattr(self.model, 'Status') and hasattr(self.model.Status, 'PENDING')
 
-        default_view = 'active'
+        default_view = 'draft' if is_process_model else 'active'
         view_mode = self.request.GET.get('view', default_view) or default_view
 
         context['view_mode'] = view_mode

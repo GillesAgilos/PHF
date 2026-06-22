@@ -28,6 +28,7 @@ class Batch(BaseModel):
             constraints (list): Contains model-level constraints such as ensuring unique combinations of
                 project, process, category, and iteration for active batches.
     """
+
     class CategoryChoices(models.TextChoices):
         MANUFACTURING = 'M-', 'Manufacturing'
         ENGINEERING = 'E-', 'Engineering'
@@ -45,9 +46,9 @@ class Batch(BaseModel):
         verbose_name_plural = "Batches"
         constraints = [
             models.UniqueConstraint(
-                fields=['project', 'process', 'category', 'iteration_number'],
+                fields=['project', 'iteration_number'],
                 condition=models.Q(is_active=True),
-                name='unique_active_iteration_per_project_process_category'
+                name='unique_active_iteration_per_project'
             )
         ]
 
@@ -84,6 +85,19 @@ class Batch(BaseModel):
 
             recorded_param_count = self.parameter_results.filter(is_active=True).count()
             recorded_analysis_count = self.analysis_results.filter(is_active=True).count()
+
+            rejected_param_count = self.parameter_results.filter(is_active=True, status='REJECTED').count()
+            rejected_analysis_count = self.analysis_results.filter(is_active=True, status='REJECTED').count()
+
+            if rejected_param_count:
+                raise ValidationError(
+                    f"Cannot validate batch: {rejected_param_count} parameter result(s) have been rejected."
+                )
+
+            if rejected_analysis_count:
+                raise ValidationError(
+                    f"Cannot validate batch: {rejected_analysis_count} analytical result(s) have been rejected."
+                )
 
             if recorded_param_count < expected_param_count:
                 raise ValidationError(
@@ -149,7 +163,9 @@ class ParameterResult(BaseModel):
         if self.parameter_id and self.actual_value:
             if self.parameter.format_type == 'numeric':
                 try:
-                    val_float = float(self.actual_value.replace(',', '.'))
+                    normalized_value = self.actual_value.replace(',', '.')
+                    val_float = float(normalized_value)
+                    self.actual_value = normalized_value
                 except ValueError:
                     raise ValidationError({'actual_value': "The expected format for this parameter is numeric."})
 
@@ -230,7 +246,9 @@ class AnalysisResult(BaseModel):
 
             if low is not None or high is not None:
                 try:
-                    val_float = float(self.actual_value.replace(',', '.'))
+                    normalized_value = self.actual_value.replace(',', '.')
+                    val_float = float(normalized_value)
+                    self.actual_value = normalized_value
                 except ValueError:
                     raise ValidationError(
                         {'actual_value': "This analysis requires a numeric result to match its validation ranges."})

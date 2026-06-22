@@ -71,3 +71,37 @@
     </div>
 </div>
 {% endblock %}
+{% block extra_js %}
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const projectSelect = document.getElementById("id_project");
+        const iterationInput = document.getElementById("id_iteration_number");
+
+        if (projectSelect && iterationInput) {
+
+            projectSelect.addEventListener("change", function () {
+                const projectId = this.value;
+
+                if (!projectId) {
+                    iterationInput.value = 1;
+                    return;
+                }
+
+                const url = "/batch/ajax/get-next-iteration/?project_id=" + projectId;
+
+                fetch(url)
+                    .then(response => {
+                        if (!response.ok) throw new Error("Network response was not ok");
+                        return response.json();
+                    })
+                    .then(data => {
+                        iterationInput.value = data.next_iteration;
+                    })
+                    .catch(error => {
+                        console.error("Error fetching iteration number:", error);
+                    });
+            });
+        }
+    });
+</script>
+{% endblock %}

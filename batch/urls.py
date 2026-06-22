@@ -23,11 +23,16 @@ urlpatterns = [
     path('parameter-results/', views.ParameterResultListView.as_view(), name='parameter_result_list'),
     path('parameter-results/add/', views.ParameterResultCreateView.as_view(), name='parameter_result_add'),
     path('parameter-results/<uuid:pk>/edit/', views.ParameterResultUpdateView.as_view(), name='parameter_result_edit'),
-    path('parameter-results/<uuid:pk>/delete/', views.ParameterResultDeleteView.as_view(), name='parameter_result_delete'),
-    path('parameter-results/<uuid:pk>/restore/', views.ParameterResultRestoreView.as_view(), name='parameter_result_restore'),
-    path('parameter-results/<uuid:pk>/detail/', views.ParameterResultDetailView.as_view(), name='parameter_result_detail'),
-    path('parameter-results/<uuid:pk>/validate/', views.ParameterResultValidateView.as_view(), name='parameter_result_validate'),
-    path('parameter-results/<uuid:pk>/reject/', views.ParameterResultRejectView.as_view(), name='parameter_result_reject'),
+    path('parameter-results/<uuid:pk>/delete/', views.ParameterResultDeleteView.as_view(),
+         name='parameter_result_delete'),
+    path('parameter-results/<uuid:pk>/restore/', views.ParameterResultRestoreView.as_view(),
+         name='parameter_result_restore'),
+    path('parameter-results/<uuid:pk>/detail/', views.ParameterResultDetailView.as_view(),
+         name='parameter_result_detail'),
+    path('parameter-results/<uuid:pk>/validate/', views.ParameterResultValidateView.as_view(),
+         name='parameter_result_validate'),
+    path('parameter-results/<uuid:pk>/reject/', views.ParameterResultRejectView.as_view(),
+         name='parameter_result_reject'),
 
     # =========================================================================
     # ANALYSIS RESULTS
@@ -36,8 +41,12 @@ urlpatterns = [
     path('analysis-results/add/', views.AnalysisResultCreateView.as_view(), name='analysis_result_add'),
     path('analysis-results/<uuid:pk>/edit/', views.AnalysisResultUpdateView.as_view(), name='analysis_result_edit'),
     path('analysis-results/<uuid:pk>/delete/', views.AnalysisResultDeleteView.as_view(), name='analysis_result_delete'),
-    path('analysis-results/<uuid:pk>/restore/', views.AnalysisResultRestoreView.as_view(), name='analysis_result_restore'),
+    path('analysis-results/<uuid:pk>/restore/', views.AnalysisResultRestoreView.as_view(),
+         name='analysis_result_restore'),
     path('analysis-results/<uuid:pk>/detail/', views.AnalysisResultDetailView.as_view(), name='analysis_result_detail'),
-    path('analysis-results/<uuid:pk>/validate/', views.AnalysisResultValidateView.as_view(), name='analysis_result_validate'),
+    path('analysis-results/<uuid:pk>/validate/', views.AnalysisResultValidateView.as_view(),
+         name='analysis_result_validate'),
     path('analysis-results/<uuid:pk>/reject/', views.AnalysisResultRejectView.as_view(), name='analysis_result_reject'),
+
+    path('ajax/get-next-iteration/', views.get_next_iteration, name='get_next_iteration'),
 ]

@@ -9,7 +9,7 @@
                 <i class="bi bi-diagram-3-fill"></i> Process Templates
             </h2>
 
-            <form method="get" class="d-flex border rounded shadow-sm bg-white p-1">
+            <form method="get" id="searchForm" class="d-flex border rounded shadow-sm bg-white p-1">
                 <input type="hidden" name="view" value="{{ view_mode }}">
 
                 <input type="text" name="q" class="form-control form-control-sm border-0 shadow-none"
@@ -36,17 +36,17 @@
         {% endif %}
     </div>
 
-    <ul class="nav nav-tabs mb-4">
+    <ul class="nav nav-tabs mb-4" id="navTabs">
         <li class="nav-item">
             <a class="nav-link {% if view_mode == 'draft' %}active fw-bold text-secondary border-bottom-0{% endif %}"
-               href="?view=draft{% if search_query %}&q={{ search_query }}{% endif %}">
+               data-base-url="?view=draft" href="?view=draft{% if search_query %}&q={{ search_query }}{% endif %}">
                 Drafts
                 <span class="badge rounded-pill bg-light text-dark border ms-1">{{ count_draft }}</span>
             </a>
         </li>
         <li class="nav-item">
             <a class="nav-link {% if view_mode == 'pending' %}active fw-bold text-warning border-bottom-0{% endif %}"
-               href="?view=pending{% if search_query %}&q={{ search_query }}{% endif %}">
+               data-base-url="?view=pending" href="?view=pending{% if search_query %}&q={{ search_query }}{% endif %}">
                 To Validate
                 {% if count_pending > 0 %}
                     <span class="badge rounded-pill bg-danger ms-1">{{ count_pending }}</span>
@@ -55,6 +55,7 @@
         </li>
         <li class="nav-item">
             <a class="nav-link {% if view_mode == 'rejected' %}active fw-bold text-danger border-bottom-0{% endif %}"
+               data-base-url="?view=rejected"
                href="?view=rejected{% if search_query %}&q={{ search_query }}{% endif %}">
                 Needs Correction
                 <span class="badge rounded-pill bg-light text-dark border ms-1">{{ count_rejected }}</span>
@@ -62,13 +63,14 @@
         </li>
         <li class="nav-item">
             <a class="nav-link {% if view_mode == 'active' %}active fw-bold text-success border-bottom-0{% endif %}"
-               href="?view=active{% if search_query %}&q={{ search_query }}{% endif %}">
+               data-base-url="?view=active" href="?view=active{% if search_query %}&q={{ search_query }}{% endif %}">
                 Active and Validated
                 <span class="badge rounded-pill bg-light text-dark border ms-1">{{ count_active }}</span>
             </a>
         </li>
         <li class="nav-item">
             <a class="nav-link {% if view_mode == 'archived' %}active fw-bold text-muted border-bottom-0{% endif %}"
+               data-base-url="?view=archived"
                href="?view=archived{% if search_query %}&q={{ search_query }}{% endif %}">
                 Archived
                 <span class="badge rounded-pill bg-light text-dark border ms-1">{{ count_archived }}</span>
@@ -115,7 +117,8 @@
                         <td>
                             <span class="fw-semibold">{{ process.name }}</span>
                             {% if process.status == 'REJECTED' and process.rejection_reason %}
-                                <br><small class="text-danger fw-bold"><i class="bi bi-arrow-right"></i> Needs correction</small>
+                                <br><small class="text-danger fw-bold"><i class="bi bi-arrow-right"></i> Needs
+                                correction</small>
                             {% endif %}
                         </td>
                         <td>
@@ -135,9 +138,11 @@
                         <td class="text-end text-nowrap">
                             {% if view_mode == 'archived' %}
                                 {% if user.is_superuser or user.groups.all.0.name == "System_Admin" or user.groups.all.0.name == "Data_Steward" %}
-                                    <form action="{% url 'production:process_restore' process.pk %}" method="post" class="d-inline m-0">
+                                    <form action="{% url 'production:process_restore' process.pk %}" method="post"
+                                          class="d-inline m-0">
                                         {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-outline-success shadow-sm" title="Restore Process">
+                                        <button type="submit" class="btn btn-sm btn-outline-success shadow-sm"
+                                                title="Restore Process">
                                             <i class="bi bi-arrow-counterclockwise"></i> Restore
                                         </button>
                                     </form>
@@ -149,67 +154,80 @@
                                 </a>
 
                                 {% if user.is_superuser or user.groups.all.0.name == "System_Admin" or user.groups.all.0.name == "Data_Steward" %}
-
                                     {% if process.status == 'DRAFT' or process.status == 'REJECTED' %}
                                         <a href="{% url 'production:process_edit' process.pk %}"
                                            class="btn btn-sm btn-outline-secondary shadow-sm ms-1">
                                             <i class="bi bi-pencil"></i> Edit
                                         </a>
-                                        <form action="{% url 'production:process_submit' process.pk %}" method="post" class="d-inline m-0">
+                                        <form action="{% url 'production:process_submit' process.pk %}" method="post"
+                                              class="d-inline m-0">
                                             {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-outline-warning shadow-sm ms-1" title="Submit for review">
+                                            <button type="submit" class="btn btn-sm btn-outline-warning shadow-sm ms-1"
+                                                    title="Submit for review">
                                                 <i class="bi bi-send-check-fill"></i> Submit
                                             </button>
                                         </form>
                                     {% endif %}
 
                                     {% if process.status == 'VALIDATED' %}
-                                        <form action="{% url 'production:process_versioning' process.pk %}" method="post" class="d-inline m-0">
+                                        <form action="{% url 'production:process_versioning' process.pk %}"
+                                              method="post" class="d-inline m-0">
                                             {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-outline-dark shadow-sm ms-1" title="Create Version v{{ process.version|add:1 }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-dark shadow-sm ms-1"
+                                                    title="Create Version v{{ process.version|add:1 }}">
                                                 <i class="bi bi-git"></i> New Version
                                             </button>
                                         </form>
+                                        <a href="{% url 'production:process_delete' process.pk %}"
+                                           class="btn btn-sm btn-outline-danger shadow-sm ms-1" title="Archive Process">
+                                            <i class="bi bi-archive"></i> Archive
+                                        </a>
                                     {% endif %}
 
                                     {% if process.status == 'DRAFT' or process.status == 'REJECTED' %}
-                                        <a href="{% url 'production:process_delete' process.pk %}" class="btn btn-sm btn-outline-danger shadow-sm ms-1" title="Delete Draft">
+                                        <a href="{% url 'production:process_delete' process.pk %}"
+                                           class="btn btn-sm btn-outline-danger shadow-sm ms-1" title="Delete Draft">
                                             <i class="bi bi-trash"></i>
                                         </a>
                                     {% endif %}
                                 {% endif %}
+
                                 {% if user.is_superuser or user.groups.all.0.name == "System_Admin" or user.groups.all.0.name == "QA_Representative" %}
                                     {% if process.status == 'PENDING' %}
-                                        <form action="{% url 'production:process_validate' process.pk %}" method="post" class="d-inline m-0">
+                                        <form action="{% url 'production:process_validate' process.pk %}" method="post"
+                                              class="d-inline m-0">
                                             {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-success shadow-sm ms-1" title="Approve">
+                                            <button type="submit" class="btn btn-sm btn-success shadow-sm ms-1"
+                                                    title="Approve">
                                                 <i class="bi bi-check-lg"></i> Accept
                                             </button>
                                         </form>
-
                                         <button type="button" class="btn btn-sm btn-danger shadow-sm ms-1"
-                                                data-bs-toggle="collapse" data-bs-target="#rejectForm-{{ process.pk }}" title="Reject">
+                                                data-bs-toggle="collapse" data-bs-target="#rejectForm-{{ process.pk }}"
+                                                title="Reject">
                                             <i class="bi bi-x-lg"></i> Reject
                                         </button>
-
                                         <div class="collapse mt-2 text-start" id="rejectForm-{{ process.pk }}">
                                             <div class="card card-body border-danger p-2 bg-light">
-                                                <form action="{% url 'production:process_reject' process.pk %}" method="post" class="m-0">
+                                                <form action="{% url 'production:process_reject' process.pk %}"
+                                                      method="post" class="m-0">
                                                     {% csrf_token %}
                                                     <label class="small fw-bold text-danger">Rejection Reason :</label>
                                                     <div class="input-group input-group-sm mt-1">
-                                                        <input type="text" name="rejection_reason" class="form-control" required placeholder="Specify what needs correction...">
-                                                        <button class="btn btn-danger" type="submit">Confirm Reject</button>
+                                                        <input type="text" name="rejection_reason" class="form-control"
+                                                               required placeholder="Specify what needs correction...">
+                                                        <button class="btn btn-danger" type="submit">Confirm Reject
+                                                        </button>
                                                     </div>
                                                 </form>
                                             </div>
                                         </div>
                                     {% endif %}
                                 {% endif %}
-
                             {% endif %}
 
-                            <a href="{% url 'production:process_detail' process.pk %}" class="btn btn-sm shadow-sm px-2 btn-outline-info ms-1" title="View details & history">
+                            <a href="{% url 'production:process_detail' process.pk %}"
+                               class="btn btn-sm shadow-sm px-2 btn-outline-info ms-1" title="View details & history">
                                 <i class="bi bi-eye"></i> Detail
                             </a>
                         </td>
@@ -236,19 +254,66 @@
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             const rows = document.querySelectorAll(".clickable-row");
+            const searchInput = document.querySelector('input[name="q"]');
+            const activeTabBadge = document.querySelector('.nav-tabs .nav-link.active .badge');
+            const tabLinks = document.querySelectorAll('#navTabs .nav-link');
 
             rows.forEach(row => {
                 row.addEventListener("click", function (e) {
                     if (e.target.closest('button') || e.target.closest('a') || e.target.closest('form') || e.target.closest('.collapse')) {
                         return;
                     }
-
                     const url = this.dataset.href;
-                    if (url) {
-                        window.location.href = url;
-                    }
+                    if (url) window.location.href = url;
                 });
             });
+
+            function applyLiveFilter(filterValue) {
+                let visibleCount = 0;
+
+                rows.forEach(row => {
+                    const nameText = row.querySelector('td:nth-child(2)') ? row.querySelector('td:nth-child(2)').textContent.toLowerCase() : '';
+                    const codeText = row.querySelector('td:nth-child(3)') ? row.querySelector('td:nth-child(3)').textContent.toLowerCase() : '';
+                    const scaleText = row.querySelector('td:nth-child(4)') ? row.querySelector('td:nth-child(4)').textContent.toLowerCase() : '';
+
+                    if (nameText.includes(filterValue) || codeText.includes(filterValue) || scaleText.includes(filterValue)) {
+                        row.style.setProperty("display", "", "important");
+                        visibleCount++;
+                    } else {
+                        row.style.setProperty("display", "none", "important");
+                    }
+                });
+
+                if (activeTabBadge) {
+                    activeTabBadge.textContent = visibleCount;
+                }
+
+                tabLinks.forEach(link => {
+                    const baseUrl = link.getAttribute('data-base-url');
+                    if (baseUrl) {
+                        if (filterValue) {
+                            link.setAttribute('href', `${baseUrl}&q=${encodeURIComponent(filterValue)}`);
+                        } else {
+                            link.setAttribute('href', baseUrl);
+                        }
+                    }
+                });
+            }
+
+            if (searchInput) {
+                searchInput.addEventListener("input", function () {
+                    applyLiveFilter(this.value.toLowerCase().trim());
+                });
+
+                searchInput.focus();
+                const val = searchInput.value;
+                searchInput.value = '';
+                searchInput.value = val;
+
+                if (searchInput.value) {
+                    applyLiveFilter(searchInput.value.toLowerCase().trim());
+                }
+            }
         });
     </script>
 {% endblock %}

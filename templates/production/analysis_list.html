@@ -89,6 +89,28 @@
                             </div>
 
                             <div class="bg-light p-2 rounded mb-3 border">
+                                <span class="badge bg-secondary mb-2">NOR (Normal Operating Range)</span>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <input type="number" step="any" name="low_normal_operating_range" placeholder="Low"
+                                               class="form-control form-control-sm border-secondary"
+                                               value="{{ form.low_normal_operating_range.value|default_if_none:'' }}">
+                                        {% if form.low_normal_operating_range.errors %}
+                                            <div class="text-danger small" style="font-size: 0.75rem;">{{ form.low_normal_operating_range.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-6">
+                                        <input type="number" step="any" name="high_normal_operating_range" placeholder="High"
+                                               class="form-control form-control-sm border-secondary"
+                                               value="{{ form.high_normal_operating_range.value|default_if_none:'' }}">
+                                        {% if form.high_normal_operating_range.errors %}
+                                            <div class="text-danger small" style="font-size: 0.75rem;">{{ form.high_normal_operating_range.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-light p-2 rounded mb-3 border">
                                 <span class="badge bg-secondary mb-2">Validation Limits (Optional)</span>
                                 <div class="row g-2">
                                     <div class="col-6">

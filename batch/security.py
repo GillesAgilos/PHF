@@ -50,9 +50,7 @@ class BatchRoleRequiredMixin(LoginRequiredMixin):
         if 'Data_Custodian' in user_groups:
             is_custodian_action = (
                     isinstance(current_view, CreateView) or
-                    isinstance(current_view, UpdateView) or
-                    isinstance(current_view, GenericDeleteView) or
-                    isinstance(current_view, GenericRestoreView)
+                    isinstance(current_view, UpdateView)
             )
             if is_custodian_action:
                 return super().dispatch(request, *args, **kwargs)

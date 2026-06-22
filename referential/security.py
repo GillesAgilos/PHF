@@ -46,6 +46,15 @@ class ReferentialRoleRequiredMixin(LoginRequiredMixin):
             return super().dispatch(request, *args, **kwargs)
 
         if 'Data_Steward' in user_groups:
+            current_model = getattr(self, 'model', None) or (self.get_queryset().model if hasattr(self, 'get_queryset') else None)
+
+            is_delete_or_restore = isinstance(current_view, GenericDeleteView) or isinstance(current_view, GenericRestoreView)
+
+            is_client_or_project = current_model and current_model.__name__ in ['Client', 'Project']
+
+            if is_delete_or_restore and is_client_or_project:
+                raise PermissionDenied("Data Stewards are not allowed to delete or restore Clients or Projects.")
+
             is_steward_action = (
                     isinstance(current_view, CreateView) or
                     isinstance(current_view, UpdateView) or

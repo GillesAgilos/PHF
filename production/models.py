@@ -311,6 +311,10 @@ class Analysis(BaseComponentEntity):
     format_low_range = models.FloatField(blank=True, null=True, verbose_name="Validation Low Range")
     format_high_range = models.FloatField(blank=True, null=True, verbose_name="Validation High Range")
 
+
+    low_normal_operating_range = models.FloatField(blank=True, null=True)
+    high_normal_operating_range = models.FloatField(blank=True, null=True)
+
     class Meta:
         verbose_name = "Analysis"
         verbose_name_plural = "Analyses"
@@ -325,6 +329,18 @@ class Analysis(BaseComponentEntity):
     def clean(self):
         super().clean()
         errors = {}
+
+        if self.low_normal_operating_range is not None and self.high_normal_operating_range is None:
+            errors[
+                'high_normal_operating_range'] = "High normal operating range is required when Low normal operating range is provided."
+        if self.high_normal_operating_range is not None and self.low_normal_operating_range is None:
+            errors[
+                'low_normal_operating_range'] = "Low normal operating range is required when High normal operating range is provided."
+
+        if self.low_normal_operating_range is not None and self.high_normal_operating_range is not None:
+            if self.low_normal_operating_range > self.high_normal_operating_range:
+                errors[
+                    'low_normal_operating_range'] = "Low normal operating range cannot be higher than High normal operating range."
 
         if self.format_low_range is not None and self.format_high_range is None:
             errors['format_high_range'] = "High range is required when Low range is provided."

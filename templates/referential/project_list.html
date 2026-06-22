@@ -9,7 +9,7 @@
                 <i class="bi bi-briefcase-fill"></i> Projects Referential
             </h2>
 
-            <form method="get" class="d-flex border rounded shadow-sm bg-white p-1">
+            <form method="get" id="searchForm" class="d-flex border rounded shadow-sm bg-white p-1">
                 <input type="hidden" name="view" value="{{ view_mode }}">
 
                 <input type="text" name="q" class="form-control form-control-sm border-0 shadow-none"
@@ -36,10 +36,10 @@
         {% endif %}
     </div>
 
-    <ul class="nav nav-tabs mb-4">
+    <ul class="nav nav-tabs mb-4" id="navTabs">
         <li class="nav-item">
             <a class="nav-link {% if view_mode == 'pending' %}active fw-bold text-primary border-bottom-0{% endif %}"
-               href="?view=pending{% if search_query %}&q={{ search_query }}{% endif %}">
+               data-base-url="?view=pending" href="?view=pending{% if search_query %}&q={{ search_query }}{% endif %}">
                 To Validate
                 {% if count_pending > 0 %}
                     <span class="badge rounded-pill bg-primary ms-1">{{ count_pending }}</span>
@@ -48,7 +48,7 @@
         </li>
         <li class="nav-item">
             <a class="nav-link {% if view_mode == 'rejected' %}active fw-bold text-danger{% endif %}"
-               href="?view=rejected{% if search_query %}&q={{ search_query }}{% endif %}">
+               data-base-url="?view=rejected" href="?view=rejected{% if search_query %}&q={{ search_query }}{% endif %}">
                 Rejected
                 {% if count_rejected > 0 %}
                     <span class="badge rounded-pill bg-danger ms-1">{{ count_rejected }}</span>
@@ -57,14 +57,14 @@
         </li>
         <li class="nav-item">
             <a class="nav-link {% if view_mode == 'active' %}active fw-bold text-success{% endif %}"
-               href="?view=active{% if search_query %}&q={{ search_query }}{% endif %}">
+               data-base-url="?view=active" href="?view=active{% if search_query %}&q={{ search_query }}{% endif %}">
                 Active and Validated
                 <span class="badge rounded-pill bg-light text-dark border ms-1">{{ count_active }}</span>
             </a>
         </li>
         <li class="nav-item">
             <a class="nav-link {% if view_mode == 'archived' %}active fw-bold text-muted{% endif %}"
-               href="?view=archived{% if search_query %}&q={{ search_query }}{% endif %}">
+               data-base-url="?view=archived" href="?view=archived{% if search_query %}&q={{ search_query }}{% endif %}">
                 Archived
                 <span class="badge rounded-pill bg-light text-dark border ms-1">{{ count_archived }}</span>
             </a>
@@ -120,7 +120,7 @@
                                 <small class="text-muted">by {{ project.updated_by.username|default:"sys" }}</small>
                             {% endif %}
                         </td>
-                        <td class="text-end" onclick="event.stopPropagation();">
+                        <td class="text-end">
                             <a href="{% url 'referential:project_detail' project.pk %}"
                                class="btn btn-sm btn-outline-primary px-3 shadow-sm">
                                 <i class="bi bi-eye"></i>
@@ -132,10 +132,22 @@
                                        class="btn btn-sm btn-outline-dark ms-1" title="Edit">
                                         <i class="bi bi-pencil"></i>
                                     </a>
-                                    <a href="{% url 'referential:project_delete' project.pk %}"
-                                       class="btn btn-sm btn-outline-danger ms-1" title="Archive">
-                                        <i class="bi bi-trash"></i>
-                                    </a>
+
+                                    {% if user.is_superuser or user.groups.all.0.name == "System_Admin" %}
+                                        <a href="{% url 'referential:project_delete' project.pk %}"
+                                           class="btn btn-sm btn-outline-danger ms-1" title="Archive">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                    {% endif %}
+                                {% endif %}
+                            {% else %}
+                                {% if user.is_superuser or user.groups.all.0.name == "System_Admin" %}
+                                    <form action="{% url 'referential:project_restore' project.pk %}" method="post" class="d-inline m-0">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-success ms-1" title="Restore">
+                                            <i class="bi bi-arrow-counterclockwise"></i>
+                                        </button>
+                                    </form>
                                 {% endif %}
                             {% endif %}
                         </td>
@@ -157,19 +169,81 @@
             </div>
         {% endif %}
     </div>
+{% endblock %}
 
+{% block extra_js %}
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             const rows = document.querySelectorAll(".clickable-row");
+            const searchInput = document.querySelector('input[name="q"]');
+            const activeTabBadge = document.querySelector('.nav-tabs .nav-link.active .badge');
+            const tabLinks = document.querySelectorAll('#navTabs .nav-link');
+
             rows.forEach(row => {
-                row.addEventListener("click", function() {
-                    window.location.href = this.dataset.href;
+                row.addEventListener("click", function(e) {
+                    if (e.target.closest('a') || e.target.closest('button') || e.target.closest('form')) {
+                        return;
+                    }
+                    const url = this.dataset.href;
+                    if (url) window.location.href = url;
                 });
             });
+
+            function applyLiveFilter(filterValue) {
+                let visibleCount = 0;
+
+                rows.forEach(row => {
+                    const nameText = row.querySelector('td:nth-child(2)') ? row.querySelector('td:nth-child(2)').textContent.toLowerCase() : '';
+                    const clientText = row.querySelector('td:nth-child(3)') ? row.querySelector('td:nth-child(3)').textContent.toLowerCase() : '';
+                    const codeText = row.querySelector('td:nth-child(4)') ? row.querySelector('td:nth-child(4)').textContent.toLowerCase() : '';
+
+                    if (nameText.includes(filterValue) || clientText.includes(filterValue) || codeText.includes(filterValue)) {
+                        row.style.setProperty("display", "", "important");
+                        visibleCount++;
+                    } else {
+                        row.style.setProperty("display", "none", "important");
+                    }
+                });
+
+                if (activeTabBadge) {
+                    activeTabBadge.textContent = visibleCount;
+                }
+
+                tabLinks.forEach(link => {
+                    const baseUrl = link.getAttribute('data-base-url');
+                    if (baseUrl) {
+                        if (filterValue) {
+                            link.setAttribute('href', `${baseUrl}&q=${encodeURIComponent(filterValue)}`);
+                        } else {
+                            link.setAttribute('href', baseUrl);
+                        }
+                    }
+                });
+            }
+
+            if (searchInput) {
+                searchInput.addEventListener("input", function() {
+                    applyLiveFilter(this.value.toLowerCase().trim());
+                });
+
+                searchInput.focus();
+                const val = searchInput.value;
+                searchInput.value = '';
+                searchInput.value = val;
+
+                if (searchInput.value) {
+                    applyLiveFilter(searchInput.value.toLowerCase().trim());
+                }
+            }
         });
     </script>
+{% endblock %}
 
+{% block extra_css %}
     <style>
-        .clickable-row:hover { background-color: rgba(0, 0, 0, 0.03) !important; transition: all 0.2s ease; }
+        .clickable-row:hover {
+            background-color: rgba(0, 0, 0, 0.03) !important;
+            transition: all 0.2s ease;
+        }
     </style>
 {% endblock %}
