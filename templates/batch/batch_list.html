@@ -27,7 +27,7 @@
         </div>
 
         <div>
-            {% if user_group == 'Data_Custodian' or user.is_superuser or user_group == 'System_Admin' or user.groups.all.0.name == "System_Admin" or user.groups.all.0.name == "Data_Custodian" %}
+            {% if user.is_superuser or user_group == 'System_Admin' or user.groups.all.0.name == "System_Admin" %}
                 <a href="{% url 'batch:batch_add' %}" class="btn btn-primary shadow-sm">
                     <i class="bi bi-plus-lg"></i> Instantiate New Batch
                 </a>
@@ -109,11 +109,11 @@
                                 {{ batch.project.client.name }}
                             </small>
                         </td>
-                        <td><span class="fw-semibold text-dark">{{ batch.project.name }}</span></td>
+                        <td><span class="fw-semibold text-dark">{{ batch.project.code }}</span></td>
                         <td class="fw-bold font-monospace text-primary">{{ batch.process.code }}</td>
                         <td>
                             <span class="badge bg-light text-primary border fw-bold">
-                                v{{ batch.process.version|default:"1.0" }}
+                                v{{ batch.process.version }}
                             </span>
                         </td>
                         <td>
@@ -144,7 +144,7 @@
                             </a>
 
                             {% if batch.is_active and batch.status == 'DRAFT' %}
-                                {% if user_group == 'Data_Custodian' or user.is_superuser or user_group == 'System_Admin' or user.groups.all.0.name == "System_Admin" or user.groups.all.0.name == "Data_Custodian" %}
+                                {% if user.is_superuser or user_group == 'System_Admin' or user.groups.all.0.name == "System_Admin" %}
                                     <a href="{% url 'batch:batch_edit' batch.pk %}"
                                        class="btn btn-sm btn-outline-dark ms-1" title="Edit">
                                         <i class="bi bi-pencil"></i>

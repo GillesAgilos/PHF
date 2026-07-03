@@ -1,6 +1,6 @@
 from django.core.exceptions import PermissionDenied
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic import ListView, CreateView, UpdateView, DetailView
+from django.views.generic import ListView, DetailView
 from phf.utils import (
     EntityValidateView,
     EntityRejectView,
@@ -27,7 +27,7 @@ class BatchRoleRequiredMixin(LoginRequiredMixin):
     Security Mixin for the Batch & Results application.
     Rights Matrix:
     - System_Admin     : Full Access (Bypass)
-    - Data_Custodian   : Read-Only + Write (Create/Update/Delete/Restore)
+    - Data_Custodian   : Read-Only on Batch + Write on Parameters/Results logbook
     - Data_Steward     : Read-Only + Decision (Validate/Reject)
     - QA               : Read-Only Only (List/Detail)
     """
@@ -42,20 +42,20 @@ class BatchRoleRequiredMixin(LoginRequiredMixin):
         user_groups = request.user.groups.values_list('name', flat=True)
         current_view = self
 
+        current_model = getattr(current_view, 'model', None)
+        current_model_name = getattr(current_model, '__name__', None)
+        custodian_logbook_models = {'ParameterResult', 'AnalysisResult'}
+
         is_read_only_view = isinstance(current_view, ListView) or isinstance(current_view, EntityDetailView) or isinstance(current_view, DetailView)
         if is_read_only_view:
             if 'Data_Custodian' in user_groups or 'Data_Steward' in user_groups or 'QA' in user_groups or 'QA_Representative' in user_groups:
                 return super().dispatch(request, *args, **kwargs)
 
         if 'Data_Custodian' in user_groups:
-            is_custodian_action = (
-                    isinstance(current_view, CreateView) or
-                    isinstance(current_view, UpdateView)
-            )
-            if is_custodian_action:
+            if current_model_name in custodian_logbook_models:
                 return super().dispatch(request, *args, **kwargs)
 
-            raise PermissionDenied("Data Custodians are not allowed to validate or reject batch data.")
+            raise PermissionDenied("Data Custodians are only allowed to work on the logbook results, not on batch records.")
 
         if 'Data_Steward' in user_groups:
             is_steward_action = isinstance(current_view, EntityValidateView) or isinstance(current_view, EntityRejectView)

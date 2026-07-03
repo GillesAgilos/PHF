@@ -28,11 +28,11 @@
         </div>
 
         {% if user.is_superuser or user.groups.all.0.name == "System_Admin" or user.groups.all.0.name == "Data_Steward" %}
-        <div>
-            <a href="{% url 'referential:project_add' %}" class="btn btn-primary shadow-sm">
-                <i class="bi bi-plus-lg"></i> Add New Project
-            </a>
-        </div>
+            <div>
+                <a href="{% url 'referential:project_add' %}" class="btn btn-primary shadow-sm">
+                    <i class="bi bi-plus-lg"></i> Add New Project
+                </a>
+            </div>
         {% endif %}
     </div>
 
@@ -48,7 +48,8 @@
         </li>
         <li class="nav-item">
             <a class="nav-link {% if view_mode == 'rejected' %}active fw-bold text-danger{% endif %}"
-               data-base-url="?view=rejected" href="?view=rejected{% if search_query %}&q={{ search_query }}{% endif %}">
+               data-base-url="?view=rejected"
+               href="?view=rejected{% if search_query %}&q={{ search_query }}{% endif %}">
                 Rejected
                 {% if count_rejected > 0 %}
                     <span class="badge rounded-pill bg-danger ms-1">{{ count_rejected }}</span>
@@ -64,7 +65,8 @@
         </li>
         <li class="nav-item">
             <a class="nav-link {% if view_mode == 'archived' %}active fw-bold text-muted{% endif %}"
-               data-base-url="?view=archived" href="?view=archived{% if search_query %}&q={{ search_query }}{% endif %}">
+               data-base-url="?view=archived"
+               href="?view=archived{% if search_query %}&q={{ search_query }}{% endif %}">
                 Archived
                 <span class="badge rounded-pill bg-light text-dark border ms-1">{{ count_archived }}</span>
             </a>
@@ -77,7 +79,6 @@
                 <thead class="{% if view_mode == 'pending' %}table-primary{% elif view_mode == 'rejected' %}table-danger{% elif view_mode == 'active' %}table-dark{% else %}table-secondary{% endif %}">
                 <tr>
                     <th>Status</th>
-                    <th>Project Name</th>
                     <th>Client</th>
                     <th>Code</th>
                     <th>{% if view_mode == 'archived' %}Archived on{% else %}Last Update{% endif %}</th>
@@ -100,17 +101,15 @@
                             {% endif %}
                         </td>
                         <td>
-                            <span class="fw-semibold text-dark">{{ project.name }}</span>
-                            {% if project.status == 'REJECTED' %}
-                                <br><small class="text-danger fw-bold"><i class="bi bi-arrow-right"></i> Needs correction</small>
-                            {% endif %}
-                        </td>
-                        <td>
                             <span class="badge bg-light text-dark border fw-normal">
                                 {{ project.client.name }}
                             </span>
                         </td>
                         <td class="fw-bold font-monospace">{{ project.code }}</td>
+                        {% if project.status == 'REJECTED' %}
+                            <br><small class="text-danger fw-bold"><i class="bi bi-arrow-right"></i> Needs
+                            correction</small>
+                        {% endif %}
                         <td>
                             {% if view_mode == 'archived' %}
                                 {{ project.deleted_at|date:"d/m/y H:i" }}<br>
@@ -142,9 +141,11 @@
                                 {% endif %}
                             {% else %}
                                 {% if user.is_superuser or user.groups.all.0.name == "System_Admin" %}
-                                    <form action="{% url 'referential:project_restore' project.pk %}" method="post" class="d-inline m-0">
+                                    <form action="{% url 'referential:project_restore' project.pk %}" method="post"
+                                          class="d-inline m-0">
                                         {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-outline-success ms-1" title="Restore">
+                                        <button type="submit" class="btn btn-sm btn-outline-success ms-1"
+                                                title="Restore">
                                             <i class="bi bi-arrow-counterclockwise"></i>
                                         </button>
                                     </form>
@@ -173,14 +174,14 @@
 
 {% block extra_js %}
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
+        document.addEventListener("DOMContentLoaded", function () {
             const rows = document.querySelectorAll(".clickable-row");
             const searchInput = document.querySelector('input[name="q"]');
             const activeTabBadge = document.querySelector('.nav-tabs .nav-link.active .badge');
             const tabLinks = document.querySelectorAll('#navTabs .nav-link');
 
             rows.forEach(row => {
-                row.addEventListener("click", function(e) {
+                row.addEventListener("click", function (e) {
                     if (e.target.closest('a') || e.target.closest('button') || e.target.closest('form')) {
                         return;
                     }
@@ -222,7 +223,7 @@
             }
 
             if (searchInput) {
-                searchInput.addEventListener("input", function() {
+                searchInput.addEventListener("input", function () {
                     applyLiveFilter(this.value.toLowerCase().trim());
                 });
 

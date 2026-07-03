@@ -77,7 +77,7 @@
                 <thead class="{% if view_mode == 'pending' %}table-primary{% elif view_mode == 'rejected' %}table-danger{% elif view_mode == 'active' %}table-dark{% else %}table-secondary{% endif %}">
                 <tr>
                     <th>Status</th>
-                    <th>Type Name</th>
+                    <th>Molecule Type</th>
                     <th>Description</th>
                     <th>{% if view_mode == 'archived' %}Archived on{% else %}Last Update{% endif %}</th>
                     <th class="text-end">Actions</th>
@@ -99,7 +99,7 @@
                             {% endif %}
                         </td>
                         <td>
-                            <span class="fw-semibold text-dark">{{ m_type.name }}</span>
+                            <span class="fw-semibold text-dark">{{ m_type.type }}</span>
                             {% if m_type.status == 'REJECTED' %}
                                 <br><small class="text-danger fw-bold"><i class="bi bi-arrow-right"></i> Needs correction</small>
                             {% endif %}

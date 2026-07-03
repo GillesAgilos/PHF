@@ -189,8 +189,8 @@ class Parameter(BaseComponentEntity):
 
     unit = models.CharField(max_length=50)
 
-    format_low_range = models.FloatField(blank=True, null=True, verbose_name="Format Low Range")
-    format_high_range = models.FloatField(blank=True, null=True, verbose_name="Format High Range")
+    format_low_range = models.FloatField(blank=True, null=True, verbose_name="Allowed Measurement Low Range")
+    format_high_range = models.FloatField(blank=True, null=True, verbose_name="Allowed Measurement High Range")
 
     low_proven_acceptable_range = models.FloatField(blank=True, null=True)
     high_proven_acceptable_range = models.FloatField(blank=True, null=True)
@@ -308,8 +308,8 @@ class Analysis(BaseComponentEntity):
         limit_choices_to={'status': 'VALIDATED', 'is_active': True}
     )
 
-    format_low_range = models.FloatField(blank=True, null=True, verbose_name="Validation Low Range")
-    format_high_range = models.FloatField(blank=True, null=True, verbose_name="Validation High Range")
+    format_low_range = models.FloatField(blank=True, null=True, verbose_name="Allowed Measurement Low Range")
+    format_high_range = models.FloatField(blank=True, null=True, verbose_name="Allowed Measurement High Range")
 
 
     low_normal_operating_range = models.FloatField(blank=True, null=True)

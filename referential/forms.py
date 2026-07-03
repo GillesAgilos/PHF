@@ -33,12 +33,12 @@ class ProjectForm(BaseEntityForm):
 
     Attributes:
         Meta.model (Model): The model associated with this form, i.e., `Project`.
-        Meta.fields (list): The fields included in this form: `client`, `name`,
-            `code`, `molecule_type`, `molecule_name`.
+        Meta.fields (list): The fields included in this form: `client`, `code`,
+            `molecule_type`, `molecule_name`.
     """
     class Meta:
         model = Project
-        fields = ['client', 'name', 'code', 'molecule_type', 'molecule_name']
+        fields = ['client', 'code', 'molecule_type', 'molecule_name']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -59,7 +59,7 @@ class MoleculeTypeForm(BaseEntityForm):
     This class provides a form interface for creating and editing instances
     of the MoleculeType model. It is typically used in scenarios where data
     for a molecule type needs to be collected or validated through a UI form.
-    The fields included in this form are 'name' and 'description'.
+    The fields included in this form are 'type' and 'description'.
 
     Attributes:
         Meta (Meta): Contains metadata for the form, including associated model
@@ -67,7 +67,7 @@ class MoleculeTypeForm(BaseEntityForm):
     """
     class Meta:
         model = MoleculeType
-        fields = ['name', 'description']
+        fields = ['type', 'description']
 
 class AnalyticalMethodForm(BaseEntityForm):
     """

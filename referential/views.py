@@ -32,7 +32,7 @@ class MoleculeTypeListView(ReferentialRoleRequiredMixin, FilterStateMixin, ListV
     model = MoleculeType
     template_name = 'referential/molecule_type_list.html'
     context_object_name = 'molecule_types'
-    search_fields = ['name']
+    search_fields = ['type']
 
 class MoleculeTypeCreateView(ReferentialRoleRequiredMixin, AuditTrailMixin, CreateView):
     """
@@ -337,7 +337,7 @@ class ProjectListView(ReferentialRoleRequiredMixin, FilterStateMixin, ListView):
     model = Project
     template_name = 'referential/project_list.html'
     context_object_name = 'projects'
-    search_fields = ['name', 'code', 'client__name']
+    search_fields = ['code', 'client__name']
 
     def get_queryset(self):
         return super().get_queryset().select_related('client', 'molecule_type')

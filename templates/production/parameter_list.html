@@ -131,7 +131,7 @@
                                     </div>
 
                                     <div class="bg-light p-2 rounded mb-3 border">
-                                        <span class="badge bg-secondary mb-2">Validation Limits</span>
+                                        <span class="badge bg-secondary mb-2">Allowed Measurement Range</span>
                                         <div class="row g-2">
                                             <div class="col-6">
                                                 <input type="number" step="any" name="format_low_range"
@@ -237,7 +237,7 @@
 
                                             {% if param.format_low_range is not null %}
                                                 <span class="text-muted border-start ps-2">
-                                                    Validation Range: <strong
+                                                    Allowed Measurement Range: <strong
                                                         class="text-danger">[{{ param.format_low_range }} ; {{ param.format_high_range }}]</strong>
                                                 </span>
                                             {% endif %}

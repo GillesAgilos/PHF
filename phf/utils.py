@@ -63,6 +63,7 @@ class BaseModel(models.Model):
     deleted_at = models.DateTimeField(null=True, blank=True, editable=False)
     deleted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
                                    related_name="%(class)s_deleted")
+    # manage automatic historic
     history = HistoricalRecords(inherit=True)
     rejection_reason = models.TextField(null=True, blank=True, help_text="Reason why this was rejected")
     _change_reason = None
@@ -453,7 +454,9 @@ class FilterStateMixin:
             return queryset.filter(is_active=False).order_by('-deleted_at')
         elif view_mode == 'active':
             return queryset.filter(is_active=True, status='VALIDATED').order_by(
-                'name' if not is_process_model else 'code')
+                'name' if (not is_process_model and hasattr(self.model, 'name')) else (
+                    'type' if hasattr(self.model, 'type') else 'code')
+            )
         elif view_mode == 'rejected':
             return queryset.filter(is_active=True, status='REJECTED').order_by('-updated_at')
         elif view_mode == 'draft' and is_process_model:

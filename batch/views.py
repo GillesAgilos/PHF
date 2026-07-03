@@ -40,7 +40,7 @@ class BatchListView(BatchRoleRequiredMixin, FilterStateMixin, ListView):
     model = Batch
     template_name = 'batch/batch_list.html'
     context_object_name = 'batches'
-    search_fields = ['project__name', 'process__code']
+    search_fields = ['name', 'project__code', 'project__client__name', 'project__client__code', 'process__code']
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -171,6 +171,12 @@ class BatchDetailView(BatchRoleRequiredMixin, EntityDetailView):
                                                            flat=True) if self.request.user.is_authenticated else []
 
         if batch and 'dynamic_actions' in context:
+            if 'Data_Custodian' in user_groups:
+                context['dynamic_actions'] = [
+                    action for action in context['dynamic_actions']
+                    if action.get('label') != 'Edit Record'
+                ]
+
             if batch.status == 'VALIDATED':
                 context['dynamic_actions'] = [
                     action for action in context['dynamic_actions']

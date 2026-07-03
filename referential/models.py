@@ -25,21 +25,21 @@ class MoleculeType(BaseModel):
     """
     Represents a type of molecule.
 
-    This class defines the properties of a molecule's type, including its name and
+    This class defines the properties of a molecule's type, including its type and
     an optional description. It is used to categorize different types of molecules
-    by their characteristics. The `name` attribute is unique, ensuring that each
+    by their characteristics. The `type` attribute is unique, ensuring that each
     type of molecule is distinct.
 
     Attributes:
-        name (str): The unique name of the molecule type, up to 100 characters long.
+        type (str): The unique name of the molecule type, up to 100 characters long.
         description (str or None): An optional textual description of the molecule
             type. This field can be left blank or null.
     """
-    name = models.CharField(max_length=100, unique=True)
+    type = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True, null=True)
 
     def __str__(self):
-        return self.name
+        return self.type
 
 class Project(BaseModel):
     """
@@ -62,7 +62,6 @@ class Project(BaseModel):
             project. Only validated and active molecule types with their
             related `status` and `is_active` attributes are selectable.
     """
-    name = models.CharField(max_length=255)
     code = models.CharField(max_length=50, unique=True)
     molecule_name = models.CharField(max_length=255)
 
@@ -82,10 +81,10 @@ class Project(BaseModel):
     )
 
     class Meta:
-        unique_together = ('client', 'name')
+        unique_together = ('client', 'code')
 
     def __str__(self):
-        return f"{self.code} - {self.name}"
+        return f"{self.code} - {self.client.name} - {self.molecule_name}"
 
 
 class AnalyticalMethod(BaseModel):
