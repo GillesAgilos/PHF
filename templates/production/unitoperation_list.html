@@ -70,18 +70,6 @@
                                     {% endif %}
                                 </div>
 
-                                <div class="row mb-3">
-                                    <div class="col-12">
-                                        <label class="form-label small fw-bold text-muted">ORDER (#)</label>
-                                        <input type="number" name="order" min="1"
-                                               class="form-control form-control-sm border-secondary"
-                                               value="{{ units|length|add:1 }}">
-                                        {% if form.order.errors %}
-                                            <div class="text-danger small">{{ form.order.errors.0 }}</div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-
                                 <button type="submit" class="btn btn-dark w-100 fw-bold shadow-sm py-2">
                                     <i class="bi bi-plus-lg"></i> Add to Structure
                                 </button>

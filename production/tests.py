@@ -329,7 +329,7 @@ class ProductionFormTests(ProductionTestDataMixin, TestCase):
         self.assertNotIn(self.archived_method.name, unit_names)
 
     def test_step_form_valid(self):
-        form = StepForm(instance=Step(unit_operation=self.draft_unit_1), data={"name": "Granulation", "order": 1})
+        form = StepForm(instance=Step(unit_operation=self.draft_unit_1), data={"name": "Granulation"})
         self.assertTrue(form.is_valid(), form.errors)
 
     def test_parameter_form_validates_numeric_ranges(self):
@@ -345,7 +345,6 @@ class ProductionFormTests(ProductionTestDataMixin, TestCase):
                 "high_proven_acceptable_range": "",
                 "low_normal_operating_range": "",
                 "high_normal_operating_range": "",
-                "order": 1,
             }
         )
         self.assertFalse(form.is_valid())
@@ -364,7 +363,6 @@ class ProductionFormTests(ProductionTestDataMixin, TestCase):
                 "high_proven_acceptable_range": "5",
                 "low_normal_operating_range": "1",
                 "high_normal_operating_range": "5",
-                "order": 2,
             }
         )
         self.assertTrue(text_form.is_valid(), text_form.errors)
@@ -585,7 +583,7 @@ class ProductionWorkflowTests(ProductionTestDataMixin, TestCase):
 
         add_response = self.client.post(
             reverse("production:unitoperation_add", kwargs={"process_pk": self.draft_process.pk}),
-            data={"name": self.global_unit_usp.name, "order": 99},
+            data={"name": self.global_unit_usp.name},
         )
         self.assertEqual(add_response.status_code, 302)
         added_unit = UnitOperation.objects.get(process=self.draft_process, order=3, name=self.global_unit_usp.name)
@@ -619,7 +617,7 @@ class ProductionWorkflowTests(ProductionTestDataMixin, TestCase):
 
         add_response = self.client.post(
             reverse("production:step_add", kwargs={"unit_pk": self.draft_unit_1.pk}),
-            data={"name": "Draft Step 3", "order": 99},
+            data={"name": "Draft Step 3"},
         )
         self.assertEqual(add_response.status_code, 302)
         added_step = Step.objects.get(unit_operation=self.draft_unit_1, name="Draft Step 3")
@@ -662,7 +660,6 @@ class ProductionWorkflowTests(ProductionTestDataMixin, TestCase):
                 "high_proven_acceptable_range": "",
                 "low_normal_operating_range": "",
                 "high_normal_operating_range": "",
-                "order": 99,
             },
         )
         self.assertEqual(add_response.status_code, 302)

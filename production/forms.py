@@ -45,7 +45,7 @@ class UnitOperationForm(forms.ModelForm):
 
     class Meta:
         model = UnitOperation
-        fields = ['name', 'order']
+        fields = ['name']
 
 
 class StepForm(forms.ModelForm):
@@ -62,7 +62,7 @@ class StepForm(forms.ModelForm):
     """
     class Meta:
         model = Step
-        fields = ['name', 'order']
+        fields = ['name']
 
 
 class ParameterForm(forms.ModelForm):
@@ -84,8 +84,7 @@ class ParameterForm(forms.ModelForm):
             'name', 'unit', 'format_type',
             'format_low_range', 'format_high_range',
             'low_proven_acceptable_range', 'high_proven_acceptable_range',
-            'low_normal_operating_range', 'high_normal_operating_range',
-            'order'
+            'low_normal_operating_range', 'high_normal_operating_range'
         ]
         widgets = {
             'format_type': forms.Select(attrs={'class': 'form-select form-select-sm border-secondary'}),
