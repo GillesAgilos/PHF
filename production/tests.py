@@ -16,6 +16,7 @@ class ProductionTestDataMixin:
         cls.system_admin_group = Group.objects.create(name="System_Admin")
         cls.data_steward_group = Group.objects.create(name="Data_Steward")
         cls.qa_group = Group.objects.create(name="QA_Representative")
+        cls.data_investigator_group = Group.objects.create(name="Data_Investigator")
 
         cls.admin = User.objects.create_user(
             username="admin",
@@ -39,6 +40,14 @@ class ProductionTestDataMixin:
             is_staff=True,
         )
         cls.qa.groups.add(cls.qa_group)
+
+        cls.investigator = User.objects.create_user(
+            username="investigator",
+            email="investigator@example.com",
+            password="pass12345",
+            is_staff=True,
+        )
+        cls.investigator.groups.add(cls.data_investigator_group)
 
         cls.client_entity = Client.objects.create(
             name="Validated Client",
@@ -107,8 +116,8 @@ class ProductionTestDataMixin:
             name="Temperature",
             unit="C",
             format_type="numeric",
-            format_low_range=20.0,
-            format_high_range=40.0,
+            format_lower_range=20.0,
+            format_upper_range=40.0,
             order=1,
         )
         cls.validated_sample = Sample.objects.create(
@@ -119,8 +128,8 @@ class ProductionTestDataMixin:
             sample=cls.validated_sample,
             analysis_name="Potency",
             analytical_method=cls.method,
-            format_low_range=0.0,
-            format_high_range=10.0,
+            format_lower_range=0.0,
+            format_upper_range=10.0,
         )
 
         cls.validated_process.status = Process.Status.VALIDATED
@@ -174,8 +183,8 @@ class ProductionTestDataMixin:
             name="pH",
             unit="pH",
             format_type="numeric",
-            format_low_range=5.0,
-            format_high_range=7.0,
+            format_lower_range=5.0,
+            format_upper_range=7.0,
             order=1,
         )
         cls.draft_parameter_2 = Parameter.objects.create(
@@ -183,8 +192,8 @@ class ProductionTestDataMixin:
             name="Conductivity",
             unit="mS/cm",
             format_type="numeric",
-            format_low_range=1.0,
-            format_high_range=3.0,
+            format_lower_range=1.0,
+            format_upper_range=3.0,
             order=2,
         )
         cls.archived_parameter = Parameter.objects.create(
@@ -192,8 +201,8 @@ class ProductionTestDataMixin:
             name="Archived Param",
             unit="u",
             format_type="numeric",
-            format_low_range=0.0,
-            format_high_range=1.0,
+            format_lower_range=0.0,
+            format_upper_range=1.0,
             order=100,
         )
         cls.archived_parameter.delete(user=cls.admin)
@@ -207,22 +216,22 @@ class ProductionTestDataMixin:
             sample=cls.draft_sample_1,
             analysis_name="Assay 1",
             analytical_method=cls.method,
-            format_low_range=0.0,
-            format_high_range=10.0,
+            format_lower_range=0.0,
+            format_upper_range=10.0,
         )
         cls.draft_analysis_2 = Analysis.objects.create(
             sample=cls.draft_sample_1,
             analysis_name="Assay 2",
             analytical_method=cls.method,
-            format_low_range=0.0,
-            format_high_range=10.0,
+            format_lower_range=0.0,
+            format_upper_range=10.0,
         )
         cls.archived_analysis = Analysis.objects.create(
             sample=cls.draft_sample_1,
             analysis_name="Archived Assay",
             analytical_method=cls.method,
-            format_low_range=0.0,
-            format_high_range=10.0,
+            format_lower_range=0.0,
+            format_upper_range=10.0,
         )
         cls.archived_analysis.delete(user=cls.admin)
 
@@ -283,8 +292,8 @@ class ProductionModelTests(ProductionTestDataMixin, TestCase):
                 name="Invalid Bounds",
                 unit="C",
                 format_type="numeric",
-                format_low_range=10.0,
-                format_high_range=5.0,
+                format_lower_range=10.0,
+                format_upper_range=5.0,
                 order=10,
             )
 
@@ -294,12 +303,12 @@ class ProductionModelTests(ProductionTestDataMixin, TestCase):
             name="Comment",
             unit="text",
             format_type="text",
-            format_low_range=1.0,
-            format_high_range=2.0,
+            format_lower_range=1.0,
+            format_upper_range=2.0,
             order=11,
         )
-        self.assertIsNone(param.format_low_range)
-        self.assertIsNone(param.format_high_range)
+        self.assertIsNone(param.format_lower_range)
+        self.assertIsNone(param.format_upper_range)
 
     def test_analysis_validation(self):
         with self.assertRaises(ValidationError):
@@ -307,8 +316,8 @@ class ProductionModelTests(ProductionTestDataMixin, TestCase):
                 sample=self.validated_sample,
                 analysis_name="Invalid ranges",
                 analytical_method=self.method,
-                format_low_range=5.0,
-                format_high_range=1.0,
+                format_lower_range=5.0,
+                format_upper_range=1.0,
             )
 
     def test_edit_url_rules(self):
@@ -339,17 +348,17 @@ class ProductionFormTests(ProductionTestDataMixin, TestCase):
                 "name": "pH",
                 "unit": "pH",
                 "format_type": "numeric",
-                "format_low_range": "",
-                "format_high_range": "",
-                "low_proven_acceptable_range": "",
-                "high_proven_acceptable_range": "",
-                "low_normal_operating_range": "",
-                "high_normal_operating_range": "",
+                "format_lower_range": "",
+                "format_upper_range": "",
+                "lower_proven_acceptable_range": "",
+                "upper_proven_acceptable_range": "",
+                "lower_normal_operating_range": "",
+                "upper_normal_operating_range": "",
             }
         )
         self.assertFalse(form.is_valid())
-        self.assertIn("format_low_range", form.errors)
-        self.assertIn("format_high_range", form.errors)
+        self.assertIn("format_lower_range", form.errors)
+        self.assertIn("format_upper_range", form.errors)
 
         text_form = ParameterForm(
             instance=Parameter(step=self.draft_step_1),
@@ -357,18 +366,18 @@ class ProductionFormTests(ProductionTestDataMixin, TestCase):
                 "name": "Comment",
                 "unit": "text",
                 "format_type": "text",
-                "format_low_range": "2",
-                "format_high_range": "4",
-                "low_proven_acceptable_range": "1",
-                "high_proven_acceptable_range": "5",
-                "low_normal_operating_range": "1",
-                "high_normal_operating_range": "5",
+                "format_lower_range": "2",
+                "format_upper_range": "4",
+                "lower_proven_acceptable_range": "1",
+                "upper_proven_acceptable_range": "5",
+                "lower_normal_operating_range": "1",
+                "upper_normal_operating_range": "5",
             }
         )
         self.assertTrue(text_form.is_valid(), text_form.errors)
-        self.assertIsNone(text_form.cleaned_data["format_low_range"])
-        self.assertIsNone(text_form.cleaned_data["format_high_range"])
-        self.assertIsNone(text_form.cleaned_data["low_proven_acceptable_range"])
+        self.assertIsNone(text_form.cleaned_data["format_lower_range"])
+        self.assertIsNone(text_form.cleaned_data["format_upper_range"])
+        self.assertIsNone(text_form.cleaned_data["lower_proven_acceptable_range"])
 
     def test_sample_and_analysis_forms_valid(self):
         sample_form = SampleForm(instance=Sample(step=self.draft_step_1), data={"name": "Sample X"})
@@ -377,10 +386,10 @@ class ProductionFormTests(ProductionTestDataMixin, TestCase):
             data={
                 "analysis_name": "Potency",
                 "analytical_method": self.method.pk,
-                "low_normal_operating_range": "",
-                "high_normal_operating_range": "",
-                "format_low_range": "0",
-                "format_high_range": "10",
+                "lower_normal_operating_range": "",
+                "upper_normal_operating_range": "",
+                "format_lower_range": "0",
+                "format_upper_range": "10",
             }
         )
         self.assertTrue(sample_form.is_valid(), sample_form.errors)
@@ -464,6 +473,18 @@ class ProductionSecurityTests(ProductionTestDataMixin, TestCase):
         self.assert_status("get", "production:unitoperation_list", self.qa, 200, kwargs={"process_pk": self.draft_process.pk})
         self.assert_status("post", "production:process_edit", self.qa, 403, kwargs={"pk": self.draft_process.pk}, data={})
         self.assert_status("post", "production:unitoperation_add", self.qa, 302, kwargs={"process_pk": self.draft_process.pk}, data={})
+
+    def test_data_investigator_read_only_permissions(self):
+        self.assert_status("get", "production:process_list", self.investigator, 200)
+        self.assert_status("get", "production:process_detail", self.investigator, 200, kwargs={"pk": self.validated_process.pk})
+        self.assert_status("get", "production:unitoperation_list", self.investigator, 200, kwargs={"process_pk": self.draft_process.pk})
+        self.assert_status("get", "production:step_list", self.investigator, 200, kwargs={"unit_pk": self.draft_unit_1.pk})
+        self.assert_status("get", "production:sample_list", self.investigator, 200, kwargs={"step_pk": self.draft_step_1.pk})
+        self.assert_status("get", "production:parameter_list", self.investigator, 200, kwargs={"step_pk": self.draft_step_1.pk})
+        self.assert_status("get", "production:analysis_list", self.investigator, 200, kwargs={"sample_pk": self.draft_sample_1.pk})
+        self.assert_status("get", "production:process_add", self.investigator, 403)
+        self.assert_status("post", "production:process_edit", self.investigator, 403, kwargs={"pk": self.draft_process.pk}, data={})
+        self.assert_status("post", "production:unitoperation_add", self.investigator, 403, kwargs={"process_pk": self.draft_process.pk}, data={})
 
     def test_admin_bypass(self):
         self.assert_status("get", "production:process_add", self.admin, 200)
@@ -654,12 +675,12 @@ class ProductionWorkflowTests(ProductionTestDataMixin, TestCase):
                 "name": "Pressure",
                 "unit": "bar",
                 "format_type": "numeric",
-                "format_low_range": 1,
-                "format_high_range": 5,
-                "low_proven_acceptable_range": "",
-                "high_proven_acceptable_range": "",
-                "low_normal_operating_range": "",
-                "high_normal_operating_range": "",
+                "format_lower_range": 1,
+                "format_upper_range": 5,
+                "lower_proven_acceptable_range": "",
+                "upper_proven_acceptable_range": "",
+                "lower_normal_operating_range": "",
+                "upper_normal_operating_range": "",
             },
         )
         self.assertEqual(add_response.status_code, 302)
@@ -722,10 +743,10 @@ class ProductionWorkflowTests(ProductionTestDataMixin, TestCase):
             data={
                 "analysis_name": "Assay 3",
                 "analytical_method": self.method.pk,
-                "low_normal_operating_range": "",
-                "high_normal_operating_range": "",
-                "format_low_range": 0,
-                "format_high_range": 10,
+                "lower_normal_operating_range": "",
+                "upper_normal_operating_range": "",
+                "format_lower_range": 0,
+                "format_upper_range": 10,
             },
         )
         self.assertEqual(add_response.status_code, 302)
@@ -741,3 +762,4 @@ class ProductionWorkflowTests(ProductionTestDataMixin, TestCase):
         self.assertEqual(restore_response.status_code, 302)
         self.archived_analysis.refresh_from_db()
         self.assertTrue(self.archived_analysis.is_active)
+

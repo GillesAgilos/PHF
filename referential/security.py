@@ -27,6 +27,7 @@ class ReferentialRoleRequiredMixin(LoginRequiredMixin):
     - System_Admin       : Full Access (Bypass)
     - Data_Steward       : Read-Only (List/Detail) + Write (Create/Update/Delete/Restore)
     - QA_Representative  : Read-Only (List/Detail) + Decision (Validate/Reject)
+    - Data_Investigator  : Read-Only (List/Detail)
     """
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
@@ -39,10 +40,11 @@ class ReferentialRoleRequiredMixin(LoginRequiredMixin):
         # Extract user groups synchronized from Entra ID
         user_groups = request.user.groups.values_list('name', flat=True)
         current_view = self
+        read_only_roles = {'Data_Steward', 'QA_Representative', 'Data_Investigator'}
 
         # READ-ONLY VIEWS (
         is_read_only_view = isinstance(current_view, ListView) or isinstance(current_view, EntityDetailView)
-        if is_read_only_view and ('Data_Steward' in user_groups or 'QA_Representative' in user_groups):
+        if is_read_only_view and any(role in user_groups for role in read_only_roles):
             return super().dispatch(request, *args, **kwargs)
 
         if 'Data_Steward' in user_groups:

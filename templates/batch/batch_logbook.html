@@ -80,17 +80,11 @@
                                                             <div class="text-muted"
                                                                  style="font-size: 0.72rem; font-weight: normal;">
                                                                 NOR:
-                                                                {% if p.parameter.format_type == 'numeric' %}
-                                                                    {% if p.parameter.low_normal_operating_range is not None or p.parameter.high_normal_operating_range is not None %}
-                                                                        [{{ p.parameter.low_normal_operating_range }} ;
-                                                                        {{ p.parameter.high_normal_operating_range }}]
-                                                                    {% else %}
-                                                                        Numeric
-                                                                    {% endif %}
-                                                                {% elif p.parameter.format_type == 'bool' %}
-                                                                    Boolean (Yes/No)
-                                                                {% else %}
-                                                                    {{ p.parameter.format_type|title }}
+                                                                {% if p.parameter.lower_normal_operating_range is not None or p.parameter.upper_normal_operating_range is not None %}
+                                                                    [{{ p.parameter.lower_normal_operating_range }} ;
+                                                                    {{ p.parameter.upper_normal_operating_range }}]
+                                                                 {% else %}
+                                                                    No specific range
                                                                 {% endif %}
                                                             </div>
                                                         </td>
@@ -259,9 +253,9 @@
                                                             <div class="text-muted"
                                                                  style="font-size: 0.72rem; font-weight: normal;">
                                                                 NOR:
-                                                                {% if a.analysis.low_normal_operating_range is not None or a.analysis.high_normal_operating_range is not None %}
-                                                                    [{{ a.analysis.low_normal_operating_range }} ;
-                                                                    {{ a.analysis.high_normal_operating_range }}]
+                                                                {% if a.analysis.lower_normal_operating_range is not None or a.analysis.upper_normal_operating_range is not None %}
+                                                                    [{{ a.analysis.lower_normal_operating_range }} ;
+                                                                    {{ a.analysis.upper_normal_operating_range }}]
                                                                 {% else %}
                                                                     No specific range
                                                                 {% endif %}

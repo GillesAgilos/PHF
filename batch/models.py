@@ -169,8 +169,8 @@ class ParameterResult(BaseModel):
                 except ValueError:
                     raise ValidationError({'actual_value': "The expected format for this parameter is numeric."})
 
-                low = self.parameter.format_low_range
-                high = self.parameter.format_high_range
+                low = self.parameter.format_lower_range
+                high = self.parameter.format_upper_range
 
                 if low is not None and val_float < low:
                     raise ValidationError({'actual_value': f"Value {val_float} is below the allowed limit ({low})."})
@@ -241,8 +241,8 @@ class AnalysisResult(BaseModel):
             raise ValidationError({'comment': "A comment is required if no actual value is provided."})
 
         if self.analysis_id and self.actual_value:
-            low = self.analysis.format_low_range
-            high = self.analysis.format_high_range
+            low = self.analysis.format_lower_range
+            high = self.analysis.format_upper_range
 
             if low is not None or high is not None:
                 try:

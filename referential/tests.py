@@ -29,9 +29,11 @@ class ReferentialTestDataMixin:
         system_admin_group (Group): Group assigned for system administrators.
         data_steward_group (Group): Group assigned for data stewards.
         qa_group (Group): Group assigned for QA representatives.
+        data_investigator_group (Group): Group assigned for data investigators.
         admin (User): A system administrator user with superuser and staff privileges.
         steward (User): A data steward user associated with the data steward group.
         qa (User): A QA representative user associated with the QA group.
+        investigator (User): A data investigator user associated with the data investigator group.
         validated_client (Client): A validated client instance with the status set
             to VALIDATED.
         draft_client (Client): A client instance with the status set to draft
@@ -58,6 +60,7 @@ class ReferentialTestDataMixin:
         cls.system_admin_group = Group.objects.create(name="System_Admin")
         cls.data_steward_group = Group.objects.create(name="Data_Steward")
         cls.qa_group = Group.objects.create(name="QA_Representative")
+        cls.data_investigator_group = Group.objects.create(name="Data_Investigator")
 
         cls.admin = User.objects.create_user(
             username="admin",
@@ -81,6 +84,14 @@ class ReferentialTestDataMixin:
             is_staff=True,
         )
         cls.qa.groups.add(cls.qa_group)
+
+        cls.investigator = User.objects.create_user(
+            username="investigator",
+            email="investigator@example.com",
+            password="pass12345",
+            is_staff=True,
+        )
+        cls.investigator.groups.add(cls.data_investigator_group)
 
         cls.validated_client = Client.objects.create(
             name="Validated Client",
@@ -457,6 +468,36 @@ class ReferentialSecurityTests(ReferentialTestDataMixin, TestCase):
             "get",
             "referential:client_add",
             self.qa,
+        )
+
+    def test_data_investigator_read_only_access(self):
+        self.client.force_login(self.investigator)
+
+        self.assertEqual(self.client.get(reverse("referential:client_list")).status_code, 200)
+        self.assertEqual(
+            self.client.get(reverse("referential:client_detail", kwargs={"pk": self.validated_client.pk})).status_code,
+            200,
+        )
+        self.assertEqual(self.client.get(reverse("referential:project_list")).status_code, 200)
+        self.assertEqual(
+            self.client.get(reverse("referential:analyticalmethod_detail", kwargs={"pk": self.validated_method.pk})).status_code,
+            200,
+        )
+        self.assertEqual(self.client.get(reverse("referential:globalunitoperation_list")).status_code, 200)
+        self.assertEqual(self.client.get(reverse("referential:moleculetype_list")).status_code, 200)
+
+        self.assert_permission_denied("get", "referential:client_add", self.investigator)
+        self.assert_permission_denied(
+            "get",
+            "referential:project_edit",
+            self.investigator,
+            kwargs={"pk": self.validated_project.pk},
+        )
+        self.assert_permission_denied(
+            "post",
+            "referential:moleculetype_validate",
+            self.investigator,
+            kwargs={"pk": self.validated_molecule_type.pk},
         )
         self.assert_permission_denied(
             "post",

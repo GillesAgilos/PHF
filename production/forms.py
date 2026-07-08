@@ -82,9 +82,9 @@ class ParameterForm(forms.ModelForm):
         model = Parameter
         fields = [
             'name', 'unit', 'format_type',
-            'format_low_range', 'format_high_range',
-            'low_proven_acceptable_range', 'high_proven_acceptable_range',
-            'low_normal_operating_range', 'high_normal_operating_range'
+            'format_lower_range', 'format_upper_range',
+            'lower_proven_acceptable_range', 'upper_proven_acceptable_range',
+            'lower_normal_operating_range', 'upper_normal_operating_range'
         ]
         widgets = {
             'format_type': forms.Select(attrs={'class': 'form-select form-select-sm border-secondary'}),
@@ -93,25 +93,25 @@ class ParameterForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         format_type = cleaned_data.get('format_type')
-        format_low_range = cleaned_data.get('format_low_range')
-        format_high_range = cleaned_data.get('format_high_range')
+        format_lower_range = cleaned_data.get('format_lower_range')
+        format_upper_range = cleaned_data.get('format_upper_range')
 
         if format_type == 'numeric':
-            if format_low_range is None:
-                self.add_error('format_low_range', "This field is required for Numeric parameters.")
-            if format_high_range is None:
-                self.add_error('format_high_range', "This field is required for Numeric parameters.")
+            if format_lower_range is None:
+                self.add_error('format_lower_range', "This field is required for Numeric parameters.")
+            if format_upper_range is None:
+                self.add_error('format_upper_range', "This field is required for Numeric parameters.")
 
-            if format_low_range is not None and format_high_range is not None:
-                if format_low_range > format_high_range:
-                    self.add_error('format_low_range', "Low limit cannot be higher than High limit.")
+            if format_lower_range is not None and format_upper_range is not None:
+                if format_lower_range > format_upper_range:
+                    self.add_error('format_lower_range', "Lower limit cannot be higher than Upper limit.")
         else:
-            cleaned_data['format_low_range'] = None
-            cleaned_data['format_high_range'] = None
-            cleaned_data['low_proven_acceptable_range'] = None
-            cleaned_data['high_proven_acceptable_range'] = None
-            cleaned_data['low_normal_operating_range'] = None
-            cleaned_data['high_normal_operating_range'] = None
+            cleaned_data['format_lower_range'] = None
+            cleaned_data['format_upper_range'] = None
+            cleaned_data['lower_proven_acceptable_range'] = None
+            cleaned_data['upper_proven_acceptable_range'] = None
+            cleaned_data['lower_normal_operating_range'] = None
+            cleaned_data['upper_normal_operating_range'] = None
 
         return cleaned_data
 
@@ -147,7 +147,7 @@ class AnalysisForm(forms.ModelForm):
             is `Analysis`.
         Meta.fields (list): The list of model fields to include in the form,
             specifically `analysis_name`, `analytical_method`,
-            `format_low_range`, and `format_high_range`.
+            `format_lower_range`, and `format_upper_range`.
         Meta.widgets (dict): Custom widget configurations for form fields, such as
             specifying a styled searchable dropdown for the `analytical_method`.
     """
@@ -156,10 +156,10 @@ class AnalysisForm(forms.ModelForm):
         fields = [
             'analysis_name',
             'analytical_method',
-            'low_normal_operating_range',
-            'high_normal_operating_range',
-            'format_low_range',
-            'format_high_range',
+            'lower_normal_operating_range',
+            'upper_normal_operating_range',
+            'format_lower_range',
+            'format_upper_range',
         ]
         widgets = {
             'analytical_method': Select2Widget(attrs={
@@ -171,35 +171,35 @@ class AnalysisForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        normal_low = cleaned_data.get('low_normal_operating_range')
-        normal_high = cleaned_data.get('high_normal_operating_range')
-        low = cleaned_data.get('format_low_range')
-        high = cleaned_data.get('format_high_range')
+        normal_lower = cleaned_data.get('lower_normal_operating_range')
+        normal_upper = cleaned_data.get('upper_normal_operating_range')
+        lower = cleaned_data.get('format_lower_range')
+        upper = cleaned_data.get('format_upper_range')
 
-        if normal_low is not None and normal_high is None:
+        if normal_lower is not None and normal_upper is None:
             self.add_error(
-                'high_normal_operating_range',
-                "High normal operating range is required when Low normal operating range is provided."
+                'upper_normal_operating_range',
+                "Upper normal operating range is required when Lower normal operating range is provided."
             )
-        if normal_high is not None and normal_low is None:
+        if normal_upper is not None and normal_lower is None:
             self.add_error(
-                'low_normal_operating_range',
-                "Low normal operating range is required when High normal operating range is provided."
-            )
-
-        if normal_low is not None and normal_high is not None and normal_low > normal_high:
-            self.add_error(
-                'low_normal_operating_range',
-                "Low normal operating range cannot be higher than High normal operating range."
+                'lower_normal_operating_range',
+                "Lower normal operating range is required when Upper normal operating range is provided."
             )
 
-        if low is not None and high is None:
-            self.add_error('format_high_range', "High validation limit is required when Low limit is provided.")
-        if high is not None and low is None:
-            self.add_error('format_low_range', "Low validation limit is required when High limit is provided.")
+        if normal_lower is not None and normal_upper is not None and normal_lower > normal_upper:
+            self.add_error(
+                'lower_normal_operating_range',
+                "Lower normal operating range cannot be higher than Upper normal operating range."
+            )
 
-        if low is not None and high is not None and low > high:
-            self.add_error('format_low_range', "Low limit cannot be higher than High limit.")
+        if lower is not None and upper is None:
+            self.add_error('format_upper_range', "Upper validation limit is required when Lower limit is provided.")
+        if upper is not None and lower is None:
+            self.add_error('format_lower_range', "Lower validation limit is required when Upper limit is provided.")
+
+        if lower is not None and upper is not None and lower > upper:
+            self.add_error('format_lower_range', "Lower limit cannot be higher than Upper limit.")
 
         return cleaned_data
 

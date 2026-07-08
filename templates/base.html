@@ -20,7 +20,7 @@
 
                 {% with user.groups.all.0.name as user_role %}
 
-                    {% if user.is_superuser or user_role == "System_Admin" or user_role == "Data_Steward" or user_role == "QA_Representative" %}
+                    {% if user.is_superuser or user_role == "System_Admin" or user_role == "Data_Steward" or user_role == "QA_Representative" or user_role == "Data_Investigator" %}
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navRef" role="button" data-bs-toggle="dropdown"
                                aria-expanded="false">
@@ -36,7 +36,7 @@
                         </li>
                     {% endif %}
 
-                    {% if user.is_superuser or user_role == "System_Admin" or user_role == "Data_Steward" or user_role == "QA_Representative" %}
+                    {% if user.is_superuser or user_role == "System_Admin" or user_role == "Data_Steward" or user_role == "QA_Representative" or user_role == "Data_Investigator" %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'production:process_list' %}">
                                 Process Templates
@@ -44,7 +44,7 @@
                         </li>
                     {% endif %}
 
-                    {% if user.is_superuser or user_role == "System_Admin" or user_role == "Data_Custodian" or user_role == "Data_Steward" or user_role == "QA" or user_role == "QA_Representative" %}
+                    {% if user.is_superuser or user_role == "System_Admin" or user_role == "Data_Custodian" or user_role == "Data_Steward" or user_role == "QA" or user_role == "QA_Representative" or user_role == "Data_Investigator" %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'batch:batch_list' %}">
                                 Batches

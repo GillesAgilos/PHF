@@ -23,6 +23,7 @@ class BatchTestDataMixin:
         cls.data_custodian_group = Group.objects.create(name="Data_Custodian")
         cls.data_steward_group = Group.objects.create(name="Data_Steward")
         cls.qa_group = Group.objects.create(name="QA")
+        cls.data_investigator_group = Group.objects.create(name="Data_Investigator")
 
         cls.admin = User.objects.create_user(
             username="admin",
@@ -54,6 +55,14 @@ class BatchTestDataMixin:
             is_staff=True,
         )
         cls.qa.groups.add(cls.qa_group)
+
+        cls.investigator = User.objects.create_user(
+            username="investigator",
+            email="investigator@example.com",
+            password="pass12345",
+            is_staff=True,
+        )
+        cls.investigator.groups.add(cls.data_investigator_group)
 
         cls.client_entity = Client.objects.create(
             name="Validated Client",
@@ -109,8 +118,8 @@ class BatchTestDataMixin:
             format_type="numeric",
             order=1,
             unit="pH",
-            format_low_range=5.0,
-            format_high_range=7.0,
+            format_lower_range=5.0,
+            format_upper_range=7.0,
         )
         cls.sample = Sample.objects.create(
             step=cls.step,
@@ -120,8 +129,8 @@ class BatchTestDataMixin:
             sample=cls.sample,
             analysis_name="Potency",
             analytical_method=cls.method,
-            format_low_range=0.0,
-            format_high_range=10.0,
+            format_lower_range=0.0,
+            format_upper_range=10.0,
         )
 
         cls.bool_process = Process.objects.create(
@@ -415,8 +424,8 @@ class BatchSecurityTests(BatchTestDataMixin, TestCase):
             sample=self.sample,
             analysis_name="Impurity",
             analytical_method=self.method,
-            format_low_range=0.0,
-            format_high_range=10.0,
+            format_lower_range=0.0,
+            format_upper_range=10.0,
         )
 
         analysis_create_response = self.client.post(
@@ -471,6 +480,15 @@ class BatchSecurityTests(BatchTestDataMixin, TestCase):
         self.assert_status("post", "batch:batch_edit", self.qa, 403, kwargs={"pk": self.batch1.pk})
         self.assert_status("post", "batch:batch_validate", self.qa, 403, kwargs={"pk": self.batch1.pk})
         self.assert_status("post", "batch:batch_reject", self.qa, 403, kwargs={"pk": self.batch1.pk}, data={"rejection_reason": "No"})
+
+    def test_data_investigator_read_only_permissions(self):
+        self.assert_status("get", "batch:batch_list", self.investigator, 200)
+        self.assert_status("get", "batch:batch_detail", self.investigator, 200, kwargs={"pk": self.batch1.pk})
+        self.assert_status("get", "batch:batch_logbook", self.investigator, 200, kwargs={"pk": self.batch1.pk})
+        self.assert_status("get", "batch:batch_add", self.investigator, 403)
+        self.assert_status("post", "batch:batch_edit", self.investigator, 403, kwargs={"pk": self.batch1.pk})
+        self.assert_status("post", "batch:batch_validate", self.investigator, 403, kwargs={"pk": self.batch1.pk})
+        self.assert_status("post", "batch:batch_reject", self.investigator, 403, kwargs={"pk": self.batch1.pk}, data={"rejection_reason": "No"})
 
     def test_admin_bypass(self):
         self.assert_status("get", "batch:batch_add", self.admin, 200)
@@ -667,3 +685,4 @@ class BatchViewTests(BatchTestDataMixin, TestCase):
         empty_response = self.client.get(reverse("batch:get_next_iteration"))
         self.assertEqual(empty_response.status_code, 200)
         self.assertEqual(empty_response.json()["next_iteration"], 1)
+

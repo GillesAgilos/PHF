@@ -163,17 +163,17 @@ class Parameter(BaseComponentEntity):
         order (int): The display order for this parameter relative to other
             parameters in the same step.
         unit (str): The unit of measurement for the parameter.
-        format_low_range (float or None): The minimum acceptable value for the
+        format_lower_range (float or None): The minimum acceptable value for the
             parameter when the format is numeric.
-        format_high_range (float or None): The maximum acceptable value for the
+        format_upper_range (float or None): The maximum acceptable value for the
             parameter when the format is numeric.
-        low_proven_acceptable_range (float or None): The smallest proven
+        lower_proven_acceptable_range (float or None): The smallest proven
             acceptable value for the parameter.
-        high_proven_acceptable_range (float or None): The largest proven
+        upper_proven_acceptable_range (float or None): The largest proven
             acceptable value for the parameter.
-        low_normal_operating_range (float or None): The minimum value for the
+        lower_normal_operating_range (float or None): The minimum value for the
             normal operating range of the parameter.
-        high_normal_operating_range (float or None): The maximum value for the
+        upper_normal_operating_range (float or None): The maximum value for the
             normal operating range of the parameter.
     """
     FORMAT_TYPE_CHOICES = [
@@ -189,13 +189,13 @@ class Parameter(BaseComponentEntity):
 
     unit = models.CharField(max_length=50)
 
-    format_low_range = models.FloatField(blank=True, null=True, verbose_name="Allowed Measurement Low Range")
-    format_high_range = models.FloatField(blank=True, null=True, verbose_name="Allowed Measurement High Range")
+    format_lower_range = models.FloatField(blank=True, null=True, verbose_name="Allowed Measurement Lower Range")
+    format_upper_range = models.FloatField(blank=True, null=True, verbose_name="Allowed Measurement Upper Range")
 
-    low_proven_acceptable_range = models.FloatField(blank=True, null=True)
-    high_proven_acceptable_range = models.FloatField(blank=True, null=True)
-    low_normal_operating_range = models.FloatField(blank=True, null=True)
-    high_normal_operating_range = models.FloatField(blank=True, null=True)
+    lower_proven_acceptable_range = models.FloatField(blank=True, null=True)
+    upper_proven_acceptable_range = models.FloatField(blank=True, null=True)
+    lower_normal_operating_range = models.FloatField(blank=True, null=True)
+    upper_normal_operating_range = models.FloatField(blank=True, null=True)
 
     class Meta:
         ordering = ['order']
@@ -212,25 +212,25 @@ class Parameter(BaseComponentEntity):
 
         if self.format_type == 'numeric':
             errors = {}
-            if self.format_low_range is None:
-                errors['format_low_range'] = "This field is required when the format type is Numeric."
-            if self.format_high_range is None:
-                errors['format_high_range'] = "This field is required when the format type is Numeric."
+            if self.format_lower_range is None:
+                errors['format_lower_range'] = "This field is required when the format type is Numeric."
+            if self.format_upper_range is None:
+                errors['format_upper_range'] = "This field is required when the format type is Numeric."
 
-            if self.format_low_range is not None and self.format_high_range is not None:
-                if self.format_low_range > self.format_high_range:
-                    errors['format_low_range'] = "Low range cannot be higher than High range."
+            if self.format_lower_range is not None and self.format_upper_range is not None:
+                if self.format_lower_range > self.format_upper_range:
+                    errors['format_lower_range'] = "Lower range cannot be higher than Upper range."
 
             if errors:
                 raise ValidationError(errors)
 
         else:
-            self.format_low_range = None
-            self.format_high_range = None
-            self.low_proven_acceptable_range = None
-            self.high_proven_acceptable_range = None
-            self.low_normal_operating_range = None
-            self.high_normal_operating_range = None
+            self.format_lower_range = None
+            self.format_upper_range = None
+            self.lower_proven_acceptable_range = None
+            self.upper_proven_acceptable_range = None
+            self.lower_normal_operating_range = None
+            self.upper_normal_operating_range = None
 
     def save(self, *args, **kwargs):
         self.full_clean()
@@ -287,8 +287,8 @@ class Analysis(BaseComponentEntity):
         analytical_method (ForeignKey): The analytical method associated with this analysis.
             The foreign key relationship enforces that only validated and active analytical methods
             can be assigned.
-        format_low_range (FloatField): The lower bound of the validation range. Can be blank or null.
-        format_high_range (FloatField): The upper bound of the validation range. Can be blank or null.
+        format_lower_range (FloatField): The lower bound of the validation range. Can be blank or null.
+        format_upper_range (FloatField): The upper bound of the validation range. Can be blank or null.
     """
     sample = models.ForeignKey(
         Sample,
@@ -308,12 +308,12 @@ class Analysis(BaseComponentEntity):
         limit_choices_to={'status': 'VALIDATED', 'is_active': True}
     )
 
-    format_low_range = models.FloatField(blank=True, null=True, verbose_name="Allowed Measurement Low Range")
-    format_high_range = models.FloatField(blank=True, null=True, verbose_name="Allowed Measurement High Range")
+    format_lower_range = models.FloatField(blank=True, null=True, verbose_name="Allowed Measurement Lower Range")
+    format_upper_range = models.FloatField(blank=True, null=True, verbose_name="Allowed Measurement Upper Range")
 
 
-    low_normal_operating_range = models.FloatField(blank=True, null=True)
-    high_normal_operating_range = models.FloatField(blank=True, null=True)
+    lower_normal_operating_range = models.FloatField(blank=True, null=True)
+    upper_normal_operating_range = models.FloatField(blank=True, null=True)
 
     class Meta:
         verbose_name = "Analysis"
@@ -330,26 +330,26 @@ class Analysis(BaseComponentEntity):
         super().clean()
         errors = {}
 
-        if self.low_normal_operating_range is not None and self.high_normal_operating_range is None:
+        if self.lower_normal_operating_range is not None and self.upper_normal_operating_range is None:
             errors[
-                'high_normal_operating_range'] = "High normal operating range is required when Low normal operating range is provided."
-        if self.high_normal_operating_range is not None and self.low_normal_operating_range is None:
+                'upper_normal_operating_range'] = "Upper normal operating range is required when Lower normal operating range is provided."
+        if self.upper_normal_operating_range is not None and self.lower_normal_operating_range is None:
             errors[
-                'low_normal_operating_range'] = "Low normal operating range is required when High normal operating range is provided."
+                'lower_normal_operating_range'] = "Lower normal operating range is required when Upper normal operating range is provided."
 
-        if self.low_normal_operating_range is not None and self.high_normal_operating_range is not None:
-            if self.low_normal_operating_range > self.high_normal_operating_range:
+        if self.lower_normal_operating_range is not None and self.upper_normal_operating_range is not None:
+            if self.lower_normal_operating_range > self.upper_normal_operating_range:
                 errors[
-                    'low_normal_operating_range'] = "Low normal operating range cannot be higher than High normal operating range."
+                    'lower_normal_operating_range'] = "Lower normal operating range cannot be higher than Upper normal operating range."
 
-        if self.format_low_range is not None and self.format_high_range is None:
-            errors['format_high_range'] = "High range is required when Low range is provided."
-        if self.format_high_range is not None and self.format_low_range is None:
-            errors['format_low_range'] = "Low range is required when High range is provided."
+        if self.format_lower_range is not None and self.format_upper_range is None:
+            errors['format_upper_range'] = "Upper range is required when Lower range is provided."
+        if self.format_upper_range is not None and self.format_lower_range is None:
+            errors['format_lower_range'] = "Lower range is required when Upper range is provided."
 
-        if self.format_low_range is not None and self.format_high_range is not None:
-            if self.format_low_range > self.format_high_range:
-                errors['format_low_range'] = "Low range cannot be higher than High range."
+        if self.format_lower_range is not None and self.format_upper_range is not None:
+            if self.format_lower_range > self.format_upper_range:
+                errors['format_lower_range'] = "Lower range cannot be higher than Upper range."
 
         if errors:
             raise ValidationError(errors)

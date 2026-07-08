@@ -30,6 +30,7 @@ class BatchRoleRequiredMixin(LoginRequiredMixin):
     - Data_Custodian   : Read-Only on Batch + Write on Parameters/Results logbook
     - Data_Steward     : Read-Only + Decision (Validate/Reject)
     - QA               : Read-Only Only (List/Detail)
+    - Data_Investigator: Read-Only (List/Detail)
     """
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
@@ -41,15 +42,15 @@ class BatchRoleRequiredMixin(LoginRequiredMixin):
 
         user_groups = request.user.groups.values_list('name', flat=True)
         current_view = self
+        read_only_roles = {'Data_Custodian', 'Data_Steward', 'QA', 'QA_Representative', 'Data_Investigator'}
 
         current_model = getattr(current_view, 'model', None)
         current_model_name = getattr(current_model, '__name__', None)
         custodian_logbook_models = {'ParameterResult', 'AnalysisResult'}
 
         is_read_only_view = isinstance(current_view, ListView) or isinstance(current_view, EntityDetailView) or isinstance(current_view, DetailView)
-        if is_read_only_view:
-            if 'Data_Custodian' in user_groups or 'Data_Steward' in user_groups or 'QA' in user_groups or 'QA_Representative' in user_groups:
-                return super().dispatch(request, *args, **kwargs)
+        if is_read_only_view and any(role in user_groups for role in read_only_roles):
+            return super().dispatch(request, *args, **kwargs)
 
         if 'Data_Custodian' in user_groups:
             if current_model_name in custodian_logbook_models:

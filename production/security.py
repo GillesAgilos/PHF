@@ -1,10 +1,12 @@
 from django.core.exceptions import PermissionDenied
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views.generic import ListView, TemplateView
 from phf.utils import (
     EntityValidateView,
     EntityRejectView,
     GenericDeleteView,
     GenericRestoreView,
+    EntityDetailView,
 )
 
 
@@ -24,6 +26,7 @@ class ProductionRoleRequiredMixin(LoginRequiredMixin):
     - System_Admin       : Full Access (Bypass)
     - Data_Steward       : Read-Only (List/Detail/Structure) + Write (Create/Update/Delete/Restore)
     - QA_Representative  : Read-Only (List/Detail/Structure) + Decision (Validate/Reject)
+    - Data_Investigator  : Read-Only (List/Detail)
     """
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
@@ -37,6 +40,11 @@ class ProductionRoleRequiredMixin(LoginRequiredMixin):
         user_groups = request.user.groups.values_list('name', flat=True)
         current_view = self
         view_class_name = current_view.__class__.__name__.lower()
+        read_only_roles = {'Data_Steward', 'QA_Representative', 'Data_Investigator'}
+
+        is_read_only_view = isinstance(current_view, (ListView, EntityDetailView, TemplateView))
+        if is_read_only_view and any(role in user_groups for role in read_only_roles):
+            return super().dispatch(request, *args, **kwargs)
 
 
         if 'Data_Steward' in user_groups:

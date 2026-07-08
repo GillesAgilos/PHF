@@ -102,13 +102,13 @@
                                         <span class="badge bg-secondary mb-2">NOR (Normal Operating Range)</span>
                                         <div class="row g-2">
                                             <div class="col-6">
-                                                <input type="number" step="any" name="low_normal_operating_range"
-                                                       placeholder="Low"
+                                                <input type="number" step="any" name="lower_normal_operating_range"
+                                                       placeholder="Lower"
                                                        class="form-control form-control-sm border-secondary">
                                             </div>
                                             <div class="col-6">
-                                                <input type="number" step="any" name="high_normal_operating_range"
-                                                       placeholder="High"
+                                                <input type="number" step="any" name="upper_normal_operating_range"
+                                                       placeholder="Upper"
                                                        class="form-control form-control-sm border-secondary">
                                             </div>
                                         </div>
@@ -118,13 +118,13 @@
                                         <span class="badge bg-secondary mb-2">PAR (Proven Acceptable Range)</span>
                                         <div class="row g-2">
                                             <div class="col-6">
-                                                <input type="number" step="any" name="low_proven_acceptable_range"
-                                                       placeholder="Low"
+                                                <input type="number" step="any" name="lower_proven_acceptable_range"
+                                                       placeholder="Lower"
                                                        class="form-control form-control-sm border-secondary">
                                             </div>
                                             <div class="col-6">
-                                                <input type="number" step="any" name="high_proven_acceptable_range"
-                                                       placeholder="High"
+                                                <input type="number" step="any" name="upper_proven_acceptable_range"
+                                                       placeholder="Upper"
                                                        class="form-control form-control-sm border-secondary">
                                             </div>
                                         </div>
@@ -134,23 +134,23 @@
                                         <span class="badge bg-secondary mb-2">Allowed Measurement Range</span>
                                         <div class="row g-2">
                                             <div class="col-6">
-                                                <input type="number" step="any" name="format_low_range"
-                                                       placeholder="Low"
+                                                <input type="number" step="any" name="format_lower_range"
+                                                       placeholder="Lower"
                                                        class="form-control form-control-sm border-secondary"
-                                                       value="{{ form.format_low_range.value|default_if_none:'' }}">
-                                                {% if form.format_low_range.errors %}
+                                                       value="{{ form.format_lower_range.value|default_if_none:'' }}">
+                                                {% if form.format_lower_range.errors %}
                                                     <div class="text-danger small"
-                                                         style="font-size: 0.75rem;">{{ form.format_low_range.errors.0 }}</div>
+                                                         style="font-size: 0.75rem;">{{ form.format_lower_range.errors.0 }}</div>
                                                 {% endif %}
                                             </div>
                                             <div class="col-6">
-                                                <input type="number" step="any" name="format_high_range"
-                                                       placeholder="High"
+                                                <input type="number" step="any" name="format_upper_range"
+                                                       placeholder="Upper"
                                                        class="form-control form-control-sm border-secondary"
-                                                       value="{{ form.format_high_range.value|default_if_none:'' }}">
-                                                {% if form.format_high_range.errors %}
+                                                       value="{{ form.format_upper_range.value|default_if_none:'' }}">
+                                                {% if form.format_upper_range.errors %}
                                                     <div class="text-danger small"
-                                                         style="font-size: 0.75rem;">{{ form.format_high_range.errors.0 }}</div>
+                                                         style="font-size: 0.75rem;">{{ form.format_upper_range.errors.0 }}</div>
                                                 {% endif %}
                                             </div>
                                         </div>
@@ -226,17 +226,17 @@
                                         </span>
 
                                         {% if param.format_type == 'numeric' %}
-                                            {% if param.low_normal_operating_range is not null %}
+                                            {% if param.lower_normal_operating_range is not null %}
                                                 <span class="text-muted border-start ps-2">
                                                     NOR: <strong
-                                                        class="text-dark">[{{ param.low_normal_operating_range }} ; {{ param.high_normal_operating_range }}]</strong>
+                                                        class="text-dark">[{{ param.lower_normal_operating_range }} ; {{ param.upper_normal_operating_range }}]</strong>
                                                 </span>
                                             {% endif %}
 
-                                            {% if param.format_low_range is not null %}
+                                            {% if param.format_lower_range is not null %}
                                                 <span class="text-muted border-start ps-2">
                                                     Allowed Measurement Range: <strong
-                                                        class="text-danger">[{{ param.format_low_range }} ; {{ param.format_high_range }}]</strong>
+                                                        class="text-danger">[{{ param.format_lower_range }} ; {{ param.format_upper_range }}]</strong>
                                                 </span>
                                             {% endif %}
                                         {% endif %}
