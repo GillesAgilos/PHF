@@ -75,19 +75,22 @@ class Batch(BaseModel):
             expected_param_count = 0
             expected_analysis_count = 0
 
+            active_param_results = self.parameter_results.filter(is_active=True, parameter__is_active=True)
+            active_analysis_results = self.analysis_results.filter(is_active=True, analysis__is_active=True)
+
             for unit in active_units:
                 active_steps = unit.steps.filter(is_active=True)
                 for step in active_steps:
                     expected_param_count += step.parameters.filter(is_active=True).count()
-                    for sample in step.samples.all():
-                        for analysis in sample.analyses.all():
+                    for sample in step.samples.filter(is_active=True):
+                        for analysis in sample.analyses.filter(is_active=True):
                             expected_analysis_count += 1
 
-            recorded_param_count = self.parameter_results.filter(is_active=True).count()
-            recorded_analysis_count = self.analysis_results.filter(is_active=True).count()
+            recorded_param_count = active_param_results.count()
+            recorded_analysis_count = active_analysis_results.count()
 
-            rejected_param_count = self.parameter_results.filter(is_active=True, status='REJECTED').count()
-            rejected_analysis_count = self.analysis_results.filter(is_active=True, status='REJECTED').count()
+            rejected_param_count = active_param_results.filter(status='REJECTED').count()
+            rejected_analysis_count = active_analysis_results.filter(status='REJECTED').count()
 
             if rejected_param_count:
                 raise ValidationError(

@@ -13,7 +13,7 @@ from phf.utils import (
 )
 from .models import Batch, AnalysisResult, ParameterResult
 from .forms import BatchForm, ParameterResultForm, AnalysisResultForm
-from production.models import UnitOperation, Step, Analysis
+from production.models import UnitOperation, Step, Sample, Parameter, Analysis
 from .security import BatchRoleRequiredMixin
 
 
@@ -286,16 +286,26 @@ class BatchLogbookView(BatchRoleRequiredMixin, DetailView):
 
         units = UnitOperation.objects.filter(process=process, is_active=True).order_by('order')
 
+        active_parameters = Parameter.objects.filter(is_active=True)
         analyses_with_methods = Analysis.objects.filter(is_active=True).select_related('analytical_method')
-
-        steps = Step.objects.filter(unit_operation__in=units, is_active=True).order_by('order').prefetch_related(
-            'parameters',
-            Prefetch('samples__analyses', queryset=analyses_with_methods)
+        active_samples = Sample.objects.filter(is_active=True).prefetch_related(
+            Prefetch('analyses', queryset=analyses_with_methods)
         )
 
-        param_results = {res.parameter_id: res for res in ParameterResult.objects.filter(batch=batch, is_active=True)}
+        steps = Step.objects.filter(unit_operation__in=units, is_active=True).order_by('order').prefetch_related(
+            Prefetch('parameters', queryset=active_parameters),
+            Prefetch('samples', queryset=active_samples),
+        )
 
-        analysis_results = {res.analysis_id: res for res in AnalysisResult.objects.filter(batch=batch, is_active=True)}
+        param_results = {
+            res.parameter_id: res
+            for res in ParameterResult.objects.filter(batch=batch, is_active=True, parameter__is_active=True)
+        }
+
+        analysis_results = {
+            res.analysis_id: res
+            for res in AnalysisResult.objects.filter(batch=batch, is_active=True, analysis__is_active=True)
+        }
 
         process_tree = []
         for unit in units:

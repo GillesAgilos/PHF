@@ -133,6 +133,26 @@ class BatchTestDataMixin:
             format_upper_range=10.0,
         )
 
+        cls.archived_parameter = Parameter.objects.create(
+            step=cls.step,
+            name="Archived pH",
+            format_type="numeric",
+            order=2,
+            unit="pH",
+            format_lower_range=5.0,
+            format_upper_range=7.0,
+        )
+        cls.archived_parameter.delete(user=cls.admin)
+
+        cls.archived_analysis = Analysis.objects.create(
+            sample=cls.sample,
+            analysis_name="Archived Potency",
+            analytical_method=cls.method,
+            format_lower_range=0.0,
+            format_upper_range=10.0,
+        )
+        cls.archived_analysis.delete(user=cls.admin)
+
         cls.bool_process = Process.objects.create(
             name="Aux Process",
             code="PROC-002",
@@ -553,10 +573,20 @@ class BatchViewTests(BatchTestDataMixin, TestCase):
 
         step_entry = unit_entry["steps"][0]
         self.assertEqual(step_entry["object"].pk, self.step.pk)
+        self.assertEqual(len(step_entry["parameters_with_results"]), 1)
         self.assertEqual(step_entry["parameters_with_results"][0]["parameter"].pk, self.parameter.pk)
         self.assertEqual(step_entry["parameters_with_results"][0]["result"].pk, self.parameter_result.pk)
+        self.assertEqual(len(step_entry["analyses_with_results"]), 1)
         self.assertEqual(step_entry["analyses_with_results"][0]["analysis"].pk, self.analysis.pk)
         self.assertEqual(step_entry["analyses_with_results"][0]["result"].pk, self.analysis_result.pk)
+        self.assertNotIn(self.archived_parameter.name, response.content.decode())
+        self.assertNotIn(self.archived_analysis.analysis_name, response.content.decode())
+
+    def test_batch_validation_ignores_archived_process_results(self):
+        self.batch1.validate_entity(user=self.steward)
+        self.batch1.refresh_from_db()
+
+        self.assertEqual(self.batch1.status, Batch.Status.VALIDATED)
 
     def test_batch_create_update_delete_restore_flow(self):
         self.client.force_login(self.admin)
