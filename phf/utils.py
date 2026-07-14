@@ -263,7 +263,29 @@ class BaseComponentEntity(models.Model):
             self.deleted_by = user
         self.save()
 
+    def _get_root_process(self):
+        """
+        Return the owning Process by walking the parent chain.
+        """
+        current = self
+
+        while hasattr(current, "get_parent_entity"):
+            parent = current.get_parent_entity()
+            if not parent:
+                return None
+            if parent.__class__.__name__ == "Process":
+                return parent
+            current = parent
+
+        return None
+
     def restore(self):
+        process = self._get_root_process()
+        if process and getattr(process, "status", None) != "DRAFT":
+            raise ValidationError(
+                f"Cannot restore this element while the parent process '{process}' is not in Draft."
+            )
+
         self.is_active = True
         self.deleted_at = None
         self.deleted_by = None

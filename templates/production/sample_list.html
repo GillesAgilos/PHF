@@ -126,11 +126,15 @@
 
                                     {% elif not sample.is_active %}
 
-                                        {% if request.user.is_superuser or user_group == "System_Admin" or user_group == "Data_Steward" or request.user.groups.all.0.name == "System_Admin" or request.user.groups.all.0.name == "Data_Steward" %}
-                                            <form action="{% url 'production:sample_restore' pk=sample.pk %}" method="post" class="d-inline m-0">
-                                                {% csrf_token %}
-                                                <button type="submit" class="btn btn-sm btn-success py-1"><i class="bi bi-arrow-counterclockwise"></i> Restore</button>
-                                            </form>
+                                        {% if process.status == 'DRAFT' %}
+                                            {% if request.user.is_superuser or user_group == "System_Admin" or user_group == "Data_Steward" or request.user.groups.all.0.name == "System_Admin" or request.user.groups.all.0.name == "Data_Steward" %}
+                                                <form action="{% url 'production:sample_restore' pk=sample.pk %}" method="post" class="d-inline m-0">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-success py-1"><i class="bi bi-arrow-counterclockwise"></i> Restore</button>
+                                                </form>
+                                            {% endif %}
+                                        {% elif request.user.is_superuser or user_group == "System_Admin" or user_group == "Data_Steward" or request.user.groups.all.0.name == "System_Admin" or request.user.groups.all.0.name == "Data_Steward" %}
+                                            <span class="text-muted small"><i class="bi bi-lock-fill"></i> Restore disabled while the process is {{ process.get_status_display|lower }}.</span>
                                         {% endif %}
 
                                         <a href="{% url 'production:sample_detail' pk=sample.pk %}" class="btn btn-sm btn-outline-secondary me-2 shadow-sm" title="View Details (Read Only)">

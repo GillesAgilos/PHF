@@ -763,3 +763,48 @@ class ProductionWorkflowTests(ProductionTestDataMixin, TestCase):
         self.archived_analysis.refresh_from_db()
         self.assertTrue(self.archived_analysis.is_active)
 
+    def test_restore_is_blocked_when_process_is_not_draft(self):
+        self.client.force_login(self.steward)
+
+        self.draft_process.status = Process.Status.PENDING
+        self.draft_process.save(update_fields=["status"])
+
+        archived_objects = [
+            (self.draft_unit_1, "production:unitoperation_restore"),
+            (self.draft_step_1, "production:step_restore"),
+            (self.draft_parameter_1, "production:parameter_restore"),
+            (self.draft_sample_1, "production:sample_restore"),
+            (self.draft_analysis_1, "production:analysis_restore"),
+        ]
+
+        for obj, route_name in archived_objects:
+            with self.subTest(route_name=route_name):
+                obj.delete(user=self.admin)
+                response = self.client.post(reverse(route_name, kwargs={"pk": obj.pk}))
+                self.assertEqual(response.status_code, 302)
+                obj.refresh_from_db()
+                self.assertFalse(obj.is_active)
+
+    def test_restore_controls_are_hidden_for_validated_process(self):
+        self.client.force_login(self.steward)
+
+        archived_objects = [
+            (self.validated_unit, "production:unitoperation_list", {"process_pk": self.validated_process.pk}),
+            (self.validated_step, "production:step_list", {"unit_pk": self.validated_unit.pk}),
+            (self.validated_parameter, "production:parameter_list", {"step_pk": self.validated_step.pk}),
+            (self.validated_sample, "production:sample_list", {"step_pk": self.validated_step.pk}),
+            (self.validated_analysis, "production:analysis_list", {"sample_pk": self.validated_sample.pk}),
+        ]
+
+        self.validated_unit.delete(user=self.admin)
+        self.validated_step.delete(user=self.admin)
+        self.validated_parameter.delete(user=self.admin)
+        self.validated_sample.delete(user=self.admin)
+        self.validated_analysis.delete(user=self.admin)
+
+        for obj, route_name, kwargs in archived_objects:
+            with self.subTest(route_name=route_name):
+                response = self.client.get(reverse(route_name, kwargs=kwargs), {"view": "archived"})
+                self.assertEqual(response.status_code, 200)
+                self.assertNotIn(reverse(f"production:{obj._meta.model_name}_restore", kwargs={"pk": obj.pk}), response.content.decode())
+
