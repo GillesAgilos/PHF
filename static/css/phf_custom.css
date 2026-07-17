@@ -14,3 +14,15 @@ body {
 .badge {
     font-weight: 500;
 }
+
+.navbar-custom {
+    background-color: var(--bs-primary, #0d6efd) !important;
+}
+
+.navbar-custom.nav-dev {
+    background-color: #fd7e14 !important;
+}
+
+.navbar-custom.nav-test {
+    background-color: #6f42c1 !important;
+}

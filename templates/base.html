@@ -11,10 +11,14 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
 </head>
 <body>
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+<nav class="navbar navbar-expand-lg navbar-dark navbar-custom nav-{{ ENV_NAME }} shadow-sm">
     <div class="container">
-        <a class="navbar-brand fw-bold" href="{% url 'home' %}">PHF | Eurogentec</a>
-
+        <a class="navbar-brand fw-bold" href="{% url 'home' %}">
+            PHF | Eurogentec
+            {% if ENV_NAME and ENV_NAME != 'prod' %}
+                <span class="badge bg-light text-dark ms-2">{{ ENV_NAME|upper }}</span>
+            {% endif %}
+        </a>
         <div class="navbar-nav me-auto">
             {% if user.is_authenticated %}
 
@@ -22,16 +26,21 @@
 
                     {% if user.is_superuser or user_role == "System_Admin" or user_role == "Data_Steward" or user_role == "QA_Representative" or user_role == "Data_Investigator" %}
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="navRef" role="button" data-bs-toggle="dropdown"
+                            <a class="nav-link dropdown-toggle" href="#" id="navRef" role="button"
+                               data-bs-toggle="dropdown"
                                aria-expanded="false">
                                 Referential
                             </a>
                             <ul class="dropdown-menu shadow" aria-labelledby="navRef">
                                 <li><a class="dropdown-item" href="{% url 'referential:client_list' %}">Clients</a></li>
-                                <li><a class="dropdown-item" href="{% url 'referential:project_list' %}">Projects</a></li>
-                                <li><a class="dropdown-item" href="{% url 'referential:moleculetype_list' %}">Molecule Types</a></li>
-                                <li><a class="dropdown-item" href="{% url 'referential:analyticalmethod_list' %}">Analytical Methods</a></li>
-                                <li><a class="dropdown-item" href="{% url 'referential:globalunitoperation_list' %}">Unit Operations Catalogue</a></li>
+                                <li><a class="dropdown-item" href="{% url 'referential:project_list' %}">Projects</a>
+                                </li>
+                                <li><a class="dropdown-item" href="{% url 'referential:moleculetype_list' %}">Molecule
+                                    Types</a></li>
+                                <li><a class="dropdown-item" href="{% url 'referential:analyticalmethod_list' %}">Analytical
+                                    Methods</a></li>
+                                <li><a class="dropdown-item" href="{% url 'referential:globalunitoperation_list' %}">Unit
+                                    Operations Catalogue</a></li>
                             </ul>
                         </li>
                     {% endif %}

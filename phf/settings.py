@@ -2,10 +2,14 @@ from pathlib import Path
 import environ
 import os
 
+import phf.context_processors
+
 env = environ.Env(
     DEBUG=(bool, False),
     ENV_NAME=(str, 'prod')  # default prod
 )
+
+ENV_NAME = env('ENV_NAME')
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -59,6 +63,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'phf.context_processors.export_env_name',
             ],
         },
     },
@@ -128,11 +133,10 @@ AUTH_ADFS = {
     'LOGIN_EXEMPT_URLS': ['login'],
 }
 
-#https
+# https
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
-
 
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_AGE = 900
