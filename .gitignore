@@ -5,3 +5,4 @@ venv/
 *.iml
 db.sqlite3
 __pycache__/
+staticfiles/
