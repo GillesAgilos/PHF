@@ -233,7 +233,8 @@ class Parameter(BaseComponentEntity):
             self.upper_normal_operating_range = None
 
     def save(self, *args, **kwargs):
-        self.full_clean()
+        if self.is_active:
+            self.full_clean()
         super().save(*args, **kwargs)
 
 class Sample(BaseComponentEntity):
