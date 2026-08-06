@@ -277,9 +277,9 @@ class Analysis(BaseComponentEntity):
     Represents an analysis entity that connects a sample with an analytical method.
 
     This class is used to store information about a specific analysis on a given sample, including the
-    analysis name, associated analytical method, and optional validation ranges. It enforces certain
-    validation rules for the format ranges and ensures the uniqueness of entries based on sample,
-    analysis name, and analytical method.
+    analysis name, associated analytical method, measurement validation ranges, and optional
+    specification limits. It enforces validation rules for both range pairs and ensures the
+    uniqueness of entries based on sample, analysis name, and analytical method.
 
     Attributes:
         sample (ForeignKey): The sample associated with this analysis.
@@ -290,6 +290,8 @@ class Analysis(BaseComponentEntity):
             can be assigned.
         format_lower_range (FloatField): The lower bound of the validation range. Can be blank or null.
         format_upper_range (FloatField): The upper bound of the validation range. Can be blank or null.
+        lower_specification (FloatField): The lower specification limit. Can be blank or null.
+        upper_specification (FloatField): The upper specification limit. Can be blank or null.
     """
     sample = models.ForeignKey(
         Sample,

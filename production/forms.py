@@ -139,14 +139,15 @@ class AnalysisForm(forms.ModelForm):
 
     This class provides a representation of the `Analysis` model's form, handling
     field validations and custom widget configurations for user-friendly input. The
-    form enforces constraints to ensure the logical consistency of numeric ranges
-    entered in the associated fields.
+    form enforces constraints to ensure the logical consistency of the specification
+    limits and numeric ranges entered in the associated fields.
 
     Attributes:
         Meta.model (type): The model class that the form is associated with, which
             is `Analysis`.
         Meta.fields (list): The list of model fields to include in the form,
             specifically `analysis_name`, `analytical_method`,
+            `lower_specification`, `upper_specification`,
             `format_lower_range`, and `format_upper_range`.
         Meta.widgets (dict): Custom widget configurations for form fields, such as
             specifying a styled searchable dropdown for the `analytical_method`.
