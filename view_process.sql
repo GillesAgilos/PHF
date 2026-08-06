@@ -60,8 +60,8 @@ SELECT
     analysis.analysis_name AS [Analysis Name],
     analysis.format_upper_range AS [Analysis Format Upper Range],
     analysis.format_lower_range AS [Analysis Format Lower Range],
-    analysis.upper_normal_operating_range AS [Analysis Upper Normal Operating Range],
-    analysis.lower_normal_operating_range AS [Analysis Lower Normal Operating Range],
+    analysis.upper_specification AS [Analysis Upper Specification],
+    analysis.lower_specification AS [Analysis Lower Specification],
 
     analysis_result.status AS [Analysis Result Status],
     analysis_result.is_active AS [Analysis Result Is Active],

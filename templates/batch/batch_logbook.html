@@ -83,7 +83,7 @@
                                                                 {% if p.parameter.lower_normal_operating_range is not None or p.parameter.upper_normal_operating_range is not None %}
                                                                     [{{ p.parameter.lower_normal_operating_range }} ;
                                                                     {{ p.parameter.upper_normal_operating_range }}]
-                                                                 {% else %}
+                                                                {% else %}
                                                                     No specific range
                                                                 {% endif %}
                                                             </div>
@@ -252,10 +252,10 @@
                                                                 Sample: {{ a.analysis.sample.name }}</div>
                                                             <div class="text-muted"
                                                                  style="font-size: 0.72rem; font-weight: normal;">
-                                                                NOR:
-                                                                {% if a.analysis.lower_normal_operating_range is not None or a.analysis.upper_normal_operating_range is not None %}
-                                                                    [{{ a.analysis.lower_normal_operating_range }} ;
-                                                                    {{ a.analysis.upper_normal_operating_range }}]
+                                                                Specification:
+                                                                {% if a.analysis.lower_specification is not None or a.analysis.upper_specification is not None %}
+                                                                    [{{ a.analysis.lower_specification }} ;
+                                                                    {{ a.analysis.upper_specification }}]
                                                                 {% else %}
                                                                     No specific range
                                                                 {% endif %}

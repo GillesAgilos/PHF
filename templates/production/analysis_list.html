@@ -89,22 +89,22 @@
                             </div>
 
                             <div class="bg-light p-2 rounded mb-3 border">
-                                <span class="badge bg-secondary mb-2">NOR (Normal Operating Range)</span>
+                                <span class="badge bg-secondary mb-2">Specification</span>
                                 <div class="row g-2">
                                     <div class="col-6">
-                                        <input type="number" step="any" name="lower_normal_operating_range" placeholder="Lower"
+                                        <input type="number" step="any" name="lower_specification" placeholder="Lower"
                                                class="form-control form-control-sm border-secondary"
-                                               value="{{ form.lower_normal_operating_range.value|default_if_none:'' }}">
-                                        {% if form.lower_normal_operating_range.errors %}
-                                            <div class="text-danger small" style="font-size: 0.75rem;">{{ form.lower_normal_operating_range.errors.0 }}</div>
+                                               value="{{ form.lower_specification.value|default_if_none:'' }}">
+                                        {% if form.lower_specification.errors %}
+                                            <div class="text-danger small" style="font-size: 0.75rem;">{{ form.lower_specification.errors.0 }}</div>
                                         {% endif %}
                                     </div>
                                     <div class="col-6">
-                                        <input type="number" step="any" name="upper_normal_operating_range" placeholder="Upper"
+                                        <input type="number" step="any" name="upper_specification" placeholder="Upper"
                                                class="form-control form-control-sm border-secondary"
-                                               value="{{ form.upper_normal_operating_range.value|default_if_none:'' }}">
-                                        {% if form.upper_normal_operating_range.errors %}
-                                            <div class="text-danger small" style="font-size: 0.75rem;">{{ form.upper_normal_operating_range.errors.0 }}</div>
+                                               value="{{ form.upper_specification.value|default_if_none:'' }}">
+                                        {% if form.upper_specification.errors %}
+                                            <div class="text-danger small" style="font-size: 0.75rem;">{{ form.upper_specification.errors.0 }}</div>
                                         {% endif %}
                                     </div>
                                 </div>

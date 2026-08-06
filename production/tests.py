@@ -352,8 +352,8 @@ class ProductionFormTests(ProductionTestDataMixin, TestCase):
                 "format_upper_range": "",
                 "lower_proven_acceptable_range": "",
                 "upper_proven_acceptable_range": "",
-                "lower_normal_operating_range": "",
-                "upper_normal_operating_range": "",
+                "lower_specification": "",
+                "upper_specification": "",
             }
         )
         self.assertFalse(form.is_valid())
@@ -386,8 +386,8 @@ class ProductionFormTests(ProductionTestDataMixin, TestCase):
             data={
                 "analysis_name": "Potency",
                 "analytical_method": self.method.pk,
-                "lower_normal_operating_range": "",
-                "upper_normal_operating_range": "",
+                "lower_specification": "",
+                "upper_specification": "",
                 "format_lower_range": "0",
                 "format_upper_range": "10",
             }
@@ -464,32 +464,48 @@ class ProductionSecurityTests(ProductionTestDataMixin, TestCase):
 
     def test_data_steward_permissions(self):
         self.assert_status("get", "production:process_list", self.steward, 200)
-        self.assert_status("get", "production:process_detail", self.steward, 200, kwargs={"pk": self.validated_process.pk})
-        self.assert_status("post", "production:process_validate", self.steward, 403, kwargs={"pk": self.pending_process.pk})
-        self.assert_status("post", "production:process_reject", self.steward, 403, kwargs={"pk": self.pending_process.pk}, data={"rejection_reason": "No"})
+        self.assert_status("get", "production:process_detail", self.steward, 200,
+                           kwargs={"pk": self.validated_process.pk})
+        self.assert_status("post", "production:process_validate", self.steward, 403,
+                           kwargs={"pk": self.pending_process.pk})
+        self.assert_status("post", "production:process_reject", self.steward, 403,
+                           kwargs={"pk": self.pending_process.pk}, data={"rejection_reason": "No"})
 
     def test_qa_permissions(self):
         self.assert_status("get", "production:process_list", self.qa, 200)
-        self.assert_status("get", "production:unitoperation_list", self.qa, 200, kwargs={"process_pk": self.draft_process.pk})
-        self.assert_status("post", "production:process_edit", self.qa, 403, kwargs={"pk": self.draft_process.pk}, data={})
-        self.assert_status("post", "production:unitoperation_add", self.qa, 302, kwargs={"process_pk": self.draft_process.pk}, data={})
+        self.assert_status("get", "production:unitoperation_list", self.qa, 200,
+                           kwargs={"process_pk": self.draft_process.pk})
+        self.assert_status("post", "production:process_edit", self.qa, 403, kwargs={"pk": self.draft_process.pk},
+                           data={})
+        self.assert_status("post", "production:unitoperation_add", self.qa, 302,
+                           kwargs={"process_pk": self.draft_process.pk}, data={})
 
     def test_data_investigator_read_only_permissions(self):
         self.assert_status("get", "production:process_list", self.investigator, 200)
-        self.assert_status("get", "production:process_detail", self.investigator, 200, kwargs={"pk": self.validated_process.pk})
-        self.assert_status("get", "production:unitoperation_list", self.investigator, 200, kwargs={"process_pk": self.draft_process.pk})
-        self.assert_status("get", "production:step_list", self.investigator, 200, kwargs={"unit_pk": self.draft_unit_1.pk})
-        self.assert_status("get", "production:sample_list", self.investigator, 200, kwargs={"step_pk": self.draft_step_1.pk})
-        self.assert_status("get", "production:parameter_list", self.investigator, 200, kwargs={"step_pk": self.draft_step_1.pk})
-        self.assert_status("get", "production:analysis_list", self.investigator, 200, kwargs={"sample_pk": self.draft_sample_1.pk})
+        self.assert_status("get", "production:process_detail", self.investigator, 200,
+                           kwargs={"pk": self.validated_process.pk})
+        self.assert_status("get", "production:unitoperation_list", self.investigator, 200,
+                           kwargs={"process_pk": self.draft_process.pk})
+        self.assert_status("get", "production:step_list", self.investigator, 200,
+                           kwargs={"unit_pk": self.draft_unit_1.pk})
+        self.assert_status("get", "production:sample_list", self.investigator, 200,
+                           kwargs={"step_pk": self.draft_step_1.pk})
+        self.assert_status("get", "production:parameter_list", self.investigator, 200,
+                           kwargs={"step_pk": self.draft_step_1.pk})
+        self.assert_status("get", "production:analysis_list", self.investigator, 200,
+                           kwargs={"sample_pk": self.draft_sample_1.pk})
         self.assert_status("get", "production:process_add", self.investigator, 403)
-        self.assert_status("post", "production:process_edit", self.investigator, 403, kwargs={"pk": self.draft_process.pk}, data={})
-        self.assert_status("post", "production:unitoperation_add", self.investigator, 403, kwargs={"process_pk": self.draft_process.pk}, data={})
+        self.assert_status("post", "production:process_edit", self.investigator, 403,
+                           kwargs={"pk": self.draft_process.pk}, data={})
+        self.assert_status("post", "production:unitoperation_add", self.investigator, 403,
+                           kwargs={"process_pk": self.draft_process.pk}, data={})
 
     def test_admin_bypass(self):
         self.assert_status("get", "production:process_add", self.admin, 200)
-        self.assert_status("post", "production:process_validate", self.admin, 302, kwargs={"pk": self.pending_process.pk})
-        self.assert_status("post", "production:process_reject", self.admin, 302, kwargs={"pk": self.rejected_process.pk}, data={"rejection_reason": "Admin review"})
+        self.assert_status("post", "production:process_validate", self.admin, 302,
+                           kwargs={"pk": self.pending_process.pk})
+        self.assert_status("post", "production:process_reject", self.admin, 302,
+                           kwargs={"pk": self.rejected_process.pk}, data={"rejection_reason": "Admin review"})
 
 
 class ProductionWorkflowTests(ProductionTestDataMixin, TestCase):
@@ -518,7 +534,8 @@ class ProductionWorkflowTests(ProductionTestDataMixin, TestCase):
         self.assertEqual(self.draft_process.status, Process.Status.PENDING)
         self.assertEqual(self.draft_process.updated_by, self.admin)
 
-        validate_response = self.client.post(reverse("production:process_validate", kwargs={"pk": self.pending_process.pk}))
+        validate_response = self.client.post(
+            reverse("production:process_validate", kwargs={"pk": self.pending_process.pk}))
         self.assertEqual(validate_response.status_code, 302)
         self.pending_process.refresh_from_db()
         self.assertEqual(self.pending_process.status, Process.Status.VALIDATED)
@@ -596,7 +613,8 @@ class ProductionWorkflowTests(ProductionTestDataMixin, TestCase):
     def test_unit_structure_add_reorder_restore_and_detail(self):
         self.client.force_login(self.steward)
 
-        response = self.client.get(reverse("production:unitoperation_list", kwargs={"process_pk": self.draft_process.pk}))
+        response = self.client.get(
+            reverse("production:unitoperation_list", kwargs={"process_pk": self.draft_process.pk}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["count_active"], 2)
         self.assertEqual(response.context["count_archived"], 1)
@@ -619,11 +637,13 @@ class ProductionWorkflowTests(ProductionTestDataMixin, TestCase):
         self.assertEqual(self.draft_unit_1.order, 2)
         self.assertEqual(self.draft_unit_2.order, 1)
 
-        detail_response = self.client.get(reverse("production:unitoperation_detail", kwargs={"pk": self.draft_unit_1.pk}))
+        detail_response = self.client.get(
+            reverse("production:unitoperation_detail", kwargs={"pk": self.draft_unit_1.pk}))
         self.assertEqual(detail_response.status_code, 200)
         self.assertEqual(detail_response.context["dynamic_actions"], [])
 
-        restore_response = self.client.post(reverse("production:unitoperation_restore", kwargs={"pk": self.archived_unit.pk}))
+        restore_response = self.client.post(
+            reverse("production:unitoperation_restore", kwargs={"pk": self.archived_unit.pk}))
         self.assertEqual(restore_response.status_code, 302)
         self.archived_unit.refresh_from_db()
         self.assertTrue(self.archived_unit.is_active)
@@ -696,7 +716,8 @@ class ProductionWorkflowTests(ProductionTestDataMixin, TestCase):
         self.assertEqual(self.draft_parameter_1.order, 2)
         self.assertEqual(self.draft_parameter_2.order, 1)
 
-        detail_response = self.client.get(reverse("production:parameter_detail", kwargs={"pk": self.draft_parameter_1.pk}))
+        detail_response = self.client.get(
+            reverse("production:parameter_detail", kwargs={"pk": self.draft_parameter_1.pk}))
         self.assertEqual(detail_response.status_code, 200)
 
         restore_response = self.client.post(
@@ -725,7 +746,8 @@ class ProductionWorkflowTests(ProductionTestDataMixin, TestCase):
         detail_response = self.client.get(reverse("production:sample_detail", kwargs={"pk": self.draft_sample_1.pk}))
         self.assertEqual(detail_response.status_code, 200)
 
-        restore_response = self.client.post(reverse("production:sample_restore", kwargs={"pk": self.archived_sample.pk}))
+        restore_response = self.client.post(
+            reverse("production:sample_restore", kwargs={"pk": self.archived_sample.pk}))
         self.assertEqual(restore_response.status_code, 302)
         self.archived_sample.refresh_from_db()
         self.assertTrue(self.archived_sample.is_active)
@@ -743,8 +765,8 @@ class ProductionWorkflowTests(ProductionTestDataMixin, TestCase):
             data={
                 "analysis_name": "Assay 3",
                 "analytical_method": self.method.pk,
-                "lower_normal_operating_range": "",
-                "upper_normal_operating_range": "",
+                "lower_specification": "",
+                "upper_specification": "",
                 "format_lower_range": 0,
                 "format_upper_range": 10,
             },
@@ -753,7 +775,8 @@ class ProductionWorkflowTests(ProductionTestDataMixin, TestCase):
         added_analysis = Analysis.objects.get(sample=self.draft_sample_1, analysis_name="Assay 3")
         self.assertEqual(added_analysis.created_by, self.steward)
 
-        detail_response = self.client.get(reverse("production:analysis_detail", kwargs={"pk": self.draft_analysis_1.pk}))
+        detail_response = self.client.get(
+            reverse("production:analysis_detail", kwargs={"pk": self.draft_analysis_1.pk}))
         self.assertEqual(detail_response.status_code, 200)
 
         restore_response = self.client.post(
@@ -806,5 +829,5 @@ class ProductionWorkflowTests(ProductionTestDataMixin, TestCase):
             with self.subTest(route_name=route_name):
                 response = self.client.get(reverse(route_name, kwargs=kwargs), {"view": "archived"})
                 self.assertEqual(response.status_code, 200)
-                self.assertNotIn(reverse(f"production:{obj._meta.model_name}_restore", kwargs={"pk": obj.pk}), response.content.decode())
-
+                self.assertNotIn(reverse(f"production:{obj._meta.model_name}_restore", kwargs={"pk": obj.pk}),
+                                 response.content.decode())

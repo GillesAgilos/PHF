@@ -338,8 +338,8 @@ class ProcessCreateNewVersionView(ProductionRoleRequiredMixin, View):
                                     analytical_method=sample.analytical_method,
                                     format_lower_range=sample.format_lower_range,
                                     format_upper_range=sample.format_upper_range,
-                                    lower_normal_operating_range=sample.lower_normal_operating_range,
-                                    upper_normal_operating_range=sample.upper_normal_operating_range,
+                                    lower_specification=sample.lower_specification,
+                                    upper_specification=sample.upper_specification,
                                     created_by=request.user,
                                     updated_by=request.user,
                                 )

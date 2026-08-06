@@ -156,8 +156,8 @@ class AnalysisForm(forms.ModelForm):
         fields = [
             'analysis_name',
             'analytical_method',
-            'lower_normal_operating_range',
-            'upper_normal_operating_range',
+            'lower_specification',
+            'upper_specification',
             'format_lower_range',
             'format_upper_range',
         ]
@@ -171,26 +171,26 @@ class AnalysisForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        normal_lower = cleaned_data.get('lower_normal_operating_range')
-        normal_upper = cleaned_data.get('upper_normal_operating_range')
+        specification_lower = cleaned_data.get('lower_specification')
+        specification_upper = cleaned_data.get('upper_specification')
         lower = cleaned_data.get('format_lower_range')
         upper = cleaned_data.get('format_upper_range')
 
-        if normal_lower is not None and normal_upper is None:
+        if specification_lower is not None and specification_upper is None:
             self.add_error(
-                'upper_normal_operating_range',
-                "Upper normal operating range is required when Lower normal operating range is provided."
+                'upper_specification',
+                "Upper specification is required when Lower specification is provided."
             )
-        if normal_upper is not None and normal_lower is None:
+        if specification_upper is not None and specification_lower is None:
             self.add_error(
-                'lower_normal_operating_range',
-                "Lower normal operating range is required when Upper normal operating range is provided."
+                'lower_specification',
+                "Lower specification is required when Upper specification is provided."
             )
 
-        if normal_lower is not None and normal_upper is not None and normal_lower > normal_upper:
+        if specification_lower is not None and specification_upper is not None and specification_lower > specification_upper:
             self.add_error(
-                'lower_normal_operating_range',
-                "Lower normal operating range cannot be higher than Upper normal operating range."
+                'lower_specification',
+                "Lower specification cannot be higher than Upper specification."
             )
 
         if lower is not None and upper is None:

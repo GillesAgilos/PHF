@@ -312,9 +312,8 @@ class Analysis(BaseComponentEntity):
     format_lower_range = models.FloatField(blank=True, null=True, verbose_name="Allowed Measurement Lower Range")
     format_upper_range = models.FloatField(blank=True, null=True, verbose_name="Allowed Measurement Upper Range")
 
-
-    lower_normal_operating_range = models.FloatField(blank=True, null=True)
-    upper_normal_operating_range = models.FloatField(blank=True, null=True)
+    lower_specification = models.FloatField(blank=True, null=True)
+    upper_specification = models.FloatField(blank=True, null=True)
 
     class Meta:
         verbose_name = "Analysis"
@@ -331,17 +330,17 @@ class Analysis(BaseComponentEntity):
         super().clean()
         errors = {}
 
-        if self.lower_normal_operating_range is not None and self.upper_normal_operating_range is None:
+        if self.lower_specification is not None and self.upper_specification is None:
             errors[
-                'upper_normal_operating_range'] = "Upper normal operating range is required when Lower normal operating range is provided."
-        if self.upper_normal_operating_range is not None and self.lower_normal_operating_range is None:
+                'upper_specification'] = "Upper specification is required when Lower specification is provided."
+        if self.upper_specification is not None and self.lower_specification is None:
             errors[
-                'lower_normal_operating_range'] = "Lower normal operating range is required when Upper normal operating range is provided."
+                'lower_specification'] = "Lower specification is required when Upper specification is provided."
 
-        if self.lower_normal_operating_range is not None and self.upper_normal_operating_range is not None:
-            if self.lower_normal_operating_range > self.upper_normal_operating_range:
+        if self.lower_specification is not None and self.upper_specification is not None:
+            if self.lower_specification > self.upper_specification:
                 errors[
-                    'lower_normal_operating_range'] = "Lower normal operating range cannot be higher than Upper normal operating range."
+                    'lower_specification'] = "Lower specification cannot be higher than Upper specification."
 
         if self.format_lower_range is not None and self.format_upper_range is None:
             errors['format_upper_range'] = "Upper range is required when Lower range is provided."
