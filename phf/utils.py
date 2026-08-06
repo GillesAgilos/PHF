@@ -320,10 +320,9 @@ class ProcessLockRequiredMixin:
     """
     Mixin to enforce access restrictions on locked process-related views.
 
-    This mixin checks whether the requested object or process is in a locked state
-    (i.e., 'VALIDATED' or 'PENDING') and denies the action when appropriate. It can
-    be used to protect views where operations should not be allowed on locked
-    processes, units, or steps.
+    This mixin checks whether the requested process is pending validation and denies
+    the action when appropriate. It can be used to protect views where operations
+    should not be allowed on processes, units, or steps while the process is pending.
 
     Attributes:
         None
@@ -387,12 +386,12 @@ class ProcessLockRequiredMixin:
 
 class AuditTrailMixin:
     """
-    A mixin to enhance form handling with audit trail functionality for Django admin interfaces.
+    A mixin to enhance form handling with audit trail functionality for Django class-based views.
 
     This mixin is designed to add audit trail capabilities, providing features such as restriction
     of actions on inactive or archived objects, tracking changes with justifications, and recording
-    user actions for object creation and updates. It is intended for use in a Django admin
-    context, where forms are required to manage model instances effectively.
+    user actions for object creation and updates. It is intended for use with form-based views
+    that manage model instances effectively.
 
     Attributes:
         model (type): The associated Django model class that this mixin interacts with.

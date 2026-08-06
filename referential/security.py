@@ -25,7 +25,8 @@ class ReferentialRoleRequiredMixin(LoginRequiredMixin):
     Global security Mixin for the Referential application.
     Rights Matrix:
     - System_Admin       : Full Access (Bypass)
-    - Data_Steward       : Read-Only (List/Detail) + Write (Create/Update/Delete/Restore)
+    - Data_Steward       : Read-Only (List/Detail) + Write (Create/Update/Delete/Restore),
+                           except Delete/Restore for Clients and Projects
     - QA_Representative  : Read-Only (List/Detail) + Decision (Validate/Reject)
     - Data_Investigator  : Read-Only (List/Detail)
     """

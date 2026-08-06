@@ -11,8 +11,9 @@ def map_azure_groups_to_django_permissions(sender, user, claims, **kwargs):
 
     The function listens to the post_authenticate signal. It maps Azure Active Directory
     user groups provided in the claims to Django's user group objects and sets the user's
-    permissions and active status based on the matched roles. If more than one matched
-    role is found, the user's account is deactivated.
+    group membership, administrator flags, and active status based on the matched role.
+    The user's account is active only when exactly one configured role matches; accounts
+    with no matching role or multiple matching roles are deactivated.
 
     Args:
         sender: The object that sent the signal. Typically the backend handling authentication.
