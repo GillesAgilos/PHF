@@ -94,7 +94,6 @@ LEFT JOIN referential_client AS client
 LEFT JOIN referential_moleculetype AS moleculetype
     ON moleculetype.unique_id = project.molecule_type_id
 
-WHERE batch.unique_id like '1c0802ed1608416cafbb62afd15688c0'
 
 ORDER BY
     project.code,

@@ -13,7 +13,15 @@ ENV_NAME = env('ENV_NAME')
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+# environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+local_env = BASE_DIR / '.env'
+prod_env = Path('/etc/PHF/.env')
+
+if local_env.exists():
+    environ.Env.read_env(local_env)
+elif prod_env.exists():
+    environ.Env.read_env(prod_env)
+
 
 SECRET_KEY = env('SECRET_KEY')
 DEBUG = env('DEBUG')
