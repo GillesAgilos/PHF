@@ -1,17 +1,15 @@
 from pathlib import Path
 import environ
 import os
-
 import phf.context_processors
+
+
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env(
     DEBUG=(bool, False),
     ENV_NAME=(str, 'prod')  # default prod
 )
-
-ENV_NAME = env('ENV_NAME')
-
-BASE_DIR = Path(__file__).resolve().parent.parent
 
 # environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 local_env = BASE_DIR / '.env'
@@ -22,6 +20,7 @@ if local_env.exists():
 elif prod_env.exists():
     environ.Env.read_env(prod_env)
 
+ENV_NAME = env('ENV_NAME')
 
 SECRET_KEY = env('SECRET_KEY')
 DEBUG = env('DEBUG')
